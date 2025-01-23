@@ -1,0 +1,2 @@
+# OStrich
+Distributed OS
