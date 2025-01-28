@@ -143,8 +143,7 @@ This way the Makefile will use the default system compilers (`gcc`, `g++`) inste
     ~~~sh
     ./gdb_start_mac.sh
     ~~~
-    followed by
+    which runs
     ~~~sh
-    gdb-remote localhost:1234
+   lldb build/kernel.elf -o "gdb-remote localhost:1234"
     ~~~
-    in the lldb window.

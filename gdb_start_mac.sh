@@ -1,1 +1,3 @@
-lldb build/kernel.elf
+lldb build/kernel.elf -o "gdb-remote localhost:1234"
+
+
