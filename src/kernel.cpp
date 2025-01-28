@@ -15,9 +15,16 @@ PerCPU<Stack> stacks;
 
 static bool smpInitDone = false;
 
+uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
+uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
+uint64_t PMD[512] __attribute__((aligned(4096), section(".paging")));
+uint64_t PTE[512] __attribute__((aligned(4096), section(".paging")));
+
+
 extern "C" uint64_t pickKernelStack(void) {
     return (uint64_t) &stacks.forCPU(smpInitDone ? getCoreID() : 0).bytes[Stack::BYTES];
 }
+
 
 void print_ascii_art() {
     printf("\n");
@@ -43,6 +50,12 @@ void print_ascii_art() {
     printf("                                                                              /     \n");
 }
 
+int init_mmu() {
+    printf("INITING MMU\n");
+    PGD[0] = 1;
+    return 0;
+}
+
 
 
 
@@ -52,11 +65,14 @@ extern "C" void kernel_init() {
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
         print_ascii_art();
+        init_mmu();
         // Initialize MMU page tables
         // Initialize heap
         smpInitDone = true;
         wake_up_cores();
     }
+
+
 
     // Enable MMU (all cores must set the enable MMU bit to 1)
 

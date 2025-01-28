@@ -1,2 +1,2 @@
 #!/bin/bash
-gdb -ex "file build/kernel.elf" -ex "target remote localhost:1234"
+lldb build/kernel.elf --batch -o "gdb-remote localhost:1234"

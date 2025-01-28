@@ -1,5 +1,5 @@
 # Cross compiler and tools
-CROSS_COMPILE = aarch64-linux-gnu-
+CROSS_COMPILE = aarch64-elf-
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
@@ -65,5 +65,8 @@ run:
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
+
+debug_mac:
+	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -s -S
 
 .PHONY: all clean run debug
