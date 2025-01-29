@@ -5,6 +5,7 @@
 #include "stdint.h"
 #include "entry.h"
 #include "core.h"
+#include "mm.h"
 
 struct Stack {
     static constexpr int BYTES = 4096;
@@ -50,11 +51,6 @@ void print_ascii_art() {
     printf("                                                                              /     \n");
 }
 
-int init_mmu() {
-    printf("INITING MMU\n");
-    PGD[0] = 1;
-    return 0;
-}
 
 
 
@@ -65,9 +61,13 @@ extern "C" void kernel_init() {
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
         print_ascii_art();
-        init_mmu();
+        // init_mmu();
         // Initialize MMU page tables
         // Initialize heap
+        printf("BEFORE PAGE TABLES\n");
+        create_page_tables();
+        printf("AFTER PAGE TABLES\n");
+
         smpInitDone = true;
         wake_up_cores();
     }

@@ -15,6 +15,7 @@
 #ifndef __ASSEMBLER__
 
 void memzero(unsigned long src, unsigned long n);
+extern "C" void create_page_tables();
 
 #endif
 
