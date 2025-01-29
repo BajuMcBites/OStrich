@@ -42,7 +42,7 @@ create_page_tables:
     sub    x1, x1, x0
     bl     memzero
 
-	//set up PGD addr: 0x809dc
+	//set up PGD -- ins addr: 0x809dc
 	init_inner_table x0, x1
 
 	//set up PUD
@@ -54,4 +54,43 @@ create_page_tables:
 	init_pmd_table_entries x0, x1, x2, x3
 
 	mov x30, x29
+	ret
+
+	// update sp, load page table into register, turn on mmu
+	// Define necessary constants
+// .equ VA_START, 0xFFFF000000000000
+// .equ LOW_MEMORY, 0x80000
+// remove these values later:
+.equ TCR_VALUE, 0x801010 
+.equ MAIR_VALUE, 0x00004400
+.equ SCTLR_MMU_ENABLED, 0x1
+.equ VA_START, 0xFFFF000000000000
+
+.global init_mmu
+init_mmu:
+    // Update stack pointer to use a virtual address
+	movz x4, #0xFFFF
+	lsl x4, x4, #48
+	add sp, sp, x4
+
+    //base address of the page table into ttbr1_el1
+    adr   x0, __paging_start
+    msr    ttbr1_el1, x0
+
+    //Translation Control Register
+    ldr    x0, =(TCR_VALUE)
+    msr    tcr_el1, x0
+
+    //Memory Attribute Indirection Register
+    ldr    x0, =(MAIR_VALUE)
+    msr    mair_el1, x0
+
+
+	// load into return register
+	add x30, x30, x4
+
+    // Enable the MMU ?? (can't find the register)
+    mov    x0, #SCTLR_MMU_ENABLED 
+    msr    SCTLR_EL1, x0 //error here for some reason
+
 	ret

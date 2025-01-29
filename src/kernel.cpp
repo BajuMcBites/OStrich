@@ -51,6 +51,11 @@ void print_ascii_art() {
     printf("                                                                              /     \n");
 }
 
+int temp() {
+    printf("hello\n");
+    return 1;
+}
+
 
 
 
@@ -61,12 +66,15 @@ extern "C" void kernel_init() {
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
         print_ascii_art();
-        // init_mmu();
         // Initialize MMU page tables
         // Initialize heap
         printf("BEFORE PAGE TABLES\n");
         create_page_tables();
         printf("AFTER PAGE TABLES\n");
+        printf("BEFORE WAKING UP MMU\n");
+        init_mmu();
+        temp();
+        printf("AFTER WAKING UP MMU\n");
 
         smpInitDone = true;
         wake_up_cores();

@@ -16,7 +16,7 @@
 
 void memzero(unsigned long src, unsigned long n);
 extern "C" void create_page_tables();
-
+extern "C" void init_mmu();
 #endif
 
 #endif  /*_MM_H */
