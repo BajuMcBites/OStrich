@@ -5,7 +5,7 @@
 #include "stdint.h"
 #include "entry.h"
 #include "core.h"
-
+#include "sched.h"
 struct Stack {
     static constexpr int BYTES = 4096;
     uint64_t bytes[BYTES] __attribute__ ((aligned(16)));
@@ -43,7 +43,14 @@ void print_ascii_art() {
     printf("                                                                              /     \n");
 }
 
-
+void test_function (int a) {
+    while (1) {
+        for (int i = 0; i < a; i++) {
+            printf("%d", a + i);
+            delay(100000000);
+        }
+    }
+}
 
 
 extern "C" void kernel_init() {
@@ -62,8 +69,8 @@ extern "C" void kernel_init() {
 
     // this line here will cause race conditions between cores
     printf("Hi, I'm core %d\n", getCoreID());
-
     if(getCoreID() == 0){
+        test_function(5);
         while (1) {
             uart_putc(uart_getc()); // will allow you to type letters through UART
         }

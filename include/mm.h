@@ -1,3 +1,5 @@
+#include "peripherals/base.h"
+
 #ifndef	_MM_H
 #define	_MM_H
 
@@ -11,6 +13,10 @@
 #define SECTION_SIZE			(1 << SECTION_SHIFT)	
 
 #define LOW_MEMORY              	(2 * SECTION_SIZE)
+#define HIGH_MEMORY             PBASE
+
+#define PAGING_MEMORY           (HIGH_MEMORY - LOW_MEMORY)
+#define PAGING_PAGES            (PAGING_MEMORY/PAGE_SIZE)
 
 #ifndef __ASSEMBLER__
 
