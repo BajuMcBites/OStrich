@@ -42,6 +42,8 @@ create_page_tables:
     sub    x1, x1, x0
     bl     memzero
 
+	adr    x0, __paging_start
+
 	//set up PGD -- ins addr: 0x809dc
 	init_inner_table x0, x1
 
@@ -76,6 +78,7 @@ init_mmu:
     //base address of the page table into ttbr1_el1
     adr   x0, __paging_start
     msr    ttbr1_el1, x0
+    msr    ttbr0_el1, x0 //added
 
     //Translation Control Register
     ldr    x0, =(TCR_VALUE)
@@ -85,12 +88,11 @@ init_mmu:
     ldr    x0, =(MAIR_VALUE)
     msr    mair_el1, x0
 
-
 	// load into return register
 	add x30, x30, x4
 
     // Enable the MMU ?? (can't find the register)
-    mov    x0, #SCTLR_MMU_ENABLED 
-    msr    SCTLR_EL1, x0 //error here for some reason
-
+	mrs x0, sctlr_el1
+    orr    x0, x0, #SCTLR_MMU_ENABLED 
+    msr    sctlr_el1, x0 //error here for some reason
 	ret
