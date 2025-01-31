@@ -90,7 +90,7 @@ init_mmu:
     msr mair_el1, x0
 
 	// load into return register
-	// add x30, x30, x4
+	add x30, x30, x4
 
     // Enable the MMU ?? (can't find the register)
 	mrs x0, sctlr_el1
