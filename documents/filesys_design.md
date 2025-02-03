@@ -1,5 +1,6 @@
 ## Filesystem design overview
 
+[box diagram](https://miro.com/app/board/uXjVLkHmiEQ=/?share_link_id=319986476225)
 - Unified namespace and filesystem to users, accessible from any host
 - Each host is a NFS server for local files, and a NFS client for remote files
 - All hosts mounted to root, prepended by special character and HWID to ensure unique filepaths
