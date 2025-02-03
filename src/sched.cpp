@@ -27,6 +27,7 @@ void _schedule(void)
 		c = -1;
 		next = 0;
 		for (int i = 0; i < NR_TASKS; i++){
+			printf("task %d is %d\n", i, task[i]);
 			p = task[i];
 			if (p && p->state == TASK_RUNNING && p->counter > c) {
 				c = p->counter;
@@ -43,6 +44,7 @@ void _schedule(void)
 			}
 		}
 	}
+	printf("WE ARE GONNA SWITCH LFG to %d\n", task[next]);
 	switch_to(task[next]);
 	preempt_enable();
 }
@@ -53,7 +55,7 @@ void schedule(void)
 	_schedule();
 }
 
-void switch_to(struct task_struct * next) 
+extern "C" void switch_to(struct task_struct * next) 
 {
 	if (current == next) 
 		return;
@@ -62,12 +64,12 @@ void switch_to(struct task_struct * next)
 	cpu_switch_to(prev, next);
 }
 
-void schedule_tail(void) {
+extern "C" void schedule_tail(void) {
 	preempt_enable();
 }
 
 
-void timer_tick()
+extern "C" void timer_tick()
 {
 	--current->counter;
 	if (current->counter>0 || current->preempt_count >0) {

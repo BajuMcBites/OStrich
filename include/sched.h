@@ -44,11 +44,11 @@ struct task_struct {
 
 extern void sched_init(void);
 extern void schedule(void);
-extern void timer_tick(void);
-extern void preempt_disable(void);
-extern void preempt_enable(void);
-extern void switch_to(struct task_struct* next);
-extern void cpu_switch_to(struct task_struct* prev, struct task_struct* next);
+extern "C" void timer_tick(void);
+extern "C" void preempt_disable(void);
+extern "C" void preempt_enable(void);
+extern "C" void switch_to(struct task_struct* next);
+extern "C" void cpu_switch_to(struct task_struct* prev, struct task_struct* next);
 
 #define INIT_TASK \
 /*cpu_context*/	{ {0,0,0,0,0,0,0,0,0,0,0,0,0}, \
