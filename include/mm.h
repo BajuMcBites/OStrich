@@ -12,6 +12,10 @@
 
 #define LOW_MEMORY              	(2 * SECTION_SIZE)
 
+#define TCR_VALUE 0x850102010 
+#define MAIR_VALUE 0x0000000000004400
+// #define SCTLR_MMU_ENABLED 0x1
+
 #ifndef __ASSEMBLER__
 
 void memzero(unsigned long src, unsigned long n);

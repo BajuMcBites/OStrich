@@ -51,30 +51,29 @@ void print_ascii_art() {
     printf("                                                                              /     \n");
 }
 
-int temp() {
-    printf("hello\n");
-    return 1;
+
+void patch_page_tables() {
+
+    uint64_t lower_attributes = 0x1 | (0x0 << 2) | (0x1 << 10) | (0x0 << 6) | (0x0 << 8);
+
+    for (int i = 500; i < 512; i++) {
+        PMD[i] = PMD[i] & (0xFFFFFFFFFFFFF000);
+        PMD[i] = PMD[i] | lower_attributes;
+    }
+
 }
-
-
 
 
 
 extern "C" void kernel_init() {
     if(getCoreID() == 0){
+        create_page_tables();
+        init_mmu();
+        patch_page_tables();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
         print_ascii_art();
-        // Initialize MMU page tables
-        // Initialize heap
-        printf("BEFORE PAGE TABLES\n");
-        create_page_tables();
-        printf("AFTER PAGE TABLES\n");
-        printf("BEFORE WAKING UP MMU\n");
-        init_mmu();
-        temp();
-        printf("AFTER WAKING UP MMU\n");
 
         smpInitDone = true;
         wake_up_cores();
