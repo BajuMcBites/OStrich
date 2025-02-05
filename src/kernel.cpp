@@ -56,7 +56,7 @@ void patch_page_tables() {
 
     uint64_t lower_attributes = 0x1 | (0x0 << 2) | (0x1 << 10) | (0x0 << 6) | (0x0 << 8);
 
-    for (int i = 500; i < 512; i++) {
+    for (int i = 504; i < 512; i++) {
         PMD[i] = PMD[i] & (0xFFFFFFFFFFFFF000);
         PMD[i] = PMD[i] | lower_attributes;
     }
@@ -77,6 +77,8 @@ extern "C" void kernel_init() {
 
         smpInitDone = true;
         wake_up_cores();
+    } else {
+        init_mmu();
     }
 
 
