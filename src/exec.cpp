@@ -1,6 +1,7 @@
 #include "uart.h"
 #include "printf.h"
 #include "stdint.h"
+#include "irq.h"
 
 /**
  * common exception handler
@@ -14,7 +15,7 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
         case 1: printf("IRQ"); break;
         case 2: printf("FIQ"); break;
         case 3: printf("SError"); break;
-    }
+    }   
     printf(": ");
     // decode exception type (some, not all. See ARM DDI0487B_b chapter D10.2.28)
     switch(esr>>26) {

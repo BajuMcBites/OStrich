@@ -3,6 +3,8 @@
 #ifndef	_MM_H
 #define	_MM_H
 
+#define S_FRAME_SIZE			272 		// size of all saved registers 
+
 #define VA_START 			0xffff000000000000
 
 #define PAGE_SHIFT	 		12

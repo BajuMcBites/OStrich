@@ -1,5 +1,9 @@
 #include "mm.h"
 
+/*
+PLACEHOLDER
+*/
+
 static unsigned short mem_map [ PAGING_PAGES ] = {0,};
 
 unsigned long get_free_page()
