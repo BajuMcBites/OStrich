@@ -1,5 +1,5 @@
 # Cross compiler and tools
-CROSS_COMPILE = aarch64-elf-
+CROSS_COMPILE = aarch64-none-elf-
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
