@@ -1,6 +1,6 @@
 SECTIONS
 {
-    . = 0xFFFF000000080000;
+    . = 0xffff000000080000;
     .text : { KEEP(*(.text.boot)) *(.text .text.* .gnu.linkonce.t*) }
     .rodata : { *(.rodata .rodata.* .gnu.linkonce.r*) }
     PROVIDE(_data = .);

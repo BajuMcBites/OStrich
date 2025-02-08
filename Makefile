@@ -1,5 +1,5 @@
 # Cross compiler and tools
-CROSS_COMPILE = aarch64-elf-
+CROSS_COMPILE = aarch64-none-elf-
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
@@ -15,7 +15,6 @@ INCLUDE_DIR = include
 ASM_SRC = $(wildcard $(SRC_DIR)/*.S)
 C_SRC = $(wildcard $(SRC_DIR)/*.c)
 CPP_SRC = $(wildcard $(SRC_DIR)/*.cpp)
-
 # Object files
 ASM_OBJ = $(ASM_SRC:$(SRC_DIR)/%.S=$(BUILD_DIR)/%.o)
 C_OBJ = $(C_SRC:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)

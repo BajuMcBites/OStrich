@@ -1,2 +1,3 @@
 # Ignore build directory
 build/
+copy_kernel.sh

@@ -121,6 +121,7 @@ secondary_kernel_main:
 
 .global wake_up_cores
 wake_up_cores:
+
     mov x0, #0
     adr x0, secondary 
     ldr x4, =(0xFFFF000000000000)

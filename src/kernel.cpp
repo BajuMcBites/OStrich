@@ -63,7 +63,29 @@ void patch_page_tables() {
 
 }
 
+void test_atomic_operations(void) {
+    int val = 0;
+    int result;
+    int new_val = 10;
 
+    printf("Initial value of val: %d\n", val);
+
+    result = __atomic_exchange_n(&val, new_val, __ATOMIC_SEQ_CST);
+
+    printf("Value after atomic exchange: %d, old value: %d\n", val, result);
+
+    if (val == new_val) {
+        printf("Atomic exchange successful, value updated to: %d\n", val);
+    } else {
+        printf("Atomic exchange failed, value not updated. Current val: %d\n", val);
+    }
+
+    printf("Final value of val: %d\n", val);
+}
+
+void breakpoint(){
+    return;
+}
 
 extern "C" void kernel_init() {
     if(getCoreID() == 0){
@@ -73,20 +95,21 @@ extern "C" void kernel_init() {
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
+        breakpoint();
         print_ascii_art();
-
         smpInitDone = true;
         wake_up_cores();
     } else {
         init_mmu();
     }
 
-
-
+    // test_atomic_operations();           
     // Enable MMU (all cores must set the enable MMU bit to 1)
 
     // this line here will cause race conditions between cores
+    if(getCoreID() == 1){
     printf("Hi, I'm core %d\n", getCoreID());
+    }
 
     if(getCoreID() == 0){
         while (1) {
