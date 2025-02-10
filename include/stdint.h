@@ -44,14 +44,14 @@ typedef uint64_t uintptr_t;
 typedef int64_t intmax_t;
 typedef uint64_t uintmax_t;
 
-typedef uint64_t size_t;
+typedef long unsigned int size_t;
 typedef int64_t ssize_t;
 
 // Limits of exact-width integer types
 #define INT8_MIN (-128)
 #define INT16_MIN (-32768)
-#define INT32_MIN (-2147483647-1)
-#define INT64_MIN (-9223372036854775807LL-1)
+#define INT32_MIN (-2147483647 - 1)
+#define INT64_MIN (-9223372036854775807LL - 1)
 
 #define INT8_MAX 127
 #define INT16_MAX 32767

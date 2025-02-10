@@ -66,7 +66,4 @@ run:
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
 
-debug_mac:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -s -S
-
 .PHONY: all clean run debug
