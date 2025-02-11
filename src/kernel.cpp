@@ -6,9 +6,13 @@
 #include "irq.h"
 #include "timer.h"
 #include "core.h"
+<<<<<<< HEAD
 #include "sched.h"
 #include "mm.h"
 #include "fork.h"
+=======
+#include "vm.h"
+>>>>>>> main
 
 struct Stack {
     static constexpr int BYTES = 4096;
@@ -56,24 +60,35 @@ void test_function (int a) {
     }
 }
 
+void breakpoint(){
+    return;
+}
+
 extern "C" void kernel_init() {
     if(getCoreID() == 0){
+        create_page_tables();
+        init_mmu();
+        patch_page_tables();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         timer_init();
         enable_interrupt_controller();
         enable_irq();
         printf("printf initialized!!!\n");
+<<<<<<< HEAD
         // print_ascii_art();
         // Initialize MMU page tables
         // Initialize heap
+=======
+        breakpoint();
+        print_ascii_art();
+>>>>>>> main
         smpInitDone = true;
         wake_up_cores();
+    } else {
+        init_mmu();
     }
 
-    // Enable MMU (all cores must set the enable MMU bit to 1)
-
-    // this line here will cause race conditions between cores
     printf("Hi, I'm core %d\n", getCoreID());
     if(getCoreID() == 0){
         int res = copy_process((unsigned long)&test_function, 10);

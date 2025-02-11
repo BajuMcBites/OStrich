@@ -134,3 +134,16 @@ This way the Makefile will use the default system compilers (`gcc`, `g++`) inste
     gdb -ex "file build/kernel.elf" -ex "target remote localhost:1234"
     ~~~
 
+    On Arm Mac, use
+    ~~~sh
+    make debug
+    ~~~
+
+    and 
+    ~~~sh
+    ./gdb_start_mac.sh
+    ~~~
+    which runs
+    ~~~sh
+   lldb build/kernel.elf -o "gdb-remote localhost:1234"
+    ~~~
