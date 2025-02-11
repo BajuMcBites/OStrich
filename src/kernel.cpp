@@ -6,13 +6,10 @@
 #include "irq.h"
 #include "timer.h"
 #include "core.h"
-<<<<<<< HEAD
 #include "sched.h"
 #include "mm.h"
 #include "fork.h"
-=======
 #include "vm.h"
->>>>>>> main
 
 struct Stack {
     static constexpr int BYTES = 4096;
@@ -75,14 +72,8 @@ extern "C" void kernel_init() {
         enable_interrupt_controller();
         enable_irq();
         printf("printf initialized!!!\n");
-<<<<<<< HEAD
-        // print_ascii_art();
-        // Initialize MMU page tables
-        // Initialize heap
-=======
         breakpoint();
         print_ascii_art();
->>>>>>> main
         smpInitDone = true;
         wake_up_cores();
     } else {
