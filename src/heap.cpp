@@ -3,7 +3,7 @@
 #include "stdint.h"
 // #include <stdint.h>
 // #include "blocking_lock.h"
-// #include "atomic.h"
+#include "atomic.h"
 
 /* A first-fit heap */
 
@@ -15,6 +15,7 @@ namespace alogx
     static int safe = 0;
     static int avail = 0;
     // static BlockingLock *theLock = nullptr;
+    static SpinLock *theLock = nullptr;
 
     void makeTaken(int i, int ints);
     void makeAvail(int i, int ints);
@@ -166,6 +167,7 @@ void heapInit(void *base, size_t bytes)
     makeAvail(2, len - 4);
     makeTaken(len - 2, 2);
     // theLock = new BlockingLock();
+    theLock = new SpinLock();
 }
 
 void *malloc(size_t bytes)
@@ -179,7 +181,7 @@ void *malloc(size_t bytes)
     if (ints < 4)
         ints = 4;
 
-    // LockGuardP g{theLock};
+    LockGuardP g{theLock};
 
     void *res = 0;
 
@@ -239,7 +241,7 @@ void free(void *p)
     if (p == (void *)array)
         return;
 
-    //  g{theLock};
+    LockGuardP g{theLock};
 
     int idx = ((((uintptr_t)p) - ((uintptr_t)array)) / 4) - 1;
     sanity(idx);

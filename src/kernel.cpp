@@ -89,11 +89,11 @@ extern "C" void kernel_init()
         printf("Heap start: 0x%x, Heap end: 0x%x\n", HEAP_START, HEAP_END);
         heapInit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
-        // wake_up_cores();
+        wake_up_cores();
     }
     else
     {
-        printf("should not go here\n");
+        // printf("should not go here\n");
         init_mmu();
     }
 
