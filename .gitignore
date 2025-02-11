@@ -2,3 +2,5 @@
 build/
 copy_kernel.sh
 Makefile
+gdb_start.sh
+.vscode/
