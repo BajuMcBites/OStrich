@@ -1,5 +1,6 @@
 #include "arm/sysregs.h"
 #include "mm.h"
+#include "vm.h"
 
 .section ".text.boot"
 _start:	
