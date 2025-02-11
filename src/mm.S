@@ -1,3 +1,6 @@
+#include "mm.h"
+#include "arm/sysregs.h"
+
 .globl memzero
 memzero:
 	str xzr, [x0], #8

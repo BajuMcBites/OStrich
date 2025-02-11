@@ -1,5 +1,6 @@
 #include "arm/sysregs.h"
 #include "mm.h"
+#include "vm.h"
 
 .section ".text.boot"
 _start:	
@@ -121,8 +122,12 @@ secondary_kernel_main:
 
 .global wake_up_cores
 wake_up_cores:
+
     mov x0, #0
-    adr x0, secondary
+    adr x0, secondary 
+    ldr x4, =(0xFFFF000000000000)
+    sub x0, x0, x4
+
     mov x1, #0xe0
     str x0, [x1]
     mov x1, #0xe8
