@@ -7,7 +7,7 @@
 
 /* A first-fit heap */
 
-namespace gheith
+namespace alogx
 {
 
     static int *array;
@@ -155,7 +155,7 @@ namespace gheith
 
 void heapInit(void *base, size_t bytes)
 {
-    using namespace gheith;
+    using namespace alogx;
 
     printf("| heap range 0x%x 0x%x\n", (uint64_t)base, (uint64_t)base + bytes);
 
@@ -170,7 +170,7 @@ void heapInit(void *base, size_t bytes)
 
 void *malloc(size_t bytes)
 {
-    using namespace gheith;
+    using namespace alogx;
     // Debug::printf("malloc(%d)\n",bytes);
     if (bytes == 0)
         return (void *)array;
@@ -233,7 +233,7 @@ void *malloc(size_t bytes)
 
 void free(void *p)
 {
-    using namespace gheith;
+    using namespace alogx;
     if (p == 0)
         return;
     if (p == (void *)array)
@@ -269,4 +269,3 @@ void free(void *p)
 
     makeAvail(idx, sz);
 }
-

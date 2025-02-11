@@ -21,8 +21,18 @@ SECTIONS
     }
 
     _end = .;
+    
+    /* Define heap start after BSS, aligned to 4KB */
+    . = ALIGN(4096);
+    PROVIDE(__heap_start = .);
 
+    /* Allocate heap size */
+    . = . + 2M; /* 2MB heap, adjustable */
+    
+    PROVIDE(__heap_end = .);
+    
     /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }
 }
 
 __bss_size = (__bss_end - __bss_start) >> 3;
+__heap_size = (__heap_end - __heap_start);

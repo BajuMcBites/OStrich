@@ -65,6 +65,16 @@ void patch_page_tables()
     }
 }
 
+// extern uintptr_t __heap_start;
+// extern uintptr_t __heap_end;
+
+extern char __heap_start[];
+extern char __heap_end[];
+
+#define HEAP_START ((uintptr_t)__heap_start)
+#define HEAP_END ((uintptr_t)__heap_end)
+#define HEAP_SIZE (HEAP_END - HEAP_START)
+
 extern "C" void kernel_init()
 {
     if (getCoreID() == 0)
@@ -76,7 +86,8 @@ extern "C" void kernel_init()
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
         print_ascii_art();
-
+        printf("Heap start: 0x%x, Heap end: 0x%x\n", HEAP_START, HEAP_END);
+        heapInit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         // wake_up_cores();
     }
