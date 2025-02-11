@@ -136,7 +136,7 @@ This way the Makefile will use the default system compilers (`gcc`, `g++`) inste
 
     On Arm Mac, use
     ~~~sh
-    make debug_mac
+    make debug
     ~~~
 
     and 
