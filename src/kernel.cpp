@@ -7,6 +7,8 @@
 #include "core.h"
 #include "mm.h"
 #include "heap.h"
+#include "libk.h"
+#include "kernel_tests.h"
 
 struct Stack
 {
@@ -26,6 +28,11 @@ uint64_t PTE[512] __attribute__((aligned(4096), section(".paging")));
 extern "C" uint64_t pickKernelStack(void)
 {
     return (uint64_t)&stacks.forCPU(smpInitDone ? getCoreID() : 0).bytes[Stack::BYTES];
+}
+
+extern "C" void kernel_main()
+{
+    heapTests();
 }
 
 void print_ascii_art()
@@ -87,9 +94,11 @@ extern "C" void kernel_init()
         printf("printf initialized!!!\n");
         print_ascii_art();
         printf("Heap start: 0x%x, Heap end: 0x%x\n", HEAP_START, HEAP_END);
-        heapInit((void *)HEAP_START, HEAP_SIZE);
+        // heapInit((void *)HEAP_START, HEAP_SIZE);
+        uinit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         wake_up_cores();
+        kernel_main();
     }
     else
     {

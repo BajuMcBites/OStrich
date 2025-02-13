@@ -22,6 +22,8 @@ public:
         auto rest = min(more...);
         return (a < rest) ? a : rest;
     }
+
+    static void assert(bool condition, const char *msg);
 };
 
 #endif
