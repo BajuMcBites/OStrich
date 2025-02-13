@@ -1,3 +1,5 @@
+#include "peripherals/base.h"
+
 #ifndef _VM_H
 #define _VM_H
 
@@ -11,6 +13,9 @@
 #define SECTION_SIZE			(1 << SECTION_SHIFT)	
 
 #define LOW_MEMORY              	(2 * SECTION_SIZE)
+#define HIGH_MEMORY             PBASE
+#define PAGING_MEMORY           (HIGH_MEMORY - LOW_MEMORY)
+#define PAGING_PAGES            (PAGING_MEMORY/PAGE_SIZE)
 
 #define TCR_VALUE  ( \
     (0b0LL   << 40) | /* [40]    HD: HW Dirty Bit Management - 0 = Disabled (0 = SW-managed, 1 = HW-managed) */ \
@@ -48,8 +53,6 @@
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
 void patch_page_tables();
-
-
 
 
 #endif

@@ -9,10 +9,6 @@ extern "C" int atomic_exchange(int *ptr, int new_value);
 extern "C" void release_lock(int *ptr, int new_value);
 extern "C" unsigned long get_el();
 
-
-extern "C" void irq_init_vectors();
-extern "C" void irq_enable();
-extern "C" void irq_disable();
 extern "C" void monitor(long addr);
 extern "C" void outb(int port, int val);
 
