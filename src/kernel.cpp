@@ -9,7 +9,7 @@
 #include "mm.h"
 #include "fork.h"
 #include "vm.h"
-#include "mm.h"
+#include "frame.h"
 #include "heap.h"
 #include "libk.h"
 #include "kernel_tests.h"
@@ -61,6 +61,10 @@ void breakpoint()
     return;
 }
 
+extern char _frame_table_start[];
+
+#define frame_table_start ((uintptr_t)_frame_table_start)
+
 extern "C" void kernel_main()
 {
     heapTests();
@@ -82,6 +86,8 @@ extern "C" void kernel_init()
         create_page_tables();
         init_mmu();
         patch_page_tables();
+        printf("frame_table_start: %x\n", frame_table_start);
+        create_frame_table(frame_table_start, 0x10000000);
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         timer_init();
