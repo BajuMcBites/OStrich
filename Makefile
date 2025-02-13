@@ -65,5 +65,3 @@ run:
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
-
-.PHONY: all clean run debug

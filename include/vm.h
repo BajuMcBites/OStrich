@@ -58,8 +58,6 @@ unsigned long get_free_page();
 void free_page(unsigned long p);
 
 
-
-
 #endif
 
 #endif /*_VM_H*/
