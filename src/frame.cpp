@@ -1,0 +1,43 @@
+#include "frame.h"
+#include "stdint.h"
+#include "vm.h"
+
+int index = 0;
+int num_frames = 0;
+Frame *frame_table = 0;
+
+void create_frame_table(uintptr_t start, int size) {
+    frame_table = (Frame*) start;
+    num_frames = size / PAGE_SIZE;
+    for (int i = 0; i < size; i++) {
+        frame_table[i].flags = 0;
+    }
+
+    for (int i = 0; i < (int) ((start / PAGE_SIZE) + num_frames * sizeof(Frame) / PAGE_SIZE + 1); i++) {
+        frame_table[i].flags |= USED_PAGE_FLAG;
+        frame_table[i].flags |= PINNED_PAGE_FLAG;
+    }
+}
+
+uintptr_t alloc_frame() {
+    for (int i = 0; i < num_frames; i++) {
+        if (!(frame_table[index].flags & USED_PAGE_FLAG)){
+            frame_table[index].flags |= USED_PAGE_FLAG;
+            index += 1;
+            return index * PAGE_SIZE;
+        }
+
+        index += 1;
+        index %= num_frames;
+    }
+    
+    // Need to evict
+    return 0;
+}
+
+void free_frame(uintptr_t frame_addr) {
+    int index = frame_addr / PAGE_SIZE; // check that page aligned?
+    if (index >= 0 && index < num_frames) {
+        frame_table[index].flags &= ~USED_PAGE_FLAG;
+    }
+}

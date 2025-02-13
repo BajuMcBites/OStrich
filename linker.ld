@@ -19,8 +19,11 @@ SECTIONS
         *(COMMON)
         __bss_end = .;
     }
-
+    
+    . = ALIGN(4096);
     _end = .;
+
+    PROVIDE(_frame_table_start = .);
 
     /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }
 }
