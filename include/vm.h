@@ -3,19 +3,21 @@
 #ifndef _VM_H
 #define _VM_H
 
-#define VA_START 			0xffff000000000000
+#define VA_START 			    0xFFFF000000000000
 
-#define PAGE_SHIFT	 		12
+#define PAGE_SHIFT	 		    12
 #define TABLE_SHIFT 			9
 #define SECTION_SHIFT			(PAGE_SHIFT + TABLE_SHIFT)
 
 #define PAGE_SIZE   			(1 << PAGE_SHIFT)	
 #define SECTION_SIZE			(1 << SECTION_SHIFT)	
 
-#define LOW_MEMORY              	(2 * SECTION_SIZE)
+#define LOW_MEMORY              (2 * SECTION_SIZE)
 #define HIGH_MEMORY             PBASE
 #define PAGING_MEMORY           (HIGH_MEMORY - LOW_MEMORY)
 #define PAGING_PAGES            (PAGING_MEMORY/PAGE_SIZE)
+
+#define TABLE_ENTRIES           (1 << TABLE_SHIFT)
 
 #define TCR_VALUE  ( \
     (0b0LL   << 40) | /* [40]    HD: HW Dirty Bit Management - 0 = Disabled (0 = SW-managed, 1 = HW-managed) */ \
@@ -54,8 +56,33 @@ extern "C" void create_page_tables();
 extern "C" void init_mmu();
 void patch_page_tables();
 
-unsigned long get_free_page();
-void free_page(unsigned long p);
+struct PageTable 
+{
+    uint64_t descripters[TABLE_ENTRIES];
+};
+
+typedef PageTable PGDTable;
+typedef PageTable PUDTable;
+typedef PageTable PMDTable;
+typedef PageTable PTETable;
+
+
+uintptr_t descriptor_to_vaddr(uint64_t descripter);
+
+uint64_t get_pgd_index(uint64_t vaddr);
+uint64_t get_pud_index(uint64_t vaddr);
+uint64_t get_pmd_index(uint64_t vaddr);
+uint64_t get_pte_index(uint64_t vaddr);
+
+class PageTable
+{
+
+public:
+    PGDTable PGD;
+
+    void map_vaddr(uint64_t vaddr, uint64_t paddr);
+    uintptr_t unmap_vaddr(uint64_t vaddr);
+};
 
 
 #endif
