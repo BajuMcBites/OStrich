@@ -9,7 +9,7 @@ Frame *frame_table = 0;
 void create_frame_table(uintptr_t start, int size) {
     frame_table = (Frame*) start;
     num_frames = size / PAGE_SIZE;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < num_frames; i++) {
         frame_table[i].flags = 0;
     }
 
