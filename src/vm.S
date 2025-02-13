@@ -1,22 +1,5 @@
-#include "mm.h"
+#include "vm.h"
 #include "arm/sysregs.h"
-
-.globl memzero
-memzero:
-	str xzr, [x0], #8
-	subs x1, x1, #8
-	b.gt memzero
-	ret
-=======
-#include "mm.h"
-#include "arm/sysregs.h"
-
-.globl memzero
-memzero:
-	str xzr, [x0], #8
-	subs x1, x1, #8
-	b.gt memzero
-	ret
 
 .macro init_inner_table start_addr, temp
     add \temp, \start_addr, #PAGE_SIZE   
@@ -101,3 +84,4 @@ init_mmu:
     msr sctlr_el1, x0 
 	
 	ret
+	

@@ -1,6 +1,18 @@
 #ifndef	_MM_H
 #define	_MM_H
 
+
+#ifndef __ASSEMBLER__
+
+void memzero(unsigned long src, unsigned long n);
+
+#endif
+
+#endif  /*_MM_H */
+=======
+#ifndef	_MM_H
+#define	_MM_H
+
 #define VA_START 			0xffff000000000000
 
 #define PAGE_SHIFT	 		12
