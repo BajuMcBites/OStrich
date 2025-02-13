@@ -58,11 +58,11 @@ extern "C" void kernel_init() {
         create_page_tables();
         init_mmu();
         patch_page_tables();
-        printf("frame_table_start: %x\n", frame_table_start);
-        create_frame_table(frame_table_start, 0x10000000);
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
+        create_frame_table(frame_table_start, 0x10000000); // size of 256MB
+        printf("frame table initialized! \n");
         breakpoint();
         print_ascii_art();
         smpInitDone = true;
