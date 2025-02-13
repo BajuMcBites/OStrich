@@ -174,4 +174,5 @@ _vectors:
     mrs     x2, elr_el1
     mrs     x3, spsr_el1
     mrs     x4, far_el1
+
     b       exc_handler

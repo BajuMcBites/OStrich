@@ -6,6 +6,11 @@
 #include "entry.h"
 #include "core.h"
 #include "vm.h"
+#include "mm.h"
+#include "heap.h"
+#include "libk.h"
+#include "kernel_tests.h"
+
 
 struct Stack {
     static constexpr int BYTES = 4096;
@@ -48,6 +53,11 @@ void breakpoint(){
     return;
 }
 
+extern "C" void kernel_main()
+{
+    heapTests();
+}
+
 extern "C" void kernel_init() {
     if(getCoreID() == 0){
         create_page_tables();
@@ -58,8 +68,11 @@ extern "C" void kernel_init() {
         printf("printf initialized!!!\n");
         breakpoint();
         print_ascii_art();
+        uinit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         wake_up_cores();
+        kernel_main();
+      
     } else {
         init_mmu();
     }
@@ -72,4 +85,3 @@ extern "C" void kernel_init() {
         }
     }
 }
-
