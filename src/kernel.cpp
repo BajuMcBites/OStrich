@@ -1,7 +1,6 @@
 #include "uart.h"
 #include "utils.h"
 #include "printf.h"
-#include "percpu.h"
 #include "stdint.h"
 #include "irq.h"
 #include "timer.h"
@@ -64,6 +63,10 @@ void test_function (int a) {
     }
 }
 
+void test_event(void* arg) {
+    printf("new event dropped: %s\n", (char*)arg);
+}
+
 
 void breakpoint()
 {
@@ -98,6 +101,15 @@ extern "C" void kernel_init()
         breakpoint();
         print_ascii_art();
         uinit((void *)HEAP_START, HEAP_SIZE);
+
+        // event queues setup
+        for (int i = 0; i < 4; i++) {
+            auto& queue = cpu_queues.forCPU(i);
+            for (int j = 0; j < MAX_PRIORITY; j++) {
+                queue.queue_list[j] = nullptr;
+            }
+        }
+
         smpInitDone = true;
         wake_up_cores();
         kernel_main();
@@ -108,6 +120,15 @@ extern "C" void kernel_init()
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
+
+    event_struct* e = (event_struct*)malloc(sizeof(event_struct));
+    e->func = test_event;
+    e->arg = (void*) "Hi im an event";
+    e->priority = 2;
+    e->next = nullptr;
+
+    push(getCoreID(), e);
+
     if(getCoreID() == 0){
         int res = copy_process((unsigned long)&test_function, 10);
         if (res != 0) {
