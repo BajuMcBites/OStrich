@@ -63,10 +63,6 @@ void test_function (int a) {
     }
 }
 
-void test_event(void* arg) {
-    printf("new event dropped: %s\n", (char*)arg);
-}
-
 
 void breakpoint()
 {
@@ -145,8 +141,7 @@ extern "C" void kernel_init()
             printf("error while starting process 3");
             return;
         }
-        while (1)
-        {
+        while (1) {
             schedule();
         }
     }

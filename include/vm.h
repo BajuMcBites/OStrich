@@ -54,6 +54,9 @@ extern "C" void create_page_tables();
 extern "C" void init_mmu();
 void patch_page_tables();
 
+unsigned long get_free_page();
+void free_page(unsigned long p);
+
 
 #endif
 
