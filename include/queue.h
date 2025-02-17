@@ -1,8 +1,6 @@
 #ifndef _QUEUE_H
 #define _QUEUE_H
 
-// SWITCH TO MALLOC WHEN ITS DONE
-
 template <typename T> class queue {
     private: 
         class node {
@@ -14,19 +12,29 @@ template <typename T> class queue {
         int size;
     public:
         queue() {
-            node new_tail = {NULL, NULL};
-            tail = &node;
+            tail = malloc(sizeof(node));
             head = tail;
             size = 0;
         }
+        ~queue() {
+            while(tail != head) {
+                node *copy = tail;
+                tail = tail->before;
+                free(copy);
+            }
+            free(head);
+        }
         void push (T obj) {
-            node n = {NULL, obj};
+            node* n = malloc(sizeof(node));
+            n->val = obj;
             head->before = n;
             head = n;
             size++;
         }
         void pop() {
+            node *copy = tail;
             tail = tail->before;
+            free(copy);
             size--;
         }
         T top() {

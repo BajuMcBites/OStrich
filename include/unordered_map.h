@@ -4,7 +4,7 @@
 template <typename K, typename V>
 class HashTable {
 private:
-    static const int TABLE_SIZE = 10; // Size of hash table
+    static const int TABLE_SIZE = 10000; // Size of hash table
     struct Node {
         K key;
         V value;
