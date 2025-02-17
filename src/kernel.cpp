@@ -63,6 +63,10 @@ void test_function (int a) {
     }
 }
 
+void test_event(void* arg) {
+    printf("new event dropped: %s\n", (char*)arg);
+}
+
 
 void breakpoint()
 {
