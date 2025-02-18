@@ -52,36 +52,54 @@
 
 #ifndef __ASSEMBLER__
 
+#include "stdint.h"
+
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
 void patch_page_tables();
 
-struct PageTable 
+struct page_table 
 {
     uint64_t descripters[TABLE_ENTRIES];
 };
 
-typedef PageTable PGDTable;
-typedef PageTable PUDTable;
-typedef PageTable PMDTable;
-typedef PageTable PTETable;
+typedef page_table pgd_t;
+typedef page_table pud_t;
+typedef page_table pmd_t;
+typedef page_table pte_t;
 
 
-uintptr_t descriptor_to_vaddr(uint64_t descripter);
+page_table* descriptor_to_vaddr(uint64_t descripter);
 
 uint64_t get_pgd_index(uint64_t vaddr);
 uint64_t get_pud_index(uint64_t vaddr);
 uint64_t get_pmd_index(uint64_t vaddr);
 uint64_t get_pte_index(uint64_t vaddr);
 
+uint64_t vaddr_to_table_descripter(uint64_t paddr);
+uint64_t vaddr_to_block_descripter(uint64_t paddr);
+
+
+uint64_t paddr_to_vaddr(uint64_t paddr);
+
+
 class PageTable
 {
 
 public:
-    PGDTable PGD;
+    pgd_t* pgd;
+
+    PageTable();
 
     void map_vaddr(uint64_t vaddr, uint64_t paddr);
     uintptr_t unmap_vaddr(uint64_t vaddr);
+
+private:
+    void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr);
+    void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr);
+    void map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr);
+    void map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr);
+
 };
 
 
