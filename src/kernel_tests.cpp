@@ -105,10 +105,18 @@ void test_events_priority_order() {
     create_event(test_event, (void*) "event 3", 1);
 }
 
+void test_lambda() {
+    auto greet = [](void* a) {
+        printf("hello lambda %s", (char*) a);
+    };
+    create_event(greet, (void*) "lambda1", 3);
+}
+
 void scheduler_tests() {
     printf("Testing the scheduler..\n");
     //test_events_sequential_order();
-    test_events_priority_order();
+    // test_events_priority_order();
+    test_lambda();
     printf("All tests completed.\n");
 }
 
