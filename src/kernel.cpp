@@ -7,6 +7,8 @@
 #include "core.h"
 #include "mm.h"
 
+void mergeCores();
+
 struct Stack {
     static constexpr int BYTES = 4096;
     uint64_t bytes[BYTES] __attribute__ ((aligned(16)));
@@ -87,30 +89,29 @@ void breakpoint(){
     return;
 }
 
-extern "C" void kernel_init() {
-    if(getCoreID() == 0){
+extern "C" void secondary_kernel_init() {
+    init_mmu();
+    mergeCores();
+}
+
+extern "C" void primary_kernel_init() {
         create_page_tables();
-        init_mmu();
         patch_page_tables();
+        init_mmu();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         printf("printf initialized!!!\n");
-        breakpoint();
+        // breakpoint();
         print_ascii_art();
         smpInitDone = true;
         wake_up_cores();
-    } else {
-        init_mmu();
-    }
+        mergeCores();         
 
-    // test_atomic_operations();           
-    // Enable MMU (all cores must set the enable MMU bit to 1)
+}
 
+void mergeCores(){
     // this line here will cause race conditions between cores
-    if(getCoreID() == 1){
     printf("Hi, I'm core %d\n", getCoreID());
-    }
-
     if(getCoreID() == 0){
         while (1) {
             uart_putc(uart_getc()); // will allow you to type letters through UART

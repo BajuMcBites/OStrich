@@ -38,10 +38,18 @@
 )
 
 
+#define MT_DEVICE_NGNRNE	0
+#define MT_DEVICE_NGNRE		1
+#define MT_DEVICE_GRE		2
+#define MT_NORMAL_NC		3
+#define MT_NORMAL		    4
 
 
-
-#define MAIR_VALUE 0x0000000000004400
+#define MAIR_VALUE ( (0x00ul << (MT_DEVICE_NGNRNE * 8)) |\
+                 (0x04ul << (MT_DEVICE_NGNRE * 8)) |\
+				 (0x0cul << (MT_DEVICE_GRE * 8)) |\
+                 (0x44ul << (MT_NORMAL_NC * 8)) |\
+				 (0xfful << (MT_NORMAL * 8)) )
 // #define SCTLR_MMU_ENABLED 0x1
 
 #ifndef __ASSEMBLER__

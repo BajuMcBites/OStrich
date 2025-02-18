@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "*.inc": "cpp",
+        "atomic": "cpp",
+        "chrono": "cpp",
+        "compare": "cpp",
+        "cstdint": "cpp",
+        "random": "cpp",
+        "*.tcc": "cpp",
+        "format": "cpp"
+    }
+}

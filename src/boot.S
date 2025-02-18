@@ -64,7 +64,7 @@ el1_entry:
 
     //bl    wake_up_cores
 
-    bl    kernel_init
+    bl    primary_kernel_init
     b     proc_hang        // should never come here
 
 secondary:
@@ -116,7 +116,7 @@ setup_el1_for_secondary:
     eret
 
 secondary_kernel_main:
-    bl kernel_init
+    bl secondary_kernel_init
     b proc_hang
 
 .global wake_up_cores
@@ -124,7 +124,7 @@ wake_up_cores:
 
     mov x0, #0
     adr x0, secondary 
-    ldr x4, =(0xFFFF000000000000)
+    ldr x4, =(VA_START)
     sub x0, x0, x4
 
     mov x1, #0xe0
