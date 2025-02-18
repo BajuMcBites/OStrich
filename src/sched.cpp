@@ -1,6 +1,8 @@
 #include "sched.h"
 #include "irq.h"
 #include "printf.h"
+#include "heap.h"
+#include "queue.h"
 
 static struct task_struct init_task = INIT_TASK;
 struct task_struct *current = &(init_task);
@@ -16,25 +18,26 @@ void preempt_enable(void) {
 	current->preempt_count--;
 }
 
-// need linked list logic-theres definitely a better way to do the queue but idk
-void push(int cpu, event_struct* e) {
-    auto& q = cpu_queues.forCPU(cpu);
-    LockGuard<SpinLock> guard(q.lock);
-    e->next = q.queue_list[e->priority];
-    q.queue_list[e->priority] = e;
-}
-
 struct event_struct* pop(int cpu) {
     auto& q = cpu_queues.forCPU(cpu);
     LockGuard<SpinLock> guard(q.lock);
     for (int i = 0; i < MAX_PRIORITY; i++) {
-        if (q.queue_list[i]) {
-            event_struct* e = q.queue_list[i];
-            q.queue_list[i] = e->next;
+        if (!q.queue_list[i]->empty()) {
+            event_struct* e = q.queue_list[i]->top();
+			q.queue_list[i]->pop();
             return e;
         }
     }
     return nullptr;
+}
+
+
+void create_event(void (*func)(void*), void* arg, int priority) {
+	event_struct* e = (event_struct*) malloc(sizeof (event_struct));
+	e->func = func;
+	e->arg = arg;
+	e->priority = priority;
+	cpu_queues.mine().queue_list[priority]->push(e);
 }
 
 void _schedule(void) {
@@ -46,6 +49,7 @@ void _schedule(void) {
 	if (auto* e = pop(cpu)) {
         e->func(e->arg);
         // free(e) this needs to get freed?
+		preempt_enable();
         return;
     }
 
@@ -56,6 +60,8 @@ void _schedule(void) {
 		if (i == cpu) continue;
 		if (auto* e = pop(cpu)) {
 			e->func(e->arg);
+			preempt_enable();
+			return;
 			//free?
 		}
 	}

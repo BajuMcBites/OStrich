@@ -3,6 +3,9 @@
 #include "heap.h"
 #include "printf.h"
 #include "kernel_tests.h"
+#include "sched.h"
+#include "queue.h"
+
 void test_new_delete_basic()
 {
     printf("Test 1: Basic Allocation and Deletion\n");
@@ -72,6 +75,10 @@ void test_nullptr_deletion()
     printf("Test 5 passed.\n");
 }
 
+void test_event(void* arg) {
+    printf("new event dropped: %s\n", (char*)arg);
+}
+
 void heapTests()
 {
 
@@ -83,5 +90,50 @@ void heapTests()
     test_zero_allocation();
     test_nullptr_deletion();
 
+    printf("All tests completed.\n");
+}
+
+void test_events_sequential_order() {
+    create_event(test_event, (void*) "event 1", 2);
+    create_event(test_event, (void*) "event 2", 2);
+    create_event(test_event, (void*) "event 3", 2);
+}
+
+void test_events_priority_order() {
+    create_event(test_event, (void*) "event 1", 3);
+    create_event(test_event, (void*) "event 2", 2);
+    create_event(test_event, (void*) "event 3", 1);
+}
+
+void scheduler_tests() {
+    printf("Testing the scheduler..\n");
+    //test_events_sequential_order();
+    test_events_priority_order();
+    printf("All tests completed.\n");
+}
+
+void queue1() {
+    queue<int>* q = (queue<int>*) malloc(sizeof(queue<int>));
+    q->push(5);
+    q->push(3);
+    q->push(2);
+    q->push(1);
+    printf("size %d\n", q->size()); // 4
+    printf("%d ", q->top()); // 5
+    q->pop();
+    printf("%d ", q->top()); // 3
+    q->pop();
+    printf("%d ", q->top()); // 2
+    q->pop();
+    printf("%d\n", q->top()); // 1
+    q->pop();
+    printf("size %d\n", q->size()); // 0
+    printf("empty is %d\n", q->empty()); // 1
+    free(q);
+}
+
+void queue_test() {
+    printf("Testing the queue implementation..\n");
+    queue1();
     printf("All tests completed.\n");
 }

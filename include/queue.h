@@ -1,53 +1,61 @@
 #ifndef _QUEUE_H
 #define _QUEUE_H
 
+#include "heap.h"
+
 template <typename T> class queue {
     private: 
         class node {
-            *node before;
-            *T val; 
+            public: 
+                node* before;
+                T val; 
         };
         node* tail;
         node* head;
-        int size;
+        int sz;
     public:
         queue() {
-            tail = malloc(sizeof(node));
+            tail = (node*)malloc(sizeof(node));
             head = tail;
-            size = 0;
+            sz = 0;
         }
         ~queue() {
             while(tail != head) {
                 node *copy = tail;
                 tail = tail->before;
-                free(copy);
+                if (copy) {
+                    free(copy);
+                }
             }
-            free(head);
+            if (head) {
+                free(head);
+            }
+        }
+        void* operator new(size_t size, void* ptr) {
+            return ptr;
         }
         void push (T obj) {
-            node* n = malloc(sizeof(node));
+            node* n = (node*)malloc(sizeof(node));
             n->val = obj;
             head->before = n;
             head = n;
-            size++;
+            sz++;
         }
         void pop() {
-            node *copy = tail;
             tail = tail->before;
-            free(copy);
-            size--;
+            sz--;
         }
         T top() {
             return tail->before->val;
         }
         int size() {
-            return size;
+            return sz;
         }
         bool empty() {
-            return size == 0;
+            return sz == 0;
         }
 
-} 
+}; 
 
 
 #endif

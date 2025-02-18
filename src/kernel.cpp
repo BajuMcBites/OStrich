@@ -13,6 +13,7 @@
 #include "heap.h"
 #include "libk.h"
 #include "kernel_tests.h"
+#include "queue.h"
 
 struct Stack
 {
@@ -63,9 +64,6 @@ void test_function (int a) {
     }
 }
 
-void test_event(void* arg) {
-    printf("new event dropped: %s\n", (char*)arg);
-}
 
 
 void breakpoint()
@@ -76,6 +74,8 @@ void breakpoint()
 extern "C" void kernel_main()
 {
     heapTests();
+    scheduler_tests();
+    queue_test();
 }
 
 extern char __heap_start[];
@@ -104,9 +104,9 @@ extern "C" void kernel_init()
 
         // event queues setup
         for (int i = 0; i < 4; i++) {
-            auto& queue = cpu_queues.forCPU(i);
             for (int j = 0; j < MAX_PRIORITY; j++) {
-                queue.queue_list[j] = nullptr;
+                void* q_addr = malloc(sizeof(queue<struct event_struct*>));
+                cpu_queues.forCPU(i).queue_list[j] = new (q_addr) queue<struct event_struct*>();
             }
         }
 
@@ -120,14 +120,6 @@ extern "C" void kernel_init()
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
-
-    event_struct* e = (event_struct*)malloc(sizeof(event_struct));
-    e->func = test_event;
-    e->arg = (void*) "Hi im an event";
-    e->priority = 2;
-    e->next = nullptr;
-
-    push(getCoreID(), e);
 
     if(getCoreID() == 0){
         int res = copy_process((unsigned long)&test_function, 10);
