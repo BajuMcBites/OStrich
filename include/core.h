@@ -2,11 +2,12 @@
 #define CORE_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-// calls assembly function to wake up secondary cores 1, 2, and 3
-void wake_up_cores();
+    // calls assembly function to wake up secondary cores 1, 2, and 3
+    void wake_up_cores();
 
 #ifdef __cplusplus
 }
