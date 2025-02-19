@@ -11,10 +11,7 @@
 
 #define TASK_RUNNING				0
 
-#define MAX_PRIORITY            5
 
-#include "atomic.h" // this gotta be bad practice surely
-#include "percpu.h" // this too...
 #include "queue.h"
 
 extern struct task_struct *current;
@@ -45,27 +42,8 @@ struct task_struct {
 	long preempt_count;
 };
 
-
-// structs used for closures for event-driven scheduler
-
-struct event_struct {
-	void (*func)(void*);
-	void* arg;
-	long priority;
-};
-
-struct percpu_queue {
-	SpinLock lock;
-	queue<struct event_struct*>* queue_list[MAX_PRIORITY];
-};
-
-extern PerCPU<percpu_queue> cpu_queues;
-
 extern void sched_init(void);
 extern void schedule(void);
-extern void push(int cpu, event_struct* e);
-extern struct event_struct* pop(int cpu);
-void create_event(void (*func)(void*), void* arg, int priority);
 extern "C" void timer_tick(void);
 extern "C" void preempt_disable(void);
 extern "C" void preempt_enable(void);

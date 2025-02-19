@@ -14,6 +14,7 @@
 #include "libk.h"
 #include "kernel_tests.h"
 #include "queue.h"
+#include "event_loop.h"
 
 struct Stack
 {
@@ -63,7 +64,7 @@ void breakpoint()
 extern "C" void kernel_main()
 {
     heapTests();
-    scheduler_tests();
+    event_loop_tests();
     queue_test();
 }
 
@@ -94,8 +95,8 @@ extern "C" void kernel_init()
         // event queues setup
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < MAX_PRIORITY; j++) {
-                void* q_addr = malloc(sizeof(queue<struct event_struct*>));
-                cpu_queues.forCPU(i).queue_list[j] = new (q_addr) queue<struct event_struct*>();
+                void* q_addr = malloc(sizeof(queue<event*>));
+                cpu_queues.forCPU(i).queue_list[j] = new (q_addr) queue<event*>(); // using placement new
             }
         }
 
@@ -112,7 +113,7 @@ extern "C" void kernel_init()
 
     if(getCoreID() == 0){
         while (1) {
-            schedule();
+            loop();
         }
     }
 }

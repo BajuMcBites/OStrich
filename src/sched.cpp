@@ -8,7 +8,6 @@ static struct task_struct init_task = INIT_TASK;
 struct task_struct *current = &(init_task);
 struct task_struct * task[NR_TASKS] = {&(init_task), };
 int nr_tasks = 1;
-PerCPU<percpu_queue> cpu_queues;
 
 void preempt_disable(void) {
 	current->preempt_count++;
@@ -18,55 +17,9 @@ void preempt_enable(void) {
 	current->preempt_count--;
 }
 
-struct event_struct* pop(int cpu) {
-    auto& q = cpu_queues.forCPU(cpu);
-    LockGuard<SpinLock> guard(q.lock);
-    for (int i = 0; i < MAX_PRIORITY; i++) {
-        if (!q.queue_list[i]->empty()) {
-            event_struct* e = q.queue_list[i]->top();
-			q.queue_list[i]->pop();
-            return e;
-        }
-    }
-    return nullptr;
-}
-
-
-void create_event(void (*func)(void*), void* arg, int priority) {
-	event_struct* e = (event_struct*) malloc(sizeof (event_struct));
-	e->func = func;
-	e->arg = arg;
-	e->priority = priority;
-	cpu_queues.mine().queue_list[priority]->push(e);
-}
-
 void _schedule(void) {
+
 	preempt_disable();
-
-	int cpu = getCoreID();
-
-	// try taking from current cpu and schedule
-	if (auto* e = pop(cpu)) {
-        e->func(e->arg);
-        // free(e) this needs to get freed?
-		preempt_enable();
-        return;
-    }
-
-
-	// "work stealing" (take from other queues)
-	int cpu_count = 4; // is there a constant??
-	for (int i; i < cpu_count; i++) {
-		if (i == cpu) continue;
-		if (auto* e = pop(cpu)) {
-			e->func(e->arg);
-			preempt_enable();
-			return;
-			//free?
-		}
-	}
-
-
 	// int next,c;
 	// struct task_struct * p;
 	// while (1) {

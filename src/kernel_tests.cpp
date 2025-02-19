@@ -5,6 +5,7 @@
 #include "kernel_tests.h"
 #include "sched.h"
 #include "queue.h"
+#include "event_loop.h"
 
 void test_new_delete_basic()
 {
@@ -93,30 +94,23 @@ void heapTests()
     printf("All tests completed.\n");
 }
 
-void test_events_sequential_order() {
-    create_event(test_event, (void*) "event 1", 2);
-    create_event(test_event, (void*) "event 2", 2);
-    create_event(test_event, (void*) "event 3", 2);
+void test_ref_lambda() {
+    static int a = 0;
+    for (int i = 0; i < 10; i++) {
+        create_event([&] { a++; printf("%d current a\n", a); }, 1);
+    }
+}
+void test_val_lambda() {
+    int a = 2;
+    for (int i = 0; i < 1; i++) {
+        create_event([=] { printf("%d should print 2\n", a);}, 1);
+    }
 }
 
-void test_events_priority_order() {
-    create_event(test_event, (void*) "event 1", 3);
-    create_event(test_event, (void*) "event 2", 2);
-    create_event(test_event, (void*) "event 3", 1);
-}
-
-void test_lambda() {
-    auto greet = [](void* a) {
-        printf("hello lambda %s", (char*) a);
-    };
-    create_event(greet, (void*) "lambda1", 3);
-}
-
-void scheduler_tests() {
-    printf("Testing the scheduler..\n");
-    //test_events_sequential_order();
-    // test_events_priority_order();
-    test_lambda();
+void event_loop_tests() {
+    printf("Testing the event_loop..\n");
+    test_ref_lambda();
+    test_val_lambda();
     printf("All tests completed.\n");
 }
 
