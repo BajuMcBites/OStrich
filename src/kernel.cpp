@@ -1,7 +1,6 @@
 #include "uart.h"
 #include "utils.h"
 #include "printf.h"
-#include "percpu.h"
 #include "stdint.h"
 #include "irq.h"
 #include "timer.h"
@@ -14,6 +13,8 @@
 #include "heap.h"
 #include "libk.h"
 #include "kernel_tests.h"
+#include "queue.h"
+#include "event_loop.h"
 
 struct Stack
 {
@@ -55,16 +56,6 @@ void print_ascii_art()
     printf("                                                                              /     \n");
 }
 
-void test_function (int a) {
-    while (1) {
-        for (int i = 0; i < 5; i++) {
-            printf("%d ", a + i);
-            delay(10000000);
-        }
-    }
-}
-
-
 void breakpoint()
 {
     return;
@@ -73,6 +64,8 @@ void breakpoint()
 extern "C" void kernel_main()
 {
     heapTests();
+    event_loop_tests();
+    queue_test();
 }
 
 extern char __heap_start[];
@@ -98,6 +91,15 @@ extern "C" void kernel_init()
         breakpoint();
         print_ascii_art();
         uinit((void *)HEAP_START, HEAP_SIZE);
+
+        // event queues setup
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < MAX_PRIORITY; j++) {
+                void* q_addr = malloc(sizeof(queue<event*>));
+                cpu_queues.forCPU(i).queue_list[j] = new (q_addr) queue<event*>(); // using placement new
+            }
+        }
+
         smpInitDone = true;
         wake_up_cores();
         kernel_main();
@@ -108,25 +110,10 @@ extern "C" void kernel_init()
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
+
     if(getCoreID() == 0){
-        int res = copy_process((unsigned long)&test_function, 10);
-        if (res != 0) {
-            printf("error while starting process 1");
-            return;
-        }
-        res = copy_process((unsigned long)&test_function, 20);
-        if (res != 0) {
-            printf("error while starting process 2");
-            return;
-        }
-        res = copy_process((unsigned long)&test_function, 40);
-        if (res != 0) {
-            printf("error while starting process 3");
-            return;
-        }
-        while (1)
-        {
-            schedule();
+        while (1) {
+            loop();
         }
     }
 }

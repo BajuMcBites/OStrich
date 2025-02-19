@@ -12,6 +12,7 @@
 #define PAGING_MEMORY           (HIGH_MEMORY - LOW_MEMORY)
 #define PAGING_PAGES            (PAGING_MEMORY/PAGE_SIZE)
 #ifndef __ASSEMBLER__
+
 void memzero(unsigned long src, unsigned long n);
 #endif
 #endif  /*_MM_H */

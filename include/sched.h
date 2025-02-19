@@ -11,6 +11,9 @@
 
 #define TASK_RUNNING				0
 
+
+#include "queue.h"
+
 extern struct task_struct *current;
 extern struct task_struct * task[NR_TASKS];
 extern int nr_tasks;
