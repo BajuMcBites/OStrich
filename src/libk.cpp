@@ -46,6 +46,15 @@ void K::assert(bool condition, const char *msg)
     }
 }
 
+// void *memset(void *s, int c, size_t n)
+// {
+//     unsigned char *ptr = (unsigned char *)s;
+//     while (n--)
+//     {
+//         *ptr++ = (unsigned char)c;
+//     }
+//     return s;
+// }
 /*****************/
 /* C++ operators */
 /*****************/

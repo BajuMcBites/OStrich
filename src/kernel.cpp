@@ -86,7 +86,7 @@ extern "C" void kernel_init()
         uinit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         threadsInit();
-        // wake_up_cores();
+        wake_up_cores();
     }
     else
     {
@@ -98,14 +98,18 @@ extern "C" void kernel_init()
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
 
-    if (number_awake == 1)
+    if (number_awake == CORE_COUNT)
     {
         printf("creating kernel thread\n", number_awake);
-        thread([] {});
         thread([]
                { kernel_main(); });
         thread([]
                { heapTests(); });
+
+        thread([]
+               { printf("i do nothing\n"); });
+        thread([]
+               { kernel_main(); });
     }
     stop();
 

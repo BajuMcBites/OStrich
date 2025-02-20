@@ -4,12 +4,13 @@
 #include "atomic.h"
 #include "printf.h"
 #include "utils.h"
-
+#include "libk.h"
 // ------------
 // threads.cc -
 // ------------
 
 extern "C" void context_switch(uint64_t **saveOldSpHere, uint64_t *newSP);
+extern "C" void cpu_switch_to(alogx::cpu_context *prevTCB, alogx::cpu_context *nextTCB);
 // global ready queue
 namespace alogx
 {
@@ -99,12 +100,22 @@ namespace alogx
         myLock[me] = isl;  // save my lock
 
         alogx::runningThreads[me] = nextThread; // This is a lie, only observable by the core. its ok ?
-        printf("context swtich attempt\n");
-        printf("my SP %x\n", &oldThreads[me]->saved_SP);
-        printf("next SP %x\n", nextThread->saved_SP);
 
-        context_switch(&oldThreads[me]->saved_SP, nextThread->saved_SP);
-        printf("did I make it?\n");
+        // printf("context swtich attempt\n");
+        // printf("My SP %x\n", oldThreads[me]->context.sp);
+        // printf("Next SP %x\n", nextThread->context.sp);
+        // printf("Next SP ADDR %x\n", &nextThread->context.sp);
+
+        // for (int i = 0; i <= 11; ++i)
+        // {
+        //     printf("x%d: %x\n", i + 19, *((uint64_t *)nextThread + i));
+        //     printf("x%d:  ADDR: %x\n", i + 19, (uint64_t *)(nextThread) + i);
+        // }
+        // printf("my SP %x\n", &oldThreads[me]->saved_SP);
+        // printf("next SP %x\n", nextThread->saved_SP);
+        cpu_switch_to(&oldThreads[me]->context, &nextThread->context);
+        // context_switch(&oldThreads[me]->saved_SP, nextThread->saved_SP);
+        // printf("did I make it?\n");
         // ASSERT(Interrupts::isDisabled());
         restoreState();
     }

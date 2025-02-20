@@ -2,6 +2,7 @@
 #define _LIBK_H_
 
 #include <stdarg.h>
+#include "stdint.h"
 
 class K
 {
@@ -26,4 +27,5 @@ public:
     static void assert(bool condition, const char *msg);
 };
 
+void *memset(void *s, int c, size_t n);
 #endif
