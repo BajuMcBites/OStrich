@@ -89,15 +89,24 @@ class PageTable
 public:
     pgd_t* pgd;
 
-    PageTable();
+    template <typename work>
+    PageTable(work work);
 
-    void map_vaddr(uint64_t vaddr, uint64_t paddr);
+    template <typename work>
+    void map_vaddr(uint64_t vaddr, uint64_t paddr, work work);
     uintptr_t unmap_vaddr(uint64_t vaddr);
 
 private:
-    void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr);
-    void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr);
-    void map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr);
+    
+    template <typename work>
+    void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, work work);
+
+    template <typename work>
+    void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, work work);
+
+    template <typename work>
+    void map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, work work);
+
     void map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr);
 
 };
