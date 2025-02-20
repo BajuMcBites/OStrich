@@ -1,5 +1,5 @@
 # Cross compiler and tools
-CROSS_COMPILE = aarch64-linux-gnu-
+CROSS_COMPILE = aarch64-elf-
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
@@ -65,3 +65,6 @@ run:
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
+
+run_with_drive:
+	sudo qemu-system-aarch64 -M raspi3b -kernel build/kernel8.img -drive file=test.dd,if=sd,format=raw -serial stdio

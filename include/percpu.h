@@ -1,3 +1,5 @@
+#ifndef _PERCPU_H
+#define _PERCPU_H
 #include "utils.h"
 
 template<class T>
@@ -13,3 +15,4 @@ public:
         return forCPU(getCoreID());
     }
 };
+#endif
