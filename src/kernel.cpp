@@ -12,6 +12,7 @@
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "sdio.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
@@ -91,6 +92,10 @@ extern "C" void kernel_init() {
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         timer_init();
+        gpio_init();
+        if (sd_init() == 0) {
+            // bruh
+        }
         enable_interrupt_controller();
         enable_irq();
         printf("printf initialized!!!\n");
