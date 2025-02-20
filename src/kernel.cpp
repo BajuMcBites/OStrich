@@ -14,6 +14,7 @@
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "sdio.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
