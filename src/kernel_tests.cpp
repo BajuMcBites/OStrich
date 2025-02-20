@@ -97,15 +97,15 @@ void heapTests()
 
 void test_ref_lambda() {
     static int a = 0;
+    Function<void()> lambda = [&](){ a++; printf("%d current a\n", a); };
     for (int i = 0; i < 10; i++) {
-        create_event([&] { a++; printf("%d current a\n", a); }, 1);
+        create_event(lambda, 1);
     }
 }
 void test_val_lambda() {
     int a = 2;
-    for (int i = 0; i < 1; i++) {
-        create_event([=] { printf("%d should print 2\n", a);}, 1);
-    }
+    Function<void()> lambda = [=](){ printf("%d should print 2\n", a);};
+    create_event(lambda, 1);
 }
 
 void event_loop_tests() {
@@ -143,10 +143,12 @@ void queue_test() {
 
 void test_frame_alloc_simple() {
     printf("Testing frame allocation..\n");
-
-    alloc_frame(0x3, [] {
+    
+    Function<void(int)> lambda = [](int a) {
+        printf("%d this is a\n", a);
         K::assert(true, "paddr is not null");
-    });
+    };
+    alloc_frame(0x3, lambda);
     
     printf("All tests completed.\n");
 }

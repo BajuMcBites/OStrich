@@ -24,13 +24,12 @@ void create_frame_table(uintptr_t start, int size) {
     }
 }
 
-template <typename work>
-void alloc_frame(int flags,  const std::function w) {
+void alloc_frame(int flags, Function<void(int)> w) {
     for (int i = 0; i < num_frames; i++) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)){
             frame_table[index].flags = flags;
             frame_table[index].flags |= USED_PAGE_FLAG;
-            create_event_with_value(w, index * PAGE_SIZE, 1);
+            create_event_value<int>(w, index * PAGE_SIZE, 1);
             index += 1;
             return;
         }

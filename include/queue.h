@@ -31,9 +31,6 @@ template <typename T> class queue {
                 free(head);
             }
         }
-        void* operator new(size_t size, void* ptr) {
-            return ptr;
-        }
         void push (T obj) {
             node* n = (node*)malloc(sizeof(node));
             n->val = obj;

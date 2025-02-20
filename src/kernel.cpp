@@ -102,8 +102,7 @@ extern "C" void kernel_init()
         // event queues setup
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < MAX_PRIORITY; j++) {
-                void* q_addr = malloc(sizeof(queue<event*>));
-                cpu_queues.forCPU(i).queue_list[j] = new (q_addr) queue<event*>(); // using placement new
+                cpu_queues.forCPU(i).queue_list[j] = new queue<event*>();
             }
         }
 
