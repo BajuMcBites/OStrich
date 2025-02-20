@@ -20,6 +20,12 @@ void create_event(work w, int priority) {
     event* e = new event_work<work>(w);
     cpu_queues.mine().queue_list[priority]->push(e);
 }
+
+template <typename work, typename T>
+void create_event_value(work w, T* value, int priority) {
+    event* e = new event_work_value<work, T*>(w, value);
+    cpu_queues.mine().queue_list[priority]->push(e);
+}
 extern event* pop(int cpu);
 void loop();
 

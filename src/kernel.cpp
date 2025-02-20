@@ -70,6 +70,7 @@ extern "C" void kernel_main()
     heapTests();
     event_loop_tests();
     queue_test();
+    test_frame_alloc_simple();
 }
 
 extern char __heap_start[];

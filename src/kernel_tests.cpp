@@ -6,6 +6,7 @@
 #include "sched.h"
 #include "queue.h"
 #include "event_loop.h"
+#include "frame.h"
 
 void test_new_delete_basic()
 {
@@ -137,5 +138,15 @@ void queue1() {
 void queue_test() {
     printf("Testing the queue implementation..\n");
     queue1();
+    printf("All tests completed.\n");
+}
+
+void test_frame_alloc_simple() {
+    printf("Testing frame allocation..\n");
+
+    alloc_frame(0x3, [] {
+        K::assert(true, "paddr is not null");
+    });
+    
     printf("All tests completed.\n");
 }
