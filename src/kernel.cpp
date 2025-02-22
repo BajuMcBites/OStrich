@@ -13,6 +13,7 @@
 #include "ramfs.h"
 #include "sched.h"
 #include "sdio.h"
+#include "sdio_tests.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
@@ -73,6 +74,7 @@ extern "C" void kernel_main() {
     frame_alloc_tests();
     user_paging_tests();
     ramfs_tests();
+    sdioTests();
 }
 
 extern char __heap_start[];

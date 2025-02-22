@@ -15,15 +15,47 @@
 #define INT_DATA_TIMEOUT 0x00100000
 #define INT_ERROR_MASK 0x017E8000
 
+unsigned char DEBUG = 1;
+
+#define HANDLE_ERROR(cmd, cmd_ret, ret) \
+  cmd_ret = cmd;                        \
+  if (cmd_ret != SD_OK)                 \
+  {                                     \
+    if (DEBUG)                          \
+    {                                   \
+      print_sd_error(cmd_ret);          \
+    }                                   \
+    return ret;                         \
+  }
+
+/**
+ * Print what type of SD error occurred.
+ *
+ */
+void print_sd_error(int sd_err)
+{
+  switch (sd_err) {
+  case SD_ERROR:
+    printf("SD Error occurred.\n");
+    break;
+  case SD_TIMEOUT:
+    printf("SD Timeout occurred.\n");
+    break;
+  case SD_OK:
+    printf("ALERT: probably should not be printing if SD_OK happened...\n");
+    break;
+  default:
+    printf("Invalid SD error code. What???\n");
+  }
+}
+
+/**
+ * SCR: SD Control Register
+ * RCA: Relative Card Address, used to address the card.
+ * CCS: Card Capacity Status, info about whether the card is standard (SDSC) or high (SDHC/SDXC) capacity.
+ * HV: Host Version, the host controller's version number
+ */
 unsigned long sd_scr[2], sd_rca = 0, ccs = 0, sd_hv;
-
-int sd_read_block() {
-    return 0;
-}
-
-int sd_write_block() {
-    return 0;
-}
 
 void wait_cycles(int c) {
     while (c-- > 0) {
@@ -31,6 +63,10 @@ void wait_cycles(int c) {
     }
 }
 
+/**
+ * Poll interrupt register for specific interrupt types.
+ * 
+ * */
 int sd_int(unsigned int mask) {
     unsigned int r, m = mask | INT_ERROR_MASK;
     int cnt = 100000;
@@ -57,20 +93,24 @@ int sd_status(unsigned int mask) {
     return (cnt <= 0 || (*SD_INTERRUPT & INT_ERROR_MASK)) ? -2 : 0;
 }
 
-int send_command(int command, int arg, int *res) {
-    if (command & APP_CMD) {
-        int resp;
-        int status = send_command(CMD_SEND_APP | (sd_rca ? 0x00020000 : 0), sd_rca, &resp);
-        if (sd_rca && !resp) {
-            printf("ERROR: failed to send SD APP command\n");
-            return -1;
-        }
-        command &= ~APP_CMD;
+int send_command(unsigned int command, unsigned int arg, int *res)
+{
+  if (command & APP_CMD) {
+    int resp;
+    int status =
+        send_command(CMD_SEND_APP | (sd_rca ? 0x00020000 : 0), sd_rca, &resp);
+    if ((sd_rca && !resp) || status)
+    {
+      printf("ERROR: failed to send SD APP command\n");
+      return -1;
     }
+    command &= ~APP_CMD;
+  }
 
-    if (sd_status(SR_CMD_INHIBIT)) {
-        return -1;
-    }
+  if (sd_status(SR_CMD_INHIBIT)) {
+    printf("ERROR: SDIO Controller is busy.");
+    return -1;
+  }
 
     *SD_INTERRUPT = *SD_INTERRUPT;
     *SD_ARG_REG = arg;
@@ -115,14 +155,15 @@ int send_command(int command, int arg, int *res) {
     return 0;
 }
 
-unsigned int send_op_cond(int arg) {
-    unsigned int r, cnt = 6;
-    while (!(r & 0x80000000) && cnt--) {
-        wait_cycles(200);
-        if (send_command(ACMD_SEND_OP_COND, arg, (int *)&r) == -2) {
-            return -1;
-        }
+int send_op_cond(int arg)
+{
+  unsigned int r, cnt = 6;
+  while (!(r & 0x80000000) && cnt--) {
+    wait_cycles(200);
+    if (send_command(ACMD_SEND_OP_COND, arg, (int *)&r) == -2) {
+      return -1;
     }
+  }
 
     if (!(r & 0x80000000) || !cnt) {
         return -1;
@@ -249,13 +290,15 @@ int init_cmd_seq() {
         return -1;
     }
 
-    unsigned int op_cond_resp = send_op_cond(0x51ff8000);
+  int op_cond_resp = send_op_cond(0x51ff8000);
 
     if (op_cond_resp == -1 || !(op_cond_resp & 0x00ff8000)) {
         return op_cond_resp < 0 ? op_cond_resp : -op_cond_resp;
     }
 
-    if (op_cond_resp & 0x40000000) ccs = 0x1;
+  // Check CCS value for card.
+  if (op_cond_resp & 0x40000000)
+    ccs = SCR_SUPP_CCS;
 
     if (send_command(CMD_ALL_SEND_CID, 0, nullptr)) return -1;
 
@@ -267,7 +310,8 @@ int init_cmd_seq() {
         sd_status(SR_DAT_INHIBIT))
         return -1;
 
-    *SD_BLKSIZECNT = (1 << 16) | 8;
+  // Set block size and block count for data transfers.
+  *SD_BLKSIZECNT = (1 << 16) /* 1 block / transfer */ | 8 /* block size in bytes */;
 
     if (send_command(ACMD_SEND_SCR, 0, nullptr) || sd_int(0x00000020)) {
         return -1;
@@ -299,6 +343,129 @@ int init_cmd_seq() {
     return 0;
 }
 
-int sd_init() {
-    return init_gpio_pins() == 0 && init_cmd_seq() == 0 ? 0 : -1;
+int sd_init() { return init_gpio_pins() == 0 && init_cmd_seq() == 0 ? 0 : -1; }
+
+int sd_read_block(unsigned int block_addr, unsigned char *buffer, unsigned int num_blocks)
+{
+  if (DEBUG)
+    printf("Calling sd_read_block(): %x, %x, %u\n", block_addr, buffer, num_blocks);
+  
+  int status = 0;
+
+  // Check that we are allowed to receive data via status register.
+  HANDLE_ERROR(sd_status(SR_DAT_INHIBIT), status, SD_TIMEOUT)
+
+  unsigned int *int_buf = (unsigned int *) buffer;
+  int response = 0;
+
+  // Changing card capacity details.
+  // Main difference is that high-capacity cards are block addressed, standard-capacity => byte addressed.
+  // Issue read command.
+  // Unsure why we don't set this in sd_init_cmd_seq.
+  int supports_ccs = sd_scr[0] & SCR_SUPP_CCS;
+  int supports_set_blkcount = sd_scr[0] & SCR_SUPP_SET_BLKCNT;
+  if (!supports_ccs) {
+    printf("We don't support a high capacity SD card....\n");
+    *SD_BLKSIZECNT = (1 << 16) | SD_BLK_SIZE;
+  }
+  else {
+    if (num_blocks > 1 && supports_set_blkcount)
+    {
+    // Tell SD how many blocks to expect for multi-block transfer.
+    HANDLE_ERROR(send_command(CMD_SET_BLOCKCNT, num_blocks, &response), status, 0 /* bytes read*/)
+    }
+   
+    *SD_BLKSIZECNT = (1 << 16) | SD_BLK_SIZE;
+
+    // Tell SD card the base logical block #.
+    HANDLE_ERROR(send_command(num_blocks == 1 ? CMD_READ_SINGLE : CMD_READ_MULTI, block_addr, &response), status, SD_ERROR);
+  }
+
+  // Get blocks back.
+  for (unsigned int blk_cnt = 0; blk_cnt < num_blocks; blk_cnt++) {
+    // If we don't support CCS, request one block at a time.
+    if (!supports_ccs) {
+      uint32_t read_addr_bytes = (block_addr + blk_cnt) * SD_BLK_SIZE;
+      HANDLE_ERROR(send_command(CMD_READ_SINGLE, read_addr_bytes, &response), status, 0 /* bytes read*/)
+    }
+    HANDLE_ERROR(sd_int(INT_READ_RDY), status, 0 /* bytes read*/)
+
+    // Read one block of data from mem-mapped register.
+    // Reading from mem-mapped register clears it and advances the ptr.
+    // The register size is 4 bytes, which is why we cast the read buffer to int.
+    for (unsigned int i = 0; i < SD_BLK_SIZE / sizeof(int32_t); i++) {
+      int_buf[i] = *SD_DATA;
+    }
+
+    // Advance the buf ptr by 1 block.
+    int_buf += SD_BLK_SIZE / sizeof(int32_t); 
+  }
+
+  if (num_blocks > 1 && supports_ccs && !supports_set_blkcount) {
+    HANDLE_ERROR(send_command(CMD_STOP_TRANS, 0, &response), status, 0 /* bytes read*/)
+  }
+
+  return num_blocks * SD_BLK_SIZE;
+}
+
+int sd_write_block(unsigned char * buffer, unsigned int block_addr, unsigned int num_blocks) { 
+  if (DEBUG)
+    printf("Calling sd_write_block(): %x, %x, %u\n", block_addr, buffer, num_blocks);
+
+  int status = 0;
+
+  // Check that we are allowed to receive data via status register.
+  HANDLE_ERROR(sd_status(SR_DAT_INHIBIT | SR_WRITE_AVAILABLE), status, SD_TIMEOUT)
+
+  unsigned int *int_buf = (unsigned int *) buffer;
+  int response = 0;
+
+  // Changing card capacity details.
+  // Main difference is that high-capacity cards are block addressed, standard-capacity => byte addressed.
+  // Issue read command.
+  // Unsure why we don't set this in sd_init_cmd_seq.
+  int supports_ccs = sd_scr[0] & SCR_SUPP_CCS;
+  int supports_set_blkcount = sd_scr[0] & SCR_SUPP_SET_BLKCNT;
+  if (!supports_ccs) {
+    printf("sd_write_block(): We don't support a high capacity SD card....\n");
+    *SD_BLKSIZECNT = (1 << 16) | SD_BLK_SIZE;
+  }
+  else {
+    if (num_blocks > 1 && supports_set_blkcount)
+    {
+    // Tell SD how many blocks to expect for multi-block transfer.
+    HANDLE_ERROR(send_command(CMD_SET_BLOCKCNT, num_blocks, &response), status, 0 /* bytes written */)
+    }
+  
+    *SD_BLKSIZECNT = (1 << 16) | SD_BLK_SIZE;
+
+    // Tell SD card the base logical block #.
+    HANDLE_ERROR(send_command(num_blocks == 1 ? CMD_WRITE_SINGLE : CMD_WRITE_MULTI, block_addr, &response), status, SD_ERROR);
+  }
+
+  // Get blocks back.
+  for (unsigned int blk_cnt = 0; blk_cnt < num_blocks; blk_cnt++) {
+    // If we don't support CCS, request one block at a time.
+    if (!supports_ccs) {
+      uint32_t read_addr_bytes = (block_addr + blk_cnt) * SD_BLK_SIZE;
+      HANDLE_ERROR(send_command(CMD_WRITE_SINGLE, read_addr_bytes, &response), status, 0 /* bytes written */)
+    }
+    HANDLE_ERROR(sd_int(INT_WRITE_RDY), status, 0 /* bytes written */)
+
+    // Write one block of data to mem-mapped register.
+    // Writing to mem-mapped register clears it and advances the ptr.
+    // The register size is 4 bytes, which is why we cast the read buffer to int.
+    for (unsigned int i = 0; i < SD_BLK_SIZE / sizeof(int32_t); i++) {
+      *SD_DATA = int_buf[i];
+    }
+
+    // Advance the buf ptr by 1 block.
+    int_buf += SD_BLK_SIZE / sizeof(int32_t); 
+  }
+
+  if (num_blocks > 1 && supports_ccs && !supports_set_blkcount) {
+    HANDLE_ERROR(send_command(CMD_STOP_TRANS, 0, &response), status, 0 /* bytes written */)
+  }
+
+  return num_blocks * SD_BLK_SIZE;
 }
