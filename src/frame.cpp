@@ -2,6 +2,7 @@
 #include "stdint.h"
 #include "vm.h"
 #include "event_loop.h"
+#include "printf.h"
 
 int index = 0;
 int num_frames = 0;
@@ -40,9 +41,25 @@ void alloc_frame(int flags, Function<void(int)> w) {
     return;
 }
 
-void free_frame(uintptr_t frame_addr) {
-    int index = frame_addr / PAGE_SIZE; // check that page aligned?
-    if (index >= 0 && index < num_frames) {
+bool free_frame(uintptr_t frame_addr) {
+    int index = frame_addr / PAGE_SIZE;
+    if (index >= 0 && index < num_frames && !(frame_table[index].flags & PINNED_PAGE_FLAG)) {
         frame_table[index].flags &= ~USED_PAGE_FLAG;
+        return true;
+    }
+    return false;
+}
+
+void pin_frame(uintptr_t frame_addr) {
+    int index = frame_addr / PAGE_SIZE;
+    if (index >= 0 && index < num_frames) {
+        frame_table[index].flags |= PINNED_PAGE_FLAG;
+    }
+}
+
+void unpin_frame(uintptr_t frame_addr) {
+    int index = frame_addr / PAGE_SIZE;
+    if (index >= 0 && index < num_frames) {
+        frame_table[index].flags &= ~PINNED_PAGE_FLAG;
     }
 }

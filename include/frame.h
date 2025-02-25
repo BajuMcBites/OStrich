@@ -13,6 +13,12 @@ void create_frame_table(uintptr_t start, int size);
 
 void alloc_frame(int flags, Function<void(int)> w);
 
+bool free_frame(uintptr_t frame_addr);
+
+void pin_frame(uintptr_t frame_addr);
+
+void unpin_frame(uintptr_t frame_addr);
+
 typedef struct Frame {
     int flags;
 } Frame;
