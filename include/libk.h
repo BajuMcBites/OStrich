@@ -27,5 +27,5 @@ public:
     static void assert(bool condition, const char *msg);
 };
 
-void *memset(void *s, int c, size_t n);
+// void *memset(void *s, int c, size_t n);
 #endif

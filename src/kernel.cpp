@@ -104,7 +104,15 @@ extern "C" void kernel_init()
         thread([]
                { kernel_main(); });
         thread([]
-               { heapTests(); });
+               { heapTests();
+                thread([]
+                    { int x = 1;
+                        printf("x = %d\n", x);
+                        printf("i do nothing\n");
+                    yield();
+                    x++;
+                    printf("x = %d\n", x);
+             }); });
 
         thread([]
                { printf("i do nothing\n"); });

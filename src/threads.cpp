@@ -33,7 +33,7 @@ namespace alogx
     void entry()
     {
         // ASSERT(Interrupts::isDisabled());
-        printf("Thread %p is starting (SP: %p)\n", getCoreID(), alogx::runningThreads[getCoreID()]->saved_SP);
+        // printf("Thread %p is starting (SP: %p)\n", getCoreID(), alogx::runningThreads[getCoreID()]->saved_SP);
         auto me = getCoreID();
         // ASSERT(runningThreads[me] != nullptr);
         auto thread = runningThreads[me];
@@ -64,7 +64,7 @@ void stop()
 {
     using namespace alogx;
     clearZombies();
-    printf("cleared zombies\n");
+    // printf("cleared zombies\n");
     while (true)
     {
         block(&zombieQ, nullptr);
@@ -90,7 +90,7 @@ namespace alogx
             return;
         }
         int me = getCoreID();
-        printf("core %d found a thread!\n", me);
+        // printf("core %d found a thread!\n", me);
         // ASSERT(alogx::runningThreads[me] != nullptr);
 
         oldThreads[me] = runningThreads[me]; // save the old thread
