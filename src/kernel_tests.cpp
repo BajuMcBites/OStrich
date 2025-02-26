@@ -7,6 +7,7 @@
 #include "queue.h"
 #include "event_loop.h"
 #include "frame.h"
+#include "vm.h"
 
 void test_new_delete_basic()
 {
@@ -152,7 +153,7 @@ void frame_alloc_tests() {
 }
 
 void test_frame_alloc_simple() {
-    Function<void(int)> lambda = [](int a) {
+    Function<void(uint64_t)> lambda = [](uint64_t a) {
         printf("got address %d\n", a);
         K::assert(a, "got null frame");
     };
@@ -161,7 +162,7 @@ void test_frame_alloc_simple() {
 }
 
 void test_frame_alloc_multiple() {
-    Function<void(int)> lambda = [](int a) {
+    Function<void(uint64_t)> lambda = [](uint64_t a) {
         K::assert(a, "got null frame");
         K::assert(free_frame(a), "could not free frame");
     };
@@ -172,7 +173,7 @@ void test_frame_alloc_multiple() {
 }
 
 void test_pin_frame() {
-    Function<void(int)> lambda = [](int a) {
+    Function<void(uint64_t)> lambda = [](uint64_t a) {
         K::assert(a, "got null frame");
         pin_frame(a);
         K::assert(!free_frame(a), "freed pinned frame");
@@ -184,3 +185,24 @@ void test_pin_frame() {
     }
     printf("test_pin_frame passed\n");
 }
+
+void basic_page_table_creation() {
+
+    PageTable* page_table = new PageTable([page_table](){
+        printf("we have allocated a page table\n");
+        alloc_frame(0, [page_table](uint64_t frame) {
+            printf("frame %d\n", frame);
+            page_table->map_vaddr(0x0, frame, 0xfff, [page_table, frame]() {
+                printf("we have mapped virtual address 0 to physical frame %d\n", frame);
+            });
+        });
+    });
+}
+
+void user_paging_tests() {
+    printf("starting user paging tests");
+    basic_page_table_creation();
+    printf("user paging tests complete");
+
+}
+

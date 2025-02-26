@@ -19,6 +19,12 @@
 
 #define TABLE_ENTRIES           (1 << TABLE_SHIFT)
 
+#define VALID_DESCRIPTOR        0x1
+#define BLOCK_ENTRY             0x0
+#define PAGE_ENTRY              0x2
+
+
+
 #define TCR_VALUE  ( \
     (0b0LL   << 40) | /* [40]    HD: HW Dirty Bit Management - 0 = Disabled (0 = SW-managed, 1 = HW-managed) */ \
     (0b0LL   << 39) | /* [39]    HA: HW Access Flag - 0 = Disabled (0 = SW-managed, 1 = HW-managed) */ \
@@ -53,6 +59,8 @@
 #ifndef __ASSEMBLER__
 
 #include "stdint.h"
+#include "function.h"
+
 
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
@@ -60,7 +68,7 @@ void patch_page_tables();
 
 struct page_table 
 {
-    uint64_t descripters[TABLE_ENTRIES];
+    uint64_t descriptors[TABLE_ENTRIES];
 };
 
 typedef page_table pgd_t;
@@ -69,15 +77,16 @@ typedef page_table pmd_t;
 typedef page_table pte_t;
 
 
-page_table* descriptor_to_vaddr(uint64_t descripter);
+page_table* descriptor_to_vaddr(uint64_t descriptor);
+uint64_t descriptor_to_paddr(uint64_t descriptor);
 
 uint64_t get_pgd_index(uint64_t vaddr);
 uint64_t get_pud_index(uint64_t vaddr);
 uint64_t get_pmd_index(uint64_t vaddr);
 uint64_t get_pte_index(uint64_t vaddr);
 
-uint64_t vaddr_to_table_descripter(uint64_t paddr);
-uint64_t vaddr_to_block_descripter(uint64_t paddr);
+uint64_t paddr_to_table_descriptor(uint64_t paddr);
+uint64_t paddr_to_block_descriptor(uint64_t paddr, uint16_t lower_attributes);
 
 
 uint64_t paddr_to_vaddr(uint64_t paddr);
@@ -89,25 +98,20 @@ class PageTable
 public:
     pgd_t* pgd;
 
-    template <typename work>
-    PageTable(work work);
+    PageTable(Function<void()> w);
 
-    template <typename work>
-    void map_vaddr(uint64_t vaddr, uint64_t paddr, work work);
+    void map_vaddr(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
     uintptr_t unmap_vaddr(uint64_t vaddr);
 
 private:
-    
-    template <typename work>
-    void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, work work);
 
-    template <typename work>
-    void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, work work);
+    void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
 
-    template <typename work>
-    void map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, work work);
+    void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
 
-    void map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr);
+    void map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
+
+    void map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes);
 
 };
 

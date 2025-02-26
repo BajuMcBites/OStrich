@@ -71,6 +71,7 @@ extern "C" void kernel_main()
     event_loop_tests();
     queue_test();
     frame_alloc_tests();
+    user_paging_tests();
 }
 
 extern char __heap_start[];

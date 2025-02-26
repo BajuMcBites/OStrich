@@ -21,14 +21,8 @@ inline void create_event(Function<void()> w, int priority) {
 }
 
 template <typename T>
-inline void create_event_value(Function<void(int)> w, T value, int priority) {
+inline void create_event_value(Function<void(T)> w, T value, int priority) {
     event* e = new event_work_value<T>(w, value);
-    cpu_queues.mine().queue_list[priority]->push(e);
-}
-
-template <typename work, typename T>
-void create_event_value(work w, T* value, int priority) {
-    event* e = new event_work_value<work, T*>(w, value);
     cpu_queues.mine().queue_list[priority]->push(e);
 }
 
