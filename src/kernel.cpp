@@ -9,7 +9,7 @@
 #include "mm.h"
 #include "fork.h"
 #include "vm.h"
-#include "mm.h"
+#include "frame.h"
 #include "heap.h"
 #include "libk.h"
 #include "kernel_tests.h"
@@ -61,11 +61,16 @@ void breakpoint()
     return;
 }
 
+extern char _frame_table_start[];
+
+#define frame_table_start ((uintptr_t)_frame_table_start)
+
 extern "C" void kernel_main()
 {
     heapTests();
     event_loop_tests();
     queue_test();
+    frame_alloc_tests();
 }
 
 extern char __heap_start[];
@@ -88,6 +93,8 @@ extern "C" void kernel_init()
         enable_interrupt_controller();
         enable_irq();
         printf("printf initialized!!!\n");
+        create_frame_table(frame_table_start, 0x40000000); // assuming 1GB memory (Raspberry Pi 3b)
+        printf("frame table initialized! \n");
         breakpoint();
         print_ascii_art();
         uinit((void *)HEAP_START, HEAP_SIZE);
@@ -95,8 +102,7 @@ extern "C" void kernel_init()
         // event queues setup
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < MAX_PRIORITY; j++) {
-                void* q_addr = malloc(sizeof(queue<event*>));
-                cpu_queues.forCPU(i).queue_list[j] = new (q_addr) queue<event*>(); // using placement new
+                cpu_queues.forCPU(i).queue_list[j] = new queue<event*>();
             }
         }
 

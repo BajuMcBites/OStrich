@@ -1,8 +1,10 @@
-#ifndef EVENT_H
-#define EVENT_H
+#pragma once
+#ifndef _EVENT_H
+#define _EVENT_H
 
 #include "heap.h"
 #include "queue.h"
+#include "function.h"
 
 struct event {
     explicit inline event() {}
@@ -10,22 +12,23 @@ struct event {
     virtual ~event() {}
 };
   
-template <typename work>
 struct event_work : public event {
-    work const w;
-  
-    explicit inline event_work(work const w) : event(), w(w) {}
+    Function<void()> w;
+    template <typename work>
+    explicit inline event_work(work w) : event(), w(w) {}
     virtual void run() override { w(); }
 };
+
+template <typename T>
+struct event_work_value : public event {
+    Function<void(T)> w;
+    T value;
   
-template <typename work, typename T>
-struct event_work_value : public event_work<work> {
-    T* value;
-  
-    explicit inline event_work_value(work const w, T* value) : event_work<work>(w), value(value) {}
+    template <typename work>
+    explicit inline event_work_value(work w, T value) : event(), w(w), value(value) {}
     virtual void run() override {
         w(value);
     }
 };
   
-#endif // EVENT_H
+#endif // _EVENT_H
