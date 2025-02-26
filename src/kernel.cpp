@@ -15,6 +15,9 @@
 #include "kernel_tests.h"
 #include "queue.h"
 #include "event_loop.h"
+#include "percpu.h"
+#include "entry.h"
+#include "threads.h"
 
 struct Stack
 {
@@ -80,6 +83,8 @@ extern char __heap_end[];
 #define HEAP_END ((uintptr_t)__heap_end)
 #define HEAP_SIZE (HEAP_END - HEAP_START)
 
+static Atomic<int> coresAwake(0);
+
 extern "C" void kernel_init()
 {
     if (getCoreID() == 0)
@@ -100,15 +105,18 @@ extern "C" void kernel_init()
         uinit((void *)HEAP_START, HEAP_SIZE);
 
         // event queues setup
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < MAX_PRIORITY; j++) {
-                cpu_queues.forCPU(i).queue_list[j] = new queue<event*>();
+        for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < MAX_PRIORITY; j++)
+            {
+                cpu_queues.forCPU(i).queue_list[j] = new queue<event *>();
             }
         }
 
         smpInitDone = true;
+        threadsInit();
         wake_up_cores();
-        kernel_main();
+        // kernel_main();
     }
     else
     {
@@ -116,11 +124,37 @@ extern "C" void kernel_init()
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
+    auto number_awake = coresAwake.add_fetch(1);
+    printf("There are %d cores awake\n", number_awake);
 
-    if(getCoreID() == 0){
-        while (1) {
+    if (number_awake == CORE_COUNT)
+    {
+        printf("creating kernel thread\n", number_awake);
+        thread([]
+               { kernel_main(); });
+        thread([]
+               { heapTests();
+                thread([]
+                    { int x = 1;
+                        printf("x = %d\n", x);
+                        printf("i do nothing\n");
+                    yield();
+                    x++;
+                    printf("x = %d\n", x);
+             }); });
+
+        thread([]
+               { printf("i do nothing\n"); });
+        thread([]
+               { kernel_main(); });
+    }
+    stop();
+
+    if (getCoreID() == 0)
+    {
+        while (1)
+        {
             loop();
         }
     }
 }
-
