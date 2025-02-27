@@ -14,13 +14,13 @@ extern "C" void cpu_switch_to(alogx::cpu_context *prevTCB, alogx::cpu_context *n
 // global ready queue
 namespace alogx
 {
-    Queue<TCB, SpinLock> readyQ{};               // Queue of threads ready to run
-    Queue<TCB, SpinLock> zombieQ{};              // Queue of threads ready to be deleted
-    TCB *runningThreads[CORE_COUNT] = {nullptr}; // use an array for multiple cores, index with SMP::me()
-    TCB *oldThreads[CORE_COUNT] = {nullptr};     // save the oldThread before context switching
-    Queue<TCB, SpinLock> *addMeHere[CORE_COUNT]; // save the queue I want to be added to before context switching
-    /*ISL*/ SpinLock *myLock[CORE_COUNT];        // save the isl of the thread
-    bool oldState[CORE_COUNT];                   // save interrupt state
+    LockedQueue<TCB, SpinLock> readyQ{};               // Queue of threads ready to run
+    LockedQueue<TCB, SpinLock> zombieQ{};              // Queue of threads ready to be deleted
+    TCB *runningThreads[CORE_COUNT] = {nullptr};       // use an array for multiple cores, index with SMP::me()
+    TCB *oldThreads[CORE_COUNT] = {nullptr};           // save the oldThread before context switching
+    LockedQueue<TCB, SpinLock> *addMeHere[CORE_COUNT]; // save the queue I want to be added to before context switching
+    /*ISL*/ SpinLock *myLock[CORE_COUNT];              // save the isl of the thread
+    bool oldState[CORE_COUNT];                         // save interrupt state
 
     struct DummyThread : public TCB
     {
@@ -74,7 +74,7 @@ void stop()
 
 namespace alogx
 {
-    void block(Queue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl)
+    void block(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl)
     {
         // printf("attempting to block\n");
         using namespace alogx;
@@ -125,7 +125,7 @@ namespace alogx
         // ASSERT(Interrupts::isDisabled());
         int me = getCoreID();
         auto prev = oldThreads[me];
-        auto running = runningThreads[me];
+        // auto running = runningThreads[me];
         if (prev)
         {
             if (addMeHere[me] != nullptr)

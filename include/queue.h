@@ -4,15 +4,15 @@
 #include "atomic.h"
 
 template <typename T, typename LockType>
-class Queue
+class LockedQueue
 {
     T *volatile first = nullptr;
     T *volatile last = nullptr;
     LockType lock;
 
 public:
-    Queue() : first(nullptr), last(nullptr), lock() {}
-    Queue(const Queue &) = delete;
+    LockedQueue() : first(nullptr), last(nullptr), lock() {}
+    LockedQueue(const LockedQueue &) = delete;
 
     void add(T *t)
     {
