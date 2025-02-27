@@ -238,7 +238,6 @@ void *malloc(size_t size)
         if (validBlock == nullptr)
         {
             // OUT OF HEAP MEMORY. I WILL SPIN 4 EVER UNTIL EXTEND WORKS
-            // I should block and try again but no blocking locks either
             memory_block_t *temp = extend(size * 2);
             if (temp && temp->block_size_alloc >= size)
             {

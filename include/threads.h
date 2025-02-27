@@ -1,12 +1,15 @@
 #ifndef _threads_h_
 #define _threads_h_
-
 #include "atomic.h"
 #include "queue.h"
 #include "heap.h"
 #include "printf.h"
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
+
+//-------------
+//--threads.h--
+//-------------
 
 extern void threadsInit();
 
@@ -34,13 +37,13 @@ namespace alogx
 
     struct TCB
     {
-        cpu_context context;
+        // cpu_context context;
         TCB *next;
         bool wasDisabled = false; // previous interrupt state
         Atomic<int> done{false};  // is tihs work complete
-
-        virtual void doTheWork() = 0; // Abstract/virtual function that must be overridden
-        virtual ~TCB() {};            // Allows child classes to be deleted
+        bool kernel_event = true;
+        virtual void run() = 0; // Abstract/virtual function that must be overridden
+        virtual ~TCB() {};      // Allows child classes to be deleted
     };
 
     extern void block(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl); // generalized yield
@@ -49,12 +52,13 @@ namespace alogx
     extern void clearZombies();                                              // delete threads that have called stop.
 
     template <typename Work>
-    struct TCBWithWork : public TCB
+    struct UserTCB : public TCB
     {
+        cpu_context context;
         Work work;
         alignas(16) uint64_t stack[2048]; // Ensure proper 16-byte alignment
         // uint64_t stack[2048];
-        TCBWithWork(Work work) : work(work)
+        UserTCB(Work work) : work(work)
         {
             // printf("stack addr: %x\n", (uint64_t)&stack[2048]);
             context.x19 = 0;
@@ -69,12 +73,11 @@ namespace alogx
             context.x28 = 0;
             context.sp = (uint64_t)&stack[2048]; // Stack grows downward
             context.pc = (uint64_t)&entry;       // Function to execute when the thread starts
-
-            auto bottomIndex = 2048 - 1;
             done.set(false);
+            kernel_event = false;
         }
 
-        void doTheWork() override
+        void run() override
         {
             work();
         }
@@ -82,7 +85,7 @@ namespace alogx
 
     struct IdleThread : public TCB
     {
-        void doTheWork() override
+        void run() override
         {
             while (true)
                 ;
@@ -93,11 +96,11 @@ namespace alogx
 };
 
 template <typename T>
-void thread(T work)
+void user_thread(T work)
 {
     // using namespace alogx;
     alogx::clearZombies();
-    auto tcb = new alogx::TCBWithWork(work);
+    auto tcb = new alogx::UserTCB(work);
     alogx::readyQ.add(tcb);
 }
 

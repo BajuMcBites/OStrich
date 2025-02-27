@@ -1,3 +1,4 @@
+
 #include "stdint.h"
 #include "threads.h"
 #include "queue.h"
@@ -6,7 +7,7 @@
 #include "utils.h"
 #include "libk.h"
 // ------------
-// -threads.cc-
+// threads.cc -
 // ------------
 
 extern "C" void context_switch(uint64_t **saveOldSpHere, uint64_t *newSP);
@@ -24,7 +25,7 @@ namespace alogx
 
     struct DummyThread : public TCB
     {
-        void doTheWork() override
+        void run() override
         {
             // PANIC("should never go here");
         }
@@ -35,12 +36,12 @@ namespace alogx
         // ASSERT(Interrupts::isDisabled());
         // printf("Thread %p is starting (SP: %p)\n", getCoreID(), alogx::runningThreads[getCoreID()]->saved_SP);
         auto me = getCoreID();
-        // ASSERT(runningThreads[me] != nullptr);
+        K::assert(runningThreads[me] != nullptr, "null pointer in entry");
         auto thread = runningThreads[me];
         thread->done.set(false);
         thread->wasDisabled = false;
         restoreState();
-        thread->doTheWork();
+        thread->run();
         stop();
     }
 };
@@ -90,8 +91,7 @@ namespace alogx
             return;
         }
         int me = getCoreID();
-        // printf("core %d found a thread!\n", me);
-        // ASSERT(alogx::runningThreads[me] != nullptr);
+        K::assert(alogx::runningThreads[me] != nullptr, "null pointer in block");
 
         oldThreads[me] = runningThreads[me]; // save the old thread
         // oldThreads[me]->wasDisabled = was;   // save the interrupt state prior to block
@@ -100,7 +100,28 @@ namespace alogx
         myLock[me] = isl;  // save my lock
 
         alogx::runningThreads[me] = nextThread; // This is a lie, only observable by the core. its ok ?
-        cpu_switch_to(&oldThreads[me]->context, &nextThread->context);
+        // cases: kernel to user, user to kernel, kernel to kernel. user to user
+        if (oldThreads[me]->kernel_event && nextThread->kernel_event) // kernel to kernel
+        {
+            printf("kernel to kernel\n");
+        }
+        else if (!oldThreads[me]->kernel_event && !nextThread->kernel_event) // user to user
+        {
+            printf("user to user\n");
+            cpu_switch_to(&((UserTCB<decltype(nextThread)> *)oldThreads[me])->context,
+                          &((UserTCB<decltype(nextThread)> *)nextThread)->context);
+        }
+        else if (!oldThreads[me]->kernel_event && nextThread->kernel_event) // user to kernel
+        {
+            printf("user to kernel\n");
+        }
+        else // kernel to user
+        {
+            printf("kernel to user\n");
+        }
+
+        // context_switch(&oldThreads[me]->saved_SP, nextThread->saved_SP);
+        // printf("did I make it?\n");
         // ASSERT(Interrupts::isDisabled());
         restoreState();
     }
@@ -110,7 +131,7 @@ namespace alogx
         // ASSERT(Interrupts::isDisabled());
         int me = getCoreID();
         auto prev = oldThreads[me];
-        auto running = runningThreads[me];
+        // auto running = runningThreads[me];
         if (prev)
         {
             if (addMeHere[me] != nullptr)
@@ -126,6 +147,15 @@ namespace alogx
             }
             // Interrupts::restore(prev->wasDisabled);
         }
+
+        // if (running->wasDisabled)
+        // {
+        //     cli(); // disable
+        // }
+        // else
+        // {
+        //     Interrupts::restore(running->wasDisabled);
+        // }
     }
 
     void clearZombies()

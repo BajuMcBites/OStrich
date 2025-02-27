@@ -83,23 +83,23 @@ void test_event(void *arg)
     printf("new event dropped: %s\n", (char *)arg);
 }
 
-// template <typename T>
-// void test_function(T work)
-// {
-//     int x = 10;
-//     thread([x]
-//            { work(x); });
-// }
+template <typename T>
+void test_function(T work)
+{
+    int x = 10;
+    user_thread([=]
+                { work(x); });
+}
 
-// void foo()
-// {
-//     auto bar = [](int a)
-//     {
-//         printf("I was given int:%d\n", a);
-//     };
-//     test_function(bar);
-//     printf("foo done\n");
-// }
+void foo()
+{
+    auto bar = [](int a)
+    {
+        printf("I was given int:%d\n", a);
+    };
+    test_function(bar);
+    printf("foo done\n");
+}
 
 void heapTests()
 {
@@ -114,112 +114,112 @@ void heapTests()
 
     printf("All tests completed.\n");
     printf("foo test\n");
-    // foo();
+    foo();
 }
 
-void test_ref_lambda()
-{
-    static int a = 0;
-    Function<void()> lambda = [&]()
-    { a++; printf("%d current a\n", a); };
-    for (int i = 0; i < 10; i++)
-    {
-        create_event(lambda, 1);
-    }
-}
-void test_val_lambda()
-{
-    int a = 2;
-    Function<void()> lambda = [=]()
-    { printf("%d should print 2\n", a); };
-    create_event(lambda, 1);
-}
+// void test_ref_lambda()
+// {
+//     static int a = 0;
+//     Function<void()> lambda = [&]()
+//     { a++; printf("%d current a\n", a); };
+//     for (int i = 0; i < 10; i++)
+//     {
+//         create_event(lambda, 1);
+//     }
+// }
+// void test_val_lambda()
+// {
+//     int a = 2;
+//     Function<void()> lambda = [=]()
+//     { printf("%d should print 2\n", a); };
+//     create_event(lambda, 1);
+// }
 
-void event_loop_tests()
-{
-    printf("Testing the event_loop..\n");
-    test_ref_lambda();
-    test_val_lambda();
-    printf("All tests completed.\n");
-}
+// void event_loop_tests()
+// {
+//     printf("Testing the event_loop..\n");
+//     test_ref_lambda();
+//     test_val_lambda();
+//     printf("All tests completed.\n");
+// }
 
-void queue1()
-{
-    queue<int> *q = (queue<int> *)malloc(sizeof(queue<int>));
-    q->push(5);
-    q->push(3);
-    q->push(2);
-    q->push(1);
-    printf("size %d\n", q->size()); // 4
-    printf("%d ", q->top());        // 5
-    q->pop();
-    printf("%d ", q->top()); // 3
-    q->pop();
-    printf("%d ", q->top()); // 2
-    q->pop();
-    printf("%d\n", q->top()); // 1
-    q->pop();
-    printf("size %d\n", q->size());      // 0
-    printf("empty is %d\n", q->empty()); // 1
-    free(q);
-}
+// void queue1()
+// {
+//     queue<int> *q = (queue<int> *)malloc(sizeof(queue<int>));
+//     q->push(5);
+//     q->push(3);
+//     q->push(2);
+//     q->push(1);
+//     printf("size %d\n", q->size()); // 4
+//     printf("%d ", q->top());        // 5
+//     q->pop();
+//     printf("%d ", q->top()); // 3
+//     q->pop();
+//     printf("%d ", q->top()); // 2
+//     q->pop();
+//     printf("%d\n", q->top()); // 1
+//     q->pop();
+//     printf("size %d\n", q->size());      // 0
+//     printf("empty is %d\n", q->empty()); // 1
+//     free(q);
+// }
 
-void queue_test()
-{
-    printf("Testing the queue implementation..\n");
-    queue1();
-    printf("All tests completed.\n");
-}
+// void queue_test()
+// {
+//     printf("Testing the queue implementation..\n");
+//     queue1();
+//     printf("All tests completed.\n");
+// }
 
-void frame_alloc_tests()
-{
-    printf("Starting frame allocator tests...\n");
+// void frame_alloc_tests()
+// {
+//     printf("Starting frame allocator tests...\n");
 
-    test_frame_alloc_simple();
-    test_frame_alloc_multiple();
-    test_pin_frame();
+//     test_frame_alloc_simple();
+//     test_frame_alloc_multiple();
+//     test_pin_frame();
 
-    printf("All frame allocator tests completed.\n");
-}
+//     printf("All frame allocator tests completed.\n");
+// }
 
-void test_frame_alloc_simple()
-{
-    Function<void(int)> lambda = [](int a)
-    {
-        printf("got address %d\n", a);
-        K::assert(a, "got null frame");
-    };
-    alloc_frame(0x3, lambda);
-    printf("test_frame_alloc_simple passed\n");
-}
+// void test_frame_alloc_simple()
+// {
+//     Function<void(int)> lambda = [](int a)
+//     {
+//         printf("got address %d\n", a);
+//         K::assert(a, "got null frame");
+//     };
+//     alloc_frame(0x3, lambda);
+//     printf("test_frame_alloc_simple passed\n");
+// }
 
-void test_frame_alloc_multiple()
-{
-    Function<void(int)> lambda = [](int a)
-    {
-        K::assert(a, "got null frame");
-        K::assert(free_frame(a), "could not free frame");
-    };
-    for (int i = 0; i < 600; i++)
-    {
-        alloc_frame(0x0, lambda);
-    }
-    printf("test_frame_alloc_multiple passed\n");
-}
+// void test_frame_alloc_multiple()
+// {
+//     Function<void(int)> lambda = [](int a)
+//     {
+//         K::assert(a, "got null frame");
+//         K::assert(free_frame(a), "could not free frame");
+//     };
+//     for (int i = 0; i < 600; i++)
+//     {
+//         alloc_frame(0x0, lambda);
+//     }
+//     printf("test_frame_alloc_multiple passed\n");
+// }
 
-void test_pin_frame()
-{
-    Function<void(int)> lambda = [](int a)
-    {
-        K::assert(a, "got null frame");
-        pin_frame(a);
-        K::assert(!free_frame(a), "freed pinned frame");
-        unpin_frame(a);
-        K::assert(free_frame(a), "could not free unpinned frame");
-    };
-    for (int i = 0; i < 300; i++)
-    {
-        alloc_frame(0x0, lambda);
-    }
-    printf("test_pin_frame passed\n");
-}
+// void test_pin_frame()
+// {
+//     Function<void(int)> lambda = [](int a)
+//     {
+//         K::assert(a, "got null frame");
+//         pin_frame(a);
+//         K::assert(!free_frame(a), "freed pinned frame");
+//         unpin_frame(a);
+//         K::assert(free_frame(a), "could not free unpinned frame");
+//     };
+//     for (int i = 0; i < 300; i++)
+//     {
+//         alloc_frame(0x0, lambda);
+//     }
+//     printf("test_pin_frame passed\n");
+// }

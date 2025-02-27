@@ -98,7 +98,7 @@ extern "C" void kernel_init()
         enable_interrupt_controller();
         enable_irq();
         printf("printf initialized!!!\n");
-        create_frame_table(frame_table_start, 0x40000000); // assuming 1GB memory (Raspberry Pi 3b)
+        // create_frame_table(frame_table_start, 0x40000000); // assuming 1GB memory (Raspberry Pi 3b)
         printf("frame table initialized! \n");
         breakpoint();
         print_ascii_art();
@@ -130,11 +130,11 @@ extern "C" void kernel_init()
     if (number_awake == CORE_COUNT)
     {
         printf("creating kernel thread\n", number_awake);
-        thread([]
-               { kernel_main(); });
-        thread([]
-               { heapTests();
-                thread([]
+        user_thread([]
+                    { kernel_main(); });
+        user_thread([]
+                    { heapTests();
+                user_thread([]
                     { int x = 1;
                         printf("x = %d\n", x);
                         printf("i do nothing\n");
@@ -143,10 +143,10 @@ extern "C" void kernel_init()
                     printf("x = %d\n", x);
              }); });
 
-        thread([]
-               { printf("i do nothing\n"); });
-        thread([]
-               { kernel_main(); });
+        user_thread([]
+                    { printf("i do nothing2\n"); });
+        user_thread([]
+                    { kernel_main(); });
     }
     stop();
 
