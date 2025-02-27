@@ -83,6 +83,24 @@ namespace alogx
         }
     };
 
+    template <typename Work>
+    struct Event : public TCB
+    {
+
+        Work work;
+        Event(Work work) : work(work)
+        {
+
+            done.set(false);
+            kernel_event = true;
+        }
+
+        void run() override
+        {
+            work();
+        }
+    };
+
     struct IdleThread : public TCB
     {
         void run() override

@@ -6,6 +6,7 @@
 #include "printf.h"
 #include "utils.h"
 #include "libk.h"
+#include "event.h"
 // ------------
 // threads.cc -
 // ------------
@@ -15,10 +16,11 @@ extern "C" void cpu_switch_to(alogx::cpu_context *prevTCB, alogx::cpu_context *n
 // global ready queue
 namespace alogx
 {
-    LockedQueue<TCB, SpinLock> readyQ{};               // Queue of threads ready to run
-    LockedQueue<TCB, SpinLock> zombieQ{};              // Queue of threads ready to be deleted
-    TCB *runningThreads[CORE_COUNT] = {nullptr};       // use an array for multiple cores, index with SMP::me()
-    TCB *oldThreads[CORE_COUNT] = {nullptr};           // save the oldThread before context switching
+    LockedQueue<TCB, SpinLock> readyQ{};         // Queue of threads ready to run
+    LockedQueue<TCB, SpinLock> zombieQ{};        // Queue of threads ready to be deleted
+    TCB *runningThreads[CORE_COUNT] = {nullptr}; // use an array for multiple cores, index with SMP::me()
+    TCB *oldThreads[CORE_COUNT] = {nullptr};     // save the oldThread before context switching
+    cpu_context *coreContext[CORE_COUNT] = {nullptr};
     LockedQueue<TCB, SpinLock> *addMeHere[CORE_COUNT]; // save the queue I want to be added to before context switching
     /*ISL*/ SpinLock *myLock[CORE_COUNT];              // save the isl of the thread
     bool oldState[CORE_COUNT];                         // save interrupt state
@@ -53,6 +55,9 @@ void threadsInit() // place to put any intialization logic
     {
         runningThreads[i] = new DummyThread();
         runningThreads[i]->done.set(true);
+        coreContext[i] = new cpu_context();
+        // set sp or do I not need to. for the initial dummies
+        // coreContext[i]->??;
     }
 }
 
@@ -103,7 +108,7 @@ namespace alogx
         // cases: kernel to user, user to kernel, kernel to kernel. user to user
         if (oldThreads[me]->kernel_event && nextThread->kernel_event) // kernel to kernel
         {
-            printf("kernel to kernel\n");
+            cpu_switch_to(coreContext[me], coreContext[me]);
         }
         else if (!oldThreads[me]->kernel_event && !nextThread->kernel_event) // user to user
         {
@@ -114,10 +119,14 @@ namespace alogx
         else if (!oldThreads[me]->kernel_event && nextThread->kernel_event) // user to kernel
         {
             printf("user to kernel\n");
+            cpu_switch_to(&((UserTCB<decltype(nextThread)> *)oldThreads[me])->context,
+                          coreContext[me]);
         }
         else // kernel to user
         {
             printf("kernel to user\n");
+            cpu_switch_to(coreContext[me],
+                          &((UserTCB<decltype(nextThread)> *)nextThread)->context);
         }
 
         // context_switch(&oldThreads[me]->saved_SP, nextThread->saved_SP);

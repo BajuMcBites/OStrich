@@ -5,14 +5,17 @@
 #include "heap.h"
 #include "queue.h"
 #include "function.h"
+#include "threads.h"
 
-struct event {
+struct event
+{
     explicit inline event() {}
     virtual void run() = 0;
     virtual ~event() {}
 };
-  
-struct event_work : public event {
+
+struct event_work : public event
+{
     Function<void()> w;
     template <typename work>
     explicit inline event_work(work w) : event(), w(w) {}
@@ -20,15 +23,17 @@ struct event_work : public event {
 };
 
 template <typename T>
-struct event_work_value : public event {
+struct event_work_value : public event
+{
     Function<void(T)> w;
     T value;
-  
+
     template <typename work>
     explicit inline event_work_value(work w, T value) : event(), w(w), value(value) {}
-    virtual void run() override {
+    virtual void run() override
+    {
         w(value);
     }
 };
-  
+
 #endif // _EVENT_H
