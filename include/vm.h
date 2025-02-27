@@ -20,7 +20,7 @@
 #define TABLE_ENTRIES           (1 << TABLE_SHIFT)
 
 #define VALID_DESCRIPTOR        0x1
-#define BLOCK_ENTRY             0x0
+#define TABLE_ENTRY             0x2
 #define PAGE_ENTRY              0x2
 
 
@@ -64,6 +64,8 @@
 
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
+extern "C" void switch_ttbr0(uint64_t pgd_paddr);
+
 void patch_page_tables();
 
 struct page_table 
@@ -90,6 +92,8 @@ uint64_t paddr_to_block_descriptor(uint64_t paddr, uint16_t lower_attributes);
 
 
 uint64_t paddr_to_vaddr(uint64_t paddr);
+uint64_t vaddr_to_paddr(uint64_t vaddr);
+
 
 
 class PageTable
@@ -101,6 +105,7 @@ public:
     PageTable(Function<void()> w);
 
     void map_vaddr(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
+    void use_page_table();
     uintptr_t unmap_vaddr(uint64_t vaddr);
 
 private:
@@ -112,7 +117,6 @@ private:
     void map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
 
     void map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes);
-
 };
 
 

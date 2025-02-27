@@ -9,6 +9,8 @@
 #include "frame.h"
 #include "vm.h"
 
+PageTable* page_table;
+
 void test_new_delete_basic()
 {
     printf("Test 1: Basic Allocation and Deletion\n");
@@ -188,21 +190,30 @@ void test_pin_frame() {
 
 void basic_page_table_creation() {
 
-    PageTable* page_table = new PageTable([page_table](){
+    page_table = new PageTable([](){
         printf("we have allocated a page table\n");
-        alloc_frame(0, [page_table](uint64_t frame) {
+        alloc_frame(0, [](uint64_t frame) {
+            printf("lambda page table memory address %d\n", page_table);
             printf("frame %d\n", frame);
-            page_table->map_vaddr(0x0, frame, 0xfff, [page_table, frame]() {
+            uint64_t user_vaddr = 0x800000;
+            uint16_t lower_attributes = 0b010000000100;
+            page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
                 printf("we have mapped virtual address 0 to physical frame %d\n", frame);
+                page_table->use_page_table();
+                printf("we got after loading page table\n");
+                *((uint64_t*) user_vaddr) = 12345678;
+                printf("reading from user vaddr: %d\n", *((uint64_t*) user_vaddr));
+                printf("reading from paddr: %d\n", *((uint64_t*) paddr_to_vaddr(frame)));
             });
         });
     });
+    printf("original page table memory address %d\n", page_table);
 }
 
 void user_paging_tests() {
-    printf("starting user paging tests");
+    printf("starting user paging tests\n");
     basic_page_table_creation();
-    printf("user paging tests complete");
+    printf("user paging tests complete\n");
 
 }
 

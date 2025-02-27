@@ -10,6 +10,9 @@ uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PMD[512] __attribute__((aligned(4096), section(".paging")));
 
+/**
+ * used for setting up kernel memory for devices
+ */
 void patch_page_tables() {
     for (int i = 504; i < 512; i++) {
         PMD[i] = PMD[i] & (~0xFFF);
@@ -17,16 +20,34 @@ void patch_page_tables() {
     }
 }
 
+void temp() {
+    int x = 10;
+    return;
+}
+
 PageTable::PageTable(Function<void()> w) {
     alloc_frame(PINNED_PAGE_FLAG, [this, w](uint64_t paddr) {
         this->pgd = (pgd_t*) paddr_to_vaddr(paddr);
+        printf("base frame address %d\n", paddr);
+        temp();
         K::assert(this->pgd != nullptr, "palloc failed");
+        uint64_t x = (uint64_t) this->pgd;
+        printf("pgd address in original %d\n", this->pgd);
+
         create_event(w, 1);
     });
 }
 
+void PageTable::use_page_table() {
+    printf("pgd address in use_page_table %d\n", this->pgd);
+    uint64_t pgd_paddr = vaddr_to_paddr((uint64_t) this->pgd);
+    switch_ttbr0(pgd_paddr);
+}
 
 void PageTable::map_vaddr(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w) {
+    printf("pgd address in map vaddr %d\n", this->pgd);
+    K::assert((paddr & 0xFFF) == 0, "non-aligned paddr for va to pa mapping");
+    K::assert((vaddr & 0xFFF) == 0, "non-aligned vaddr for va to pa mappin");
     map_vaddr_pgd(vaddr, paddr, lower_attributes, w);
 }
 
@@ -93,31 +114,50 @@ void PageTable::map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr, uint16
 }
 
 uint64_t get_pgd_index(uint64_t vaddr) {
-    return (vaddr >> 38) && 0x1FF;
+    printf("PGD INDEX %d\n", (vaddr >> 39) & 0x1FF);
+    return (vaddr >> 39) & 0x1FF;
 }
 
 uint64_t get_pud_index(uint64_t vaddr) {
-    return (vaddr >> 29) && 0x1FF;
+    printf("PUD INDEX %d\n", (vaddr >> 30) & 0x1FF);
+    return (vaddr >> 30) & 0x1FF;
 }
 
 uint64_t get_pmd_index(uint64_t vaddr) {
-    return (vaddr >> 20) && 0x1FF;
+    printf("VADDR PTE %d\n", vaddr);
+
+    printf("PMD INDEX %d\n", (vaddr >> 21) & 0x1FF);
+    return (vaddr >> 21) & 0x1FF;
 
 }
 
 uint64_t get_pte_index(uint64_t vaddr) {
-    return (vaddr >> 11) && 0x1FF;
+    printf("VADDR PTE %d\n", vaddr);
+    printf("VADDR PTE %d\n", vaddr >> 12);
+
+    printf("PTE INDEX %d\n", (vaddr >> 12) & 0x1FF);
+    return (vaddr >> 12) & 0x1FF;
 }
 
+/**
+ * vaddr being kernel virtual address
+ */
 uint64_t paddr_to_vaddr(uint64_t paddr) {
     return paddr | VA_START;
+}
+
+/**
+ * vaddr being kernel virtual address
+ */
+uint64_t vaddr_to_paddr(uint64_t vaddr) {
+    return vaddr & (~VA_START);
 }
 
 uint64_t paddr_to_table_descriptor(uint64_t paddr) {
     K::assert((paddr & 0xFFF) == 0, "non-aligned paddr for table descriptor");
     K::assert(paddr != 0, "null paddr for table descriptor");
     uint64_t descriptor = paddr & ~0xFFF & ~((uint64_t) 0xFF << 48);
-    descriptor |= (BLOCK_ENTRY | VALID_DESCRIPTOR);
+    descriptor |= (TABLE_ENTRY | VALID_DESCRIPTOR);
     return descriptor;
 }
 
@@ -137,7 +177,6 @@ uint64_t descriptor_to_paddr(uint64_t descriptor) {
     if ((descriptor & 0x1) == 0) {
         return 0;
     }
-
     return descriptor & (~0xFFF);
 }
 
