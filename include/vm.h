@@ -68,18 +68,18 @@ extern "C" void switch_ttbr0(uint64_t pgd_paddr);
 
 void patch_page_tables();
 
-struct page_table 
+struct PageTableLevel 
 {
     uint64_t descriptors[TABLE_ENTRIES];
 };
 
-typedef page_table pgd_t;
-typedef page_table pud_t;
-typedef page_table pmd_t;
-typedef page_table pte_t;
+typedef PageTableLevel pgd_t;
+typedef PageTableLevel pud_t;
+typedef PageTableLevel pmd_t;
+typedef PageTableLevel pte_t;
 
 
-page_table* descriptor_to_vaddr(uint64_t descriptor);
+PageTableLevel* descriptor_to_vaddr(uint64_t descriptor);
 uint64_t descriptor_to_paddr(uint64_t descriptor);
 
 uint64_t get_pgd_index(uint64_t vaddr);

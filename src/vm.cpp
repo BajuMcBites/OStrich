@@ -154,11 +154,11 @@ uint64_t descriptor_to_paddr(uint64_t descriptor) {
     return descriptor & (~0xFFF);
 }
 
-page_table* descriptor_to_vaddr(uint64_t descriptor) {
+PageTableLevel* descriptor_to_vaddr(uint64_t descriptor) {
     uint64_t paddr = descriptor_to_paddr(descriptor);
     if (paddr == 0) {
         return nullptr;
     }
-    return (page_table*) paddr_to_vaddr(paddr);
+    return (PageTableLevel*) paddr_to_vaddr(paddr);
 }
 
