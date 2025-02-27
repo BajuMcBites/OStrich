@@ -4,6 +4,7 @@
 #include "queue.h"
 #include "heap.h"
 #include "printf.h"
+#include "function.h"
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 
@@ -42,6 +43,7 @@ namespace alogx
         bool wasDisabled = false; // previous interrupt state
         Atomic<int> done{false};  // is tihs work complete
         bool kernel_event = true;
+        Function<void()> work;  // Store any callable (lambda, function pointer, etc.)
         virtual void run() = 0; // Abstract/virtual function that must be overridden
         virtual ~TCB() {};      // Allows child classes to be deleted
     };
@@ -58,8 +60,9 @@ namespace alogx
         Work work;
         alignas(16) uint64_t stack[2048]; // Ensure proper 16-byte alignment
         // uint64_t stack[2048];
-        UserTCB(Work work) : work(work)
+        UserTCB(Work work)
         {
+            this->work = Function<void()>(work); // Store the work as a Function
             // printf("stack addr: %x\n", (uint64_t)&stack[2048]);
             context.x19 = 0;
             context.x20 = 0;
@@ -79,7 +82,8 @@ namespace alogx
 
         void run() override
         {
-            work();
+
+            this->work();
         }
     };
 
@@ -88,16 +92,16 @@ namespace alogx
     {
 
         Work work;
-        Event(Work work) : work(work)
+        Event(Work work)
         {
-
+            this->work = Function<void()>(work); // Store the work as a Function
             done.set(false);
             kernel_event = true;
         }
 
         void run() override
         {
-            work();
+            this->work();
         }
     };
 
@@ -118,7 +122,16 @@ void user_thread(T work)
 {
     // using namespace alogx;
     alogx::clearZombies();
-    auto tcb = new alogx::UserTCB(work);
+    auto tcb = new alogx::UserTCB<T>(work);
+    alogx::readyQ.add(tcb);
+}
+
+template <typename T>
+void create_kernel_event(T work)
+{
+    // using namespace alogx;
+    // alogx::clearZombies();
+    auto tcb = new alogx::Event<T>(work);
     alogx::readyQ.add(tcb);
 }
 

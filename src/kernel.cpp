@@ -73,7 +73,7 @@ extern "C" void kernel_main()
     heapTests();
     // event_loop_tests();
     // queue_test();
-    // frame_alloc_tests();
+    frame_alloc_tests();
 }
 
 extern char __heap_start[];

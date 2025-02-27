@@ -27,6 +27,11 @@ namespace alogx
 
     struct DummyThread : public TCB
     {
+        DummyThread()
+        {
+            done.set(true);
+            kernel_event = true;
+        }
         void run() override
         {
             // PANIC("should never go here");

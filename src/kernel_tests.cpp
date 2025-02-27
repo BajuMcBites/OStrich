@@ -171,16 +171,16 @@ void heapTests()
 //     printf("All tests completed.\n");
 // }
 
-// void frame_alloc_tests()
-// {
-//     printf("Starting frame allocator tests...\n");
+void frame_alloc_tests()
+{
+    printf("Starting frame allocator tests...\n");
 
-//     test_frame_alloc_simple();
-//     test_frame_alloc_multiple();
-//     test_pin_frame();
+    test_frame_alloc_simple();
+    test_frame_alloc_multiple();
+    test_pin_frame();
 
-//     printf("All frame allocator tests completed.\n");
-// }
+    printf("All frame allocator tests completed.\n");
+}
 
 // void test_frame_alloc_simple()
 // {
@@ -223,3 +223,45 @@ void heapTests()
 //     }
 //     printf("test_pin_frame passed\n");
 // }
+
+void test_frame_alloc_simple()
+{
+    auto lambda = [](int a)
+    {
+        printf("got address %d\n", a);
+        K::assert(a, "got null frame");
+    };
+    alloc_frame2(0x3, lambda);
+    printf("test_frame_alloc_simple passed\n");
+}
+
+void test_frame_alloc_multiple()
+{
+    auto lambda = [](int a)
+    {
+        K::assert(a, "got null frame");
+        K::assert(free_frame(a), "could not free frame");
+    };
+    for (int i = 0; i < 600; i++)
+    {
+        alloc_frame2(0x0, lambda);
+    }
+    printf("test_frame_alloc_multiple passed\n");
+}
+
+void test_pin_frame()
+{
+    auto lambda = [](int a)
+    {
+        K::assert(a, "got null frame");
+        pin_frame(a);
+        K::assert(!free_frame(a), "freed pinned frame");
+        unpin_frame(a);
+        K::assert(free_frame(a), "could not free unpinned frame");
+    };
+    for (int i = 0; i < 300; i++)
+    {
+        alloc_frame2(0x0, lambda);
+    }
+    printf("test_pin_frame passed\n");
+}
