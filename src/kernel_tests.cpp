@@ -193,21 +193,16 @@ void basic_page_table_creation() {
     page_table = new PageTable([](){
         printf("we have allocated a page table\n");
         alloc_frame(0, [](uint64_t frame) {
-            printf("lambda page table memory address %d\n", page_table);
-            printf("frame %d\n", frame);
             uint64_t user_vaddr = 0x800000;
             uint16_t lower_attributes = 0b010000000100;
             page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
-                printf("we have mapped virtual address 0 to physical frame %d\n", frame);
                 page_table->use_page_table();
-                printf("we got after loading page table\n");
-                *((uint64_t*) user_vaddr) = 12345678;
-                printf("reading from user vaddr: %d\n", *((uint64_t*) user_vaddr));
-                printf("reading from paddr: %d\n", *((uint64_t*) paddr_to_vaddr(frame)));
+                *((uint64_t*) user_vaddr) = 12345678;;
+                K::assert(*((uint64_t*) user_vaddr) == *((uint64_t*) paddr_to_vaddr(frame)), "user virtual address not working");
+                printf("basic_page_table_creation passed\n");
             });
         });
     });
-    printf("original page table memory address %d\n", page_table);
 }
 
 void user_paging_tests() {

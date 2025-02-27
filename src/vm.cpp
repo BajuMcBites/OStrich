@@ -4,7 +4,6 @@
 #include "libk.h"
 #include "event_loop.h"
 #include "frame.h"
-#include "printf.h"
 
 uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
@@ -20,32 +19,20 @@ void patch_page_tables() {
     }
 }
 
-void temp() {
-    int x = 10;
-    return;
-}
-
 PageTable::PageTable(Function<void()> w) {
     alloc_frame(PINNED_PAGE_FLAG, [this, w](uint64_t paddr) {
         this->pgd = (pgd_t*) paddr_to_vaddr(paddr);
-        printf("base frame address %d\n", paddr);
-        temp();
         K::assert(this->pgd != nullptr, "palloc failed");
-        uint64_t x = (uint64_t) this->pgd;
-        printf("pgd address in original %d\n", this->pgd);
-
         create_event(w, 1);
     });
 }
 
 void PageTable::use_page_table() {
-    printf("pgd address in use_page_table %d\n", this->pgd);
     uint64_t pgd_paddr = vaddr_to_paddr((uint64_t) this->pgd);
     switch_ttbr0(pgd_paddr);
 }
 
 void PageTable::map_vaddr(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w) {
-    printf("pgd address in map vaddr %d\n", this->pgd);
     K::assert((paddr & 0xFFF) == 0, "non-aligned paddr for va to pa mapping");
     K::assert((vaddr & 0xFFF) == 0, "non-aligned vaddr for va to pa mappin");
     map_vaddr_pgd(vaddr, paddr, lower_attributes, w);
@@ -58,7 +45,6 @@ void PageTable::map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint16_t lower_att
     pud_t* pud = descriptor_to_vaddr(pgd_descriptor);
     if (pud == nullptr) {
         alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t pud_paddr){
-            printf("allocating pud\n");
             K::assert(pud_paddr != nullptr, "palloc failed");
             pgd->descriptors[pgd_index] = paddr_to_table_descriptor(pud_paddr); //put frame into table
             pud_t* pud = (pud_t*) paddr_to_vaddr(pud_paddr); // get vaddr of frame
@@ -77,7 +63,6 @@ void PageTable::map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint16
     pmd_t* pmd = descriptor_to_vaddr(pud_descriptor);
     if (pmd == nullptr) {
          alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t pmd_paddr) {
-            printf("allocating pmd\n");
             K::assert(pmd_paddr != nullptr, "palloc failed");
             pud->descriptors[pud_index] = paddr_to_table_descriptor(pmd_paddr); 
             pmd_t* pmd = (pmd_t*) paddr_to_vaddr(pmd_paddr);
@@ -95,7 +80,6 @@ void PageTable::map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint16
     pte_t* pte = descriptor_to_vaddr(pmd_descriptor);
     if (pte == nullptr) {
         alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t pte_paddr) {
-            printf("allocating pte\n");
             K::assert(pte_paddr != nullptr, "palloc failed");
             pmd->descriptors[pmd_index] = paddr_to_table_descriptor(pte_paddr);
             pte_t* pte = (pte_t*) paddr_to_vaddr(pte_paddr);
@@ -114,28 +98,18 @@ void PageTable::map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr, uint16
 }
 
 uint64_t get_pgd_index(uint64_t vaddr) {
-    printf("PGD INDEX %d\n", (vaddr >> 39) & 0x1FF);
     return (vaddr >> 39) & 0x1FF;
 }
 
 uint64_t get_pud_index(uint64_t vaddr) {
-    printf("PUD INDEX %d\n", (vaddr >> 30) & 0x1FF);
     return (vaddr >> 30) & 0x1FF;
 }
 
 uint64_t get_pmd_index(uint64_t vaddr) {
-    printf("VADDR PTE %d\n", vaddr);
-
-    printf("PMD INDEX %d\n", (vaddr >> 21) & 0x1FF);
     return (vaddr >> 21) & 0x1FF;
-
 }
 
 uint64_t get_pte_index(uint64_t vaddr) {
-    printf("VADDR PTE %d\n", vaddr);
-    printf("VADDR PTE %d\n", vaddr >> 12);
-
-    printf("PTE INDEX %d\n", (vaddr >> 12) & 0x1FF);
     return (vaddr >> 12) & 0x1FF;
 }
 
