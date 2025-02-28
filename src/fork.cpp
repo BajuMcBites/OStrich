@@ -6,9 +6,9 @@
 
 extern "C" int copy_process(unsigned long fn, unsigned long arg) {
     preempt_disable();
-    struct task_struct *p;
+    struct task_struct* p;
 
-    p = (struct task_struct *)malloc(PAGE_SIZE);
+    p = (struct task_struct*)malloc(PAGE_SIZE);
     if (!p || nr_tasks > NR_TASKS) return 1;
     p->priority = current->priority;
     p->state = TASK_RUNNING;

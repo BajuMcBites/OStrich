@@ -14,11 +14,11 @@
  */
 typedef struct memory_block_struct {
     size_t block_size_alloc;
-    struct memory_block_struct *next;
+    struct memory_block_struct* next;
 } memory_block_t;
 
-extern void uinit(void *start, size_t bytes);
-extern "C" void *malloc(size_t size);
-extern "C" void free(void *ptr);
+extern void uinit(void* start, size_t bytes);
+extern "C" void* malloc(size_t size);
+extern "C" void free(void* ptr);
 
 #endif

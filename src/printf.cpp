@@ -24,14 +24,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "atomic.h"
 #include "uart.h"
 
-typedef void (*putcf)(void *, char);
+typedef void (*putcf)(void*, char);
 static putcf stdout_putf;
-static void *stdout_putp;
+static void* stdout_putp;
 static SpinLock theLock{};  // TODO: change to interrupt safe
 
 #ifdef PRINTF_LONG_SUPPORT
 
-static void uli2a(unsigned long int num, unsigned int base, int uc, char *bf) {
+static void uli2a(unsigned long int num, unsigned int base, int uc, char* bf) {
     int n = 0;
     unsigned int d = 1;
     while (num / d >= base) d *= base;
@@ -47,7 +47,7 @@ static void uli2a(unsigned long int num, unsigned int base, int uc, char *bf) {
     *bf = 0;
 }
 
-static void li2a(long num, char *bf) {
+static void li2a(long num, char* bf) {
     if (num < 0) {
         num = -num;
         *bf++ = '-';
@@ -57,7 +57,7 @@ static void li2a(long num, char *bf) {
 
 #endif
 
-static void ui2a(unsigned int num, unsigned int base, int uc, char *bf) {
+static void ui2a(unsigned int num, unsigned int base, int uc, char* bf) {
     int n = 0;
     unsigned int d = 1;
     while (num / d >= base) d *= base;
@@ -73,7 +73,7 @@ static void ui2a(unsigned int num, unsigned int base, int uc, char *bf) {
     *bf = 0;
 }
 
-static void i2a(int num, char *bf) {
+static void i2a(int num, char* bf) {
     if (num < 0) {
         num = -num;
         *bf++ = '-';
@@ -92,8 +92,8 @@ static int a2d(char ch) {
         return -1;
 }
 
-static char a2i(char ch, const char **src, int base, int *nump) {
-    const char *p = *src;
+static char a2i(char ch, const char** src, int base, int* nump) {
+    const char* p = *src;
     int num = 0;
     int digit;
     while ((digit = a2d(ch)) >= 0) {
@@ -106,16 +106,16 @@ static char a2i(char ch, const char **src, int base, int *nump) {
     return ch;
 }
 
-static void putchw(void *putp, putcf putf, int n, char z, char *bf) {
+static void putchw(void* putp, putcf putf, int n, char z, char* bf) {
     char fc = z ? '0' : ' ';
     char ch;
-    char *p = bf;
+    char* p = bf;
     while (*p++ && n > 0) n--;
     while (n-- > 0) putf(putp, fc);
     while ((ch = *bf++)) putf(putp, ch);
 }
 
-void tfp_format(void *putp, putcf putf, const char *fmt, va_list va) {
+void tfp_format(void* putp, putcf putf, const char* fmt, va_list va) {
     char bf[12];
 
     char ch;
@@ -180,7 +180,7 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va) {
                     putf(putp, (char)(va_arg(va, int)));
                     break;
                 case 's':
-                    putchw(putp, putf, w, 0, va_arg(va, char *));
+                    putchw(putp, putf, w, 0, va_arg(va, char*));
                     break;
                 case '%':
                     putf(putp, ch);
@@ -192,12 +192,12 @@ void tfp_format(void *putp, putcf putf, const char *fmt, va_list va) {
 abort:;
 }
 
-void init_printf(void *putp, void (*putf)(void *, char)) {
+void init_printf(void* putp, void (*putf)(void*, char)) {
     stdout_putf = putf;
     stdout_putp = putp;
 }
 
-void tfp_printf(const char *fmt, ...) {
+void tfp_printf(const char* fmt, ...) {
     theLock.lock();
     va_list va;
     va_start(va, fmt);
@@ -206,11 +206,11 @@ void tfp_printf(const char *fmt, ...) {
     theLock.unlock();
 }
 
-static void putcp(void *p, char c) {
-    *(*((char **)p))++ = c;
+static void putcp(void* p, char c) {
+    *(*((char**)p))++ = c;
 }
 
-void tfp_sprintf(char *s, char *fmt, ...) {
+void tfp_sprintf(char* s, char* fmt, ...) {
     va_list va;
     va_start(va, fmt);
     tfp_format(&s, putcp, fmt, va);
@@ -218,7 +218,7 @@ void tfp_sprintf(char *s, char *fmt, ...) {
     va_end(va);
 }
 
-__attribute__((noreturn)) void panic(char *fmt, ...) {
+__attribute__((noreturn)) void panic(char* fmt, ...) {
     va_list va;
     va_start(va, fmt);
 

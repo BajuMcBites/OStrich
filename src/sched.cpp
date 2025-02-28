@@ -6,8 +6,8 @@
 #include "queue.h"
 
 static struct task_struct init_task = INIT_TASK;
-struct task_struct *current = &(init_task);
-struct task_struct *task[NR_TASKS] = {
+struct task_struct* current = &(init_task);
+struct task_struct* task[NR_TASKS] = {
     &(init_task),
 };
 int nr_tasks = 1;
@@ -53,9 +53,9 @@ void schedule(void) {
     _schedule();
 }
 
-extern "C" void switch_to(struct task_struct *next) {
+extern "C" void switch_to(struct task_struct* next) {
     if (current == next) return;
-    struct task_struct *prev = current;
+    struct task_struct* prev = current;
     current = next;
     cpu_switch_to(prev, next);
 }

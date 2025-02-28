@@ -74,7 +74,7 @@ class Atomic {
    public:
     Atomic(T x) : value(x) {
     }
-    Atomic<T> &operator=(T v) {
+    Atomic<T>& operator=(T v) {
         __atomic_store_n(&value, v, __ATOMIC_SEQ_CST);
         return *this;
     }
@@ -153,10 +153,10 @@ public:
 
 template <typename T>
 class LockGuard {
-    T &it;
+    T& it;
 
    public:
-    inline LockGuard(T &it) : it(it) {
+    inline LockGuard(T& it) : it(it) {
         it.lock();
     }
     inline ~LockGuard() {
@@ -166,10 +166,10 @@ class LockGuard {
 
 template <typename T>
 class LockGuardP {
-    T *it;
+    T* it;
 
    public:
-    inline LockGuardP(T *it) : it(it) {
+    inline LockGuardP(T* it) : it(it) {
         if (it) it->lock();
     }
     inline ~LockGuardP() {
@@ -194,7 +194,7 @@ class SpinLock {
     SpinLock() : taken(false) {
     }
 
-    SpinLock(const SpinLock &) = delete;
+    SpinLock(const SpinLock&) = delete;
 
     // for debugging, etc. Allows false positives
     bool isMine() {

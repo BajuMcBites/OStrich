@@ -7,9 +7,9 @@
 
 int index = 0;
 int num_frames = 0;
-Frame *frame_table = 0;
+Frame* frame_table = 0;
 void create_frame_table(uintptr_t start, int size) {
-    frame_table = (Frame *)start;
+    frame_table = (Frame*)start;
     num_frames = size / PAGE_SIZE;
     for (int i = 0; i < num_frames; i++) {
         frame_table[i].flags = 0;
@@ -19,7 +19,8 @@ void create_frame_table(uintptr_t start, int size) {
         frame_table[i].flags |= USED_PAGE_FLAG;
         frame_table[i].flags |= PINNED_PAGE_FLAG;
     }
-    // Pin device memory, assume MMIO is the last 16 MB, 0x1000000 (Raspberry Pi 3b)
+    // Pin device memory, assume MMIO is the last 16 MB, 0x1000000 (Raspberry Pi
+    // 3b)
     int mmio_start_addr = size - 0x1000000;
     for (int i = mmio_start_addr / PAGE_SIZE; i < num_frames; i++) {
         frame_table[i].flags |= USED_PAGE_FLAG;

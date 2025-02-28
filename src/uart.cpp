@@ -51,7 +51,8 @@ void uart_init(void) {
 }
 
 char uart_getc(void) {
-    // Wait until the UART has received data (RXFE - Receive FIFO Empty flag is clear)
+    // Wait until the UART has received data (RXFE - Receive FIFO Empty flag is
+    // clear)
     while (get32(UART0_FR) & (1 << 4)) {
         // Wait for data to be available
     }

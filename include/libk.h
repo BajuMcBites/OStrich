@@ -5,9 +5,9 @@
 
 class K {
    public:
-    static long strlen(const char *str);
+    static long strlen(const char* str);
     static int isdigit(int c);
-    static bool streq(const char *left, const char *right);
+    static bool streq(const char* left, const char* right);
 
     template <typename T>
     static T min(T v) {
@@ -20,7 +20,7 @@ class K {
         return (a < rest) ? a : rest;
     }
 
-    static void assert(bool condition, const char *msg);
+    static void assert(bool condition, const char* msg);
 };
 
 #endif

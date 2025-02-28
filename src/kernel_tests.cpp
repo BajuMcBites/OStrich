@@ -10,12 +10,12 @@
 #include "stdint.h"
 #include "vm.h"
 
-PageTable *page_table;
+PageTable* page_table;
 
 void test_new_delete_basic() {
     printf("Test 1: Basic Allocation and Deletion\n");
 
-    int *p = new int;
+    int* p = new int;
     K::assert(p != nullptr, "new int returned nullptr");
     *p = 42;
     K::assert(*p == 42, "Value mismatch after new int");
@@ -27,9 +27,9 @@ void test_new_delete_basic() {
 void test_multiple_allocations() {
     printf("Test 2: Multiple Allocations\n");
 
-    int *p1 = new int;
-    int *p2 = new int;
-    int *p3 = new int;
+    int* p1 = new int;
+    int* p2 = new int;
+    int* p3 = new int;
 
     K::assert(p1 != nullptr, "p1 is nullptr");
     K::assert(p2 != nullptr, "p2 is nullptr");
@@ -48,9 +48,9 @@ void test_multiple_allocations() {
 void test_allocation_deletion_sequence() {
     printf("Test 3: Allocation, Deletion, and Reallocation\n");
 
-    int *p1 = new int;
+    int* p1 = new int;
     delete p1;
-    int *p2 = new int;
+    int* p2 = new int;
 
     K::assert(p1 == p2, "Memory was not reused after deletion");
 
@@ -61,7 +61,7 @@ void test_allocation_deletion_sequence() {
 void test_zero_allocation() {
     printf("Test 4: Zero Allocation\n");
 
-    char *p = new char[0];
+    char* p = new char[0];
     K::assert(p != nullptr, "new char[0] returned nullptr");
 
     delete[] p;
@@ -71,13 +71,13 @@ void test_zero_allocation() {
 void test_nullptr_deletion() {
     printf("Test 5: Null Pointer Deletion\n");
 
-    int *p = nullptr;
+    int* p = nullptr;
     delete p;
     printf("Test 5 passed.\n");
 }
 
-void test_event(void *arg) {
-    printf("new event dropped: %s\n", (char *)arg);
+void test_event(void* arg) {
+    printf("new event dropped: %s\n", (char*)arg);
 }
 
 void heapTests() {
@@ -116,7 +116,7 @@ void event_loop_tests() {
 }
 
 void queue1() {
-    queue<int> *q = (queue<int> *)malloc(sizeof(queue<int>));
+    queue<int>* q = (queue<int>*)malloc(sizeof(queue<int>));
     q->push(5);
     q->push(3);
     q->push(2);
@@ -193,9 +193,8 @@ void basic_page_table_creation() {
             uint16_t lower_attributes = 0b010000000100;
             page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
                 page_table->use_page_table();
-                *((uint64_t *)user_vaddr) = 12345678;
-                ;
-                K::assert(*((uint64_t *)user_vaddr) == *((uint64_t *)paddr_to_vaddr(frame)),
+                *((uint64_t*)user_vaddr) = 12345678;
+                K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
                           "user virtual address not working");
                 printf("basic_page_table_creation passed\n");
             });

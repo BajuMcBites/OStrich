@@ -6,16 +6,16 @@
 // #include "blocking_lock.h"
 #include "atomic.h"
 
-static SpinLock *theLock = nullptr;
+static SpinLock* theLock = nullptr;
 // MY HEAP
 // A sample pointer to the start of the free list.
-memory_block_t *free_head;
+memory_block_t* free_head;
 
 namespace alogx2 {
 /*
  * is_allocated - returns true if a block is marked as allocated.
  */
-bool is_allocated(memory_block_t *block) {
+bool is_allocated(memory_block_t* block) {
     // assert(block != nullptr);
     return block->block_size_alloc & 0x1;
 }
@@ -23,7 +23,7 @@ bool is_allocated(memory_block_t *block) {
 /*
  * allocate - marks a block as allocated.
  */
-void allocate(memory_block_t *block) {
+void allocate(memory_block_t* block) {
     // assert(block != nullptr);
     block->block_size_alloc |= 0x1;
 }
@@ -31,7 +31,7 @@ void allocate(memory_block_t *block) {
 /*
  * deallocate - marks a block as unallocated.
  */
-void deallocate(memory_block_t *block) {
+void deallocate(memory_block_t* block) {
     // assert(block != nullptr);
     block->block_size_alloc &= ~0x1;
 }
@@ -39,7 +39,7 @@ void deallocate(memory_block_t *block) {
 /*
  * get_size - gets the size of the block.
  */
-size_t get_block_size(memory_block_t *block) {
+size_t get_block_size(memory_block_t* block) {
     // assert(block != nullptr);
     return block->block_size_alloc & ~(ALIGNMENT - 1);
 }
@@ -47,7 +47,7 @@ size_t get_block_size(memory_block_t *block) {
 /*
  * get_next - gets the next block.
  */
-memory_block_t *get_next(memory_block_t *block) {
+memory_block_t* get_next(memory_block_t* block) {
     // assert(block != nullptr);
     return block->next;
 }
@@ -57,7 +57,7 @@ memory_block_t *get_next(memory_block_t *block) {
  * Initializes the size and allocated fields, along with NUlling out the next
  * field.
  */
-void put_block(memory_block_t *block, size_t size, bool alloc) {
+void put_block(memory_block_t* block, size_t size, bool alloc) {
     // assert(block != nullptr);
     // assert(size % ALIGNMENT == 0);
     // assert(alloc >> 1 == 0);
@@ -68,17 +68,17 @@ void put_block(memory_block_t *block, size_t size, bool alloc) {
 /*
  * get_payload - gets the payload of the block.
  */
-void *get_payload(memory_block_t *block) {
+void* get_payload(memory_block_t* block) {
     // assert(block != nullptr);
-    return (void *)(block + 1);
+    return (void*)(block + 1);
 }
 
 /*
  * get_block - given a payload, returns the block.
  */
-memory_block_t *get_block(void *payload) {
+memory_block_t* get_block(void* payload) {
     // assert(payload != nullptr);
-    return ((memory_block_t *)payload) - 1;
+    return ((memory_block_t*)payload) - 1;
 }
 
 /*
@@ -89,9 +89,9 @@ memory_block_t *get_block(void *payload) {
 /*
  * find - finds a free block that can satisfy the umalloc request.
  */
-memory_block_t *find(size_t size) {
-    memory_block_t *cur = free_head;
-    memory_block_t *best = nullptr;
+memory_block_t* find(size_t size) {
+    memory_block_t* cur = free_head;
+    memory_block_t* best = nullptr;
     while (cur != nullptr) {
         if (best == nullptr && cur->block_size_alloc >= size) {
             best = cur;
@@ -111,7 +111,7 @@ memory_block_t *find(size_t size) {
  * extend - extends the heap if more memory is required.
  * returns memory block that we added.
  */
-memory_block_t *extend(size_t size) {
+memory_block_t* extend(size_t size) {
     return nullptr;
     /*
     size = ALIGN(size);
@@ -151,10 +151,11 @@ memory_block_t *extend(size_t size) {
  * split - splits a given block in parts, one allocated, one free.
  * handles all the freeblock list linking. return the block that is allocated.
  */
-memory_block_t *split(memory_block_t *block, size_t size) {
+memory_block_t* split(memory_block_t* block, size_t size) {
     // new address of the block we want to allocate
-    memory_block_t *toAllocate = (memory_block_t *)((char *)block + block->block_size_alloc - size);
-    // the size of the new head is the remaining memory space in the original block
+    memory_block_t* toAllocate = (memory_block_t*)((char*)block + block->block_size_alloc - size);
+    // the size of the new head is the remaining memory space in the original
+    // block
     block->block_size_alloc = block->block_size_alloc - size;
     allocate(toAllocate);
     toAllocate->block_size_alloc = size;
@@ -165,11 +166,11 @@ memory_block_t *split(memory_block_t *block, size_t size) {
 /*
  * coalesce - coalesces a free memory block with neighbors.
  */
-memory_block_t *coalesce(memory_block_t *block) {
-    memory_block_t *cur = free_head;
+memory_block_t* coalesce(memory_block_t* block) {
+    memory_block_t* cur = free_head;
     while (cur) {
         if (cur->next != nullptr &&
-            cur->next == (memory_block_t *)((char *)cur + cur->block_size_alloc)) {  // neighbors !
+            cur->next == (memory_block_t*)((char*)cur + cur->block_size_alloc)) {  // neighbors !
             cur->block_size_alloc = cur->block_size_alloc + cur->next->block_size_alloc;
             cur->next = cur->next->next;
         }
@@ -183,9 +184,9 @@ memory_block_t *coalesce(memory_block_t *block) {
  * uinit - Used initialize metadata required to manage the heap
  * along with allocating initial memory.
  */
-void uinit(void *base, size_t bytes) {
+void uinit(void* base, size_t bytes) {
     using namespace alogx2;
-    free_head = (memory_block_t *)base;
+    free_head = (memory_block_t*)base;
     printf("| heap range 0x%x 0x%x\n", (uint64_t)free_head, (uint64_t)free_head + bytes);
     printf("| heap range 0x%x 0x%x\n", (uint64_t)base, (uint64_t)base + bytes);
     // free_head = (memory_block_t *)csbrk(PAGESIZE * 4);
@@ -200,22 +201,23 @@ void uinit(void *base, size_t bytes) {
 }
 
 /*
- * umalloc -  allocates size bytes and returns a pointer to the allocated memory.
+ * umalloc -  allocates size bytes and returns a pointer to the allocated
+ * memory.
  */
-void *malloc(size_t size) {
+void* malloc(size_t size) {
     using namespace alogx2;
     // lock
     LockGuardP g{theLock};
     size = ALIGN(size + sizeof(memory_block_t));
     // we have a valid block size. now we can allocate
-    memory_block_t *validBlock = find(size);
+    memory_block_t* validBlock = find(size);
     while (validBlock == nullptr) {
         coalesce(free_head);  // check for another block
         validBlock = find(size);
         if (validBlock == nullptr) {
             // OUT OF HEAP MEMORY. I WILL SPIN 4 EVER UNTIL EXTEND WORKS
             // I should block and try again but no blocking locks either
-            memory_block_t *temp = extend(size * 2);
+            memory_block_t* temp = extend(size * 2);
             if (temp && temp->block_size_alloc >= size) {
                 validBlock = temp;
             }
@@ -229,8 +231,8 @@ void *malloc(size_t size) {
             free_head = free_head->next;
         } else  // unlink block inside of list
         {
-            memory_block_t *cur = free_head->next;
-            memory_block_t *prev = free_head;
+            memory_block_t* cur = free_head->next;
+            memory_block_t* prev = free_head;
             while (cur < validBlock) {
                 prev = cur;
                 cur = cur->next;
@@ -245,14 +247,14 @@ void *malloc(size_t size) {
 }
 
 /*
- * ufree -  frees the memory space pointed to by ptr, which must have been called
- * by a previous call to malloc.
+ * ufree -  frees the memory space pointed to by ptr, which must have been
+ * called by a previous call to malloc.
  */
-void free(void *ptr) {
+void free(void* ptr) {
     using namespace alogx2;
     LockGuardP g{theLock};
     // assert(ptr != nullptr);                        // check for null pointer
-    memory_block_t *freeBlock = get_block(ptr);  // block we want to add back to free list
+    memory_block_t* freeBlock = get_block(ptr);  // block we want to add back to free list
     deallocate(freeBlock);
     if (free_head == nullptr)  // list is empty, make block the head
     {
@@ -262,7 +264,7 @@ void free(void *ptr) {
         free_head = freeBlock;
     } else  // find spot in list for the block
     {
-        memory_block_t *cur = free_head;
+        memory_block_t* cur = free_head;
         while (cur->next != nullptr && freeBlock > cur) {
             if (freeBlock < cur->next) {
                 freeBlock->next = cur->next;

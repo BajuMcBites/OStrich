@@ -15,7 +15,8 @@ class Function<R(Args...)> {
         }
     };
 
-    // Derived template class that wraps a callable (lambda, function pointer, functor)
+    // Derived template class that wraps a callable (lambda, function pointer,
+    // functor)
     template <typename T>
     struct Callable : CallableBase {
         T func;
