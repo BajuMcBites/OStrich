@@ -8,6 +8,26 @@
 #include "event_loop.h"
 #include "frame.h"
 
+#include "tests/test_suites.h"
+
+/* PUT ALL UNIT TEST SUITES HERE.
+
+Structure should be as follows:
+- Within 'runKernelTests', each function called corresponds to a test suite
+- Each test suite should be defined in it's own file.
+
+*/
+void runKernelTests() {
+    test_suite_stats suite_results; // DO NOT REMOVE.
+
+    // Put your test suites here!
+    heapTests();
+    event_loop_tests();
+    queue_test();
+    frame_alloc_tests();
+    RUN_TEST_SUITE(basic_test_suite, true /* verbose */)
+}
+
 void test_new_delete_basic()
 {
     printf("Test 1: Basic Allocation and Deletion\n");
