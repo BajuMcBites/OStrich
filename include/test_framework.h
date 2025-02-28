@@ -12,7 +12,7 @@ Add this line in runKernelTests()::kernel_tests.cpp
     RUN_TEST_SUITE(basic_test_suite, true) // verbose mode = true.
 
 tests/test_suites.h: Declare test suite.
-   test_suite_stats basic_test_suite(bool); 
+    DECLARE_TEST_SUITE(basic_test_suite);
 
 my_test_suite.cpp: Define test suite.
     #include "tests/test_suites.h"
@@ -26,7 +26,7 @@ my_test_suite.cpp: Define test suite.
 
     // Define test suite (put at the end of the file).
     BEGIN_TEST_SUITE(basic_test_suite)
-        TEST_CASE(test_should_pass)
+        ADD_TEST(test_should_pass)
     END_TEST_SUITE
 */
 
