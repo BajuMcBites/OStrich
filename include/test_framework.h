@@ -36,7 +36,7 @@ struct suite_stats {
 } typedef test_suite_stats;
 
 #define BEGIN_TEST_SUITE(suite_name) \
-    test_suite_stats suite_name(bool verbose) { \
+    test_suite_stats test_suite_##suite_name(bool verbose) { \
         test_suite_stats suite_stats; \
         suite_stats.passed = 0; \
         suite_stats.total = 0; \
@@ -60,11 +60,14 @@ struct suite_stats {
     suite_stats.total++; \
     if (verbose) printf("Passed Test: %s\n", #test_function);
 
-#define RUN_TEST_SUITE(suite_function, verbose) \
-    printf("Running Test Suite %s:\n", #suite_function); \
-    suite_results = suite_function(verbose); \
+#define DECLARE_TEST_SUITE(suite_name) \
+    test_suite_stats test_suite_##suite_name(bool verbose);
+
+#define RUN_TEST_SUITE(suite_name, verbose) \
+    printf("Running Test Suite '%s':\n", #suite_name); \
+    suite_results = test_suite_##suite_name(verbose); \
     printf("Passed %d / %d tests.\n", suite_results.passed, suite_results.total); \
-    printf("Finished Running Suite: %s\n\n\n", #suite_function); \
+    printf("Finished Running Suite '%s'\n\n\n", #suite_name); \
 
 // Use do-while loop to avoid pre-processor expansion issues
 #define EXPECT_TRUE(condition, msg) do {                    \

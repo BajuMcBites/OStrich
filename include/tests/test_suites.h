@@ -3,6 +3,6 @@
 
 #include "test_framework.h"
 
-test_suite_stats basic_test_suite(bool verbose);
+DECLARE_TEST_SUITE(basic_test_suite);
 
 #endif
