@@ -7,27 +7,33 @@ class Function;  // Primary template (left undefined)
 // Specialization for function signatures
 template <typename R, typename... Args>
 class Function<R(Args...)> {
-private:
+   private:
     // Base class for type erasure
     struct CallableBase {
         virtual R call(Args... args) = 0;
-        virtual ~CallableBase() {}
+        virtual ~CallableBase() {
+        }
     };
 
-    // Derived template class that wraps a callable (lambda, function pointer, functor)
+    // Derived template class that wraps a callable (lambda, function pointer,
+    // functor)
     template <typename T>
     struct Callable : CallableBase {
         T func;
-        Callable(const T& f) : func(f) {}
-        R call(Args... args) override { return func(args...); }
+        Callable(const T& f) : func(f) {
+        }
+        R call(Args... args) override {
+            return func(args...);
+        }
     };
 
     CallableBase* callable;  // Pointer to callable base class
 
-public:
+   public:
     // Constructor accepting any callable
     template <typename T>
-    Function(T f) : callable(new Callable<T>(f)) {}
+    Function(T f) : callable(new Callable<T>(f)) {
+    }
 
     // Move constructor
     Function(Function&& other) : callable(other.callable) {

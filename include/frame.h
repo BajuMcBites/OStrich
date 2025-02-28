@@ -1,10 +1,10 @@
 #ifndef _FRAME_H
 #define _FRAME_H
 
-#include "vm.h"
-#include "stdint.h"
 #include "event.h"
 #include "function.h"
+#include "stdint.h"
+#include "vm.h"
 
 #define USED_PAGE_FLAG 0x1
 #define PINNED_PAGE_FLAG 0x2

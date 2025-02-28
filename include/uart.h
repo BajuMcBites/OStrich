@@ -8,4 +8,4 @@ void uart_puts(const char* str);
 void uart_hex(unsigned int d);
 void uart_putc_wrapper(void* p, char c);
 
-#endif // UART_H
+#endif  // UART_H
