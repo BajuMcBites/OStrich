@@ -12,8 +12,7 @@
  * bits 1-3 are unused.
  * and the remaining 60 bit represent the size.
  */
-typedef struct memory_block_struct
-{
+typedef struct memory_block_struct {
     size_t block_size_alloc;
     struct memory_block_struct *next;
 } memory_block_t;

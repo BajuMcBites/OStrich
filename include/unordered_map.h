@@ -3,22 +3,23 @@
 
 template <typename K, typename V>
 class HashTable {
-private:
-    static const int TABLE_SIZE = 10000; // Size of hash table
+   private:
+    static const int TABLE_SIZE = 10000;  // Size of hash table
     struct Node {
         K key;
         V value;
         Node* next;
-        Node(K k, V v) : key(k), value(v), next(nullptr) {}
+        Node(K k, V v) : key(k), value(v), next(nullptr) {
+        }
     };
-    
+
     Node* table[TABLE_SIZE];
 
     int hashFunction(K key) {
         return std::hash<K>{}(key) % TABLE_SIZE;
     }
 
-public:
+   public:
     HashTable() {
         for (int i = 0; i < TABLE_SIZE; ++i) {
             table[i] = nullptr;
@@ -87,4 +88,4 @@ public:
     }
 };
 
-#endif 
+#endif
