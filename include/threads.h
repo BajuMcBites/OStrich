@@ -43,7 +43,6 @@ namespace alogx
         bool wasDisabled = false; // previous interrupt state
         Atomic<int> done{false};  // is tihs work complete
         bool kernel_event = true;
-        Function<void()> work;  // Store any callable (lambda, function pointer, etc.)
         virtual void run() = 0; // Abstract/virtual function that must be overridden
         virtual ~TCB() {};      // Allows child classes to be deleted
     };
@@ -53,17 +52,19 @@ namespace alogx
     extern void restoreState();                                              // restore state post context switch
     extern void clearZombies();                                              // delete threads that have called stop.
 
-    template <typename Work>
+    // template <typename Work>
     struct UserTCB : public TCB
     {
         cpu_context context;
-        Work work;
+        Function<void()> w;
+        // Work work;
         alignas(16) uint64_t stack[2048]; // Ensure proper 16-byte alignment
         // uint64_t stack[2048];
-        UserTCB(Work work)
+        template <typename lambda>
+        UserTCB(lambda w) : w(w)
         {
-            this->work = Function<void()>(work); // Store the work as a Function
-            // printf("stack addr: %x\n", (uint64_t)&stack[2048]);
+            // this->work = Function<void()>(work); // Store the work as a Function
+            //  printf("stack addr: %x\n", (uint64_t)&stack[2048]);
             context.x19 = 0;
             context.x20 = 0;
             context.x21 = 0;
@@ -83,25 +84,44 @@ namespace alogx
         void run() override
         {
 
-            this->work();
+            w();
         }
     };
 
-    template <typename Work>
+    // template <typename Work>
     struct Event : public TCB
     {
-
-        Work work;
-        Event(Work work)
+        Function<void()> w;
+        // Work work;
+        template <typename lambda>
+        Event(lambda w) : w(w)
         {
-            this->work = Function<void()>(work); // Store the work as a Function
+            // this->work = Function<void()>(work); // Store the work as a Function
             done.set(false);
             kernel_event = true;
         }
 
         void run() override
         {
-            this->work();
+            w();
+        }
+    };
+
+    template <typename T>
+    struct EventValue : public TCB
+    {
+        Function<void(T)> w;
+        T value;
+        //  Work work;
+        template <typename lambda>
+        EventValue(lambda w, T value) : w(w), value(value)
+        {
+            kernel_event = true;
+        }
+
+        void run() override
+        {
+            w(value);
         }
     };
 
@@ -117,21 +137,27 @@ namespace alogx
     extern LockedQueue<TCB, SpinLock> zombieQ;
 };
 
-template <typename T>
-void user_thread(T work)
+template <typename lambda>
+void user_thread(lambda work)
 {
-    // using namespace alogx;
+    using namespace alogx;
     alogx::clearZombies();
-    auto tcb = new alogx::UserTCB<T>(work);
+    auto tcb = new UserTCB(work);
+    // auto tcb = new alogx::UserTCB<T>(work);
+    alogx::readyQ.add(tcb);
+}
+
+template <typename lambda>
+void create_kernel_event(lambda work)
+{
+    auto tcb = new alogx::Event(work);
     alogx::readyQ.add(tcb);
 }
 
 template <typename T>
-void create_kernel_event(T work)
+void create_kernel_event_value(Function<void(T)> work, T value) // lambda that captures values
 {
-    // using namespace alogx;
-    // alogx::clearZombies();
-    auto tcb = new alogx::Event<T>(work);
+    auto tcb = new alogx::EventValue<T>(work, value);
     alogx::readyQ.add(tcb);
 }
 

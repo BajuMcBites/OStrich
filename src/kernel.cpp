@@ -134,8 +134,9 @@ extern "C" void kernel_init()
                     { kernel_main(); });
         user_thread([]
                     { heapTests();
-                user_thread([]
-                    { int x = 1;
+                        int x = 1;
+                user_thread([&x]
+                    { 
                         printf("x = %d\n", x);
                         printf("i do nothing\n");
                     yield();

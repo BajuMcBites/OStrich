@@ -226,7 +226,7 @@ void frame_alloc_tests()
 
 void test_frame_alloc_simple()
 {
-    auto lambda = [](int a)
+    Function<void(int)> lambda = [](int a)
     {
         printf("got address %d\n", a);
         K::assert(a, "got null frame");
@@ -237,7 +237,7 @@ void test_frame_alloc_simple()
 
 void test_frame_alloc_multiple()
 {
-    auto lambda = [](int a)
+    Function<void(int)> lambda = [](int a)
     {
         K::assert(a, "got null frame");
         K::assert(free_frame(a), "could not free frame");
@@ -251,7 +251,7 @@ void test_frame_alloc_multiple()
 
 void test_pin_frame()
 {
-    auto lambda = [](int a)
+    Function<void(int)> lambda = [](int a)
     {
         K::assert(a, "got null frame");
         pin_frame(a);

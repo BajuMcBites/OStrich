@@ -12,7 +12,6 @@
 
 void create_frame_table(uintptr_t start, int size);
 
-template <typename T>
 void alloc_frame2(int flags, Function<void(int)> w);
 
 void alloc_frame(int flags, Function<void(int)> w);

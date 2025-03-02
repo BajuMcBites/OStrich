@@ -118,20 +118,22 @@ namespace alogx
         else if (!oldThreads[me]->kernel_event && !nextThread->kernel_event) // user to user
         {
             printf("user to user\n");
-            cpu_switch_to(&((UserTCB<decltype(nextThread)> *)oldThreads[me])->context,
-                          &((UserTCB<decltype(nextThread)> *)nextThread)->context);
+            cpu_switch_to(&((UserTCB *)oldThreads[me])->context,
+                          &((UserTCB *)nextThread)->context);
+            // cpu_switch_to(&((UserTCB<decltype(nextThread)> *)oldThreads[me])->context,
+            //               &((UserTCB<decltype(nextThread)> *)nextThread)->context);
         }
         else if (!oldThreads[me]->kernel_event && nextThread->kernel_event) // user to kernel
         {
             printf("user to kernel\n");
-            cpu_switch_to(&((UserTCB<decltype(nextThread)> *)oldThreads[me])->context,
+            cpu_switch_to(&((UserTCB *)oldThreads[me])->context,
                           coreContext[me]);
         }
         else // kernel to user
         {
             printf("kernel to user\n");
             cpu_switch_to(coreContext[me],
-                          &((UserTCB<decltype(nextThread)> *)nextThread)->context);
+                          &((UserTCB *)nextThread)->context);
         }
 
         // context_switch(&oldThreads[me]->saved_SP, nextThread->saved_SP);

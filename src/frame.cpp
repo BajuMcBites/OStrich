@@ -49,7 +49,7 @@ void alloc_frame(int flags, Function<void(int)> w)
     return;
 }
 
-template <typename T>
+// template <typename T>
 void alloc_frame2(int flags, Function<void(int)> w)
 {
     for (int i = 0; i < num_frames; i++)
@@ -58,10 +58,7 @@ void alloc_frame2(int flags, Function<void(int)> w)
         {
             frame_table[index].flags = flags;
             frame_table[index].flags |= USED_PAGE_FLAG;
-
-            create_kernel_event([w, addr = index * PAGE_SIZE]()
-                                { w(addr); });
-            // create_event_value<int>(w, index * PAGE_SIZE, 1);
+            create_kernel_event_value<int>(w, index * PAGE_SIZE);
             index += 1;
             return;
         }
