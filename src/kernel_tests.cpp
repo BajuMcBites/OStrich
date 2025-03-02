@@ -8,6 +8,9 @@
 #include "queue.h"
 #include "sched.h"
 #include "stdint.h"
+#include "vm.h"
+
+PageTable* page_table;
 
 void test_new_delete_basic() {
     printf("Test 1: Basic Allocation and Deletion\n");
@@ -149,7 +152,7 @@ void frame_alloc_tests() {
 }
 
 void test_frame_alloc_simple() {
-    Function<void(int)> lambda = [](int a) {
+    Function<void(uint64_t)> lambda = [](uint64_t a) {
         printf("got address %d\n", a);
         K::assert(a, "got null frame");
     };
@@ -158,7 +161,7 @@ void test_frame_alloc_simple() {
 }
 
 void test_frame_alloc_multiple() {
-    Function<void(int)> lambda = [](int a) {
+    Function<void(uint64_t)> lambda = [](uint64_t a) {
         K::assert(a, "got null frame");
         K::assert(free_frame(a), "could not free frame");
     };
@@ -169,7 +172,7 @@ void test_frame_alloc_multiple() {
 }
 
 void test_pin_frame() {
-    Function<void(int)> lambda = [](int a) {
+    Function<void(uint64_t)> lambda = [](uint64_t a) {
         K::assert(a, "got null frame");
         pin_frame(a);
         K::assert(!free_frame(a), "freed pinned frame");
@@ -180,4 +183,27 @@ void test_pin_frame() {
         alloc_frame(0x0, lambda);
     }
     printf("test_pin_frame passed\n");
+}
+
+void basic_page_table_creation() {
+    page_table = new PageTable([]() {
+        printf("we have allocated a page table\n");
+        alloc_frame(0, [](uint64_t frame) {
+            uint64_t user_vaddr = 0x800000;
+            uint16_t lower_attributes = 0x404;
+            page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
+                page_table->use_page_table();
+                *((uint64_t*)user_vaddr) = 12345678;
+                K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
+                          "user virtual address not working");
+                printf("basic_page_table_creation passed\n");
+            });
+        });
+    });
+}
+
+void user_paging_tests() {
+    printf("starting user paging tests\n");
+    basic_page_table_creation();
+    printf("user paging tests complete\n");
 }

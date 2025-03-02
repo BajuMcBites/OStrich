@@ -11,7 +11,7 @@
 
 void create_frame_table(uintptr_t start, int size);
 
-void alloc_frame(int flags, Function<void(int)> w);
+void alloc_frame(int flags, Function<void(uint64_t)> w);
 
 bool free_frame(uintptr_t frame_addr);
 

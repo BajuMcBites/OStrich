@@ -68,6 +68,7 @@ extern "C" void kernel_main() {
     event_loop_tests();
     queue_test();
     frame_alloc_tests();
+    user_paging_tests();
 }
 
 extern char __heap_start[];
@@ -93,12 +94,12 @@ extern "C" void kernel_init() {
         printf("frame table initialized! \n");
         breakpoint();
         print_ascii_art();
-        uinit((void*)HEAP_START, HEAP_SIZE);
+        uinit((void *)HEAP_START, HEAP_SIZE);
 
         // event queues setup
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < MAX_PRIORITY; j++) {
-                cpu_queues.forCPU(i).queue_list[j] = new queue<event*>();
+                cpu_queues.forCPU(i).queue_list[j] = new queue<event *>();
             }
         }
 
