@@ -4,14 +4,13 @@
 #include "utils.h"
 
 template <class T>
-class PerCPU
-{
-private:
+class PerCPU {
+   private:
     T data[4];
 
-public:
-    inline T &forCPU(int id)
-    {
+   public:
+    inline T& forCPU(int id) {
+
         return data[id];
     }
 

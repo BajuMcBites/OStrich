@@ -140,4 +140,4 @@ typedef int64_t ssize_t;
 #define PRIx64 "llx"
 #define PRIX64 "llX"
 
-#endif // _STDINT_H_
+#endif  // _STDINT_H_
