@@ -294,9 +294,9 @@ ret_from_fork:
 	blr	x19 		//should never return
 
 
-.globl __gxx_personality_v0
-__gxx_personality_v0:
-    ret
-.globl _Unwind_Resume
-_Unwind_Resume:
-    ret
+#.globl __gxx_personality_v0
+# __gxx_personality_v0:
+#     ret
+# .globl _Unwind_Resume
+# _Unwind_Resume:
+#     rets

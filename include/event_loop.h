@@ -5,6 +5,8 @@
 #include "event.h"
 #include "percpu.h"
 #include "queue.h"
+#include "atomic.h"
+#include "threads.h"
 
 #define MAX_PRIORITY 5
 
@@ -15,8 +17,9 @@ struct percpu_queue {
 
 extern PerCPU<percpu_queue> cpu_queues;
 
-inline void create_event(Function<void()> w, int priority) {
-    event* e = new event_work(w);
+inline void create_event(Function<void()> w, int priority)
+{
+    event *e = new event_work(w);
     cpu_queues.mine().queue_list[priority]->push(e);
 }
 

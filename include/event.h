@@ -6,6 +6,7 @@
 #include "heap.h"
 #include "queue.h"
 
+
 struct event {
     explicit inline event() {
     }
@@ -13,6 +14,7 @@ struct event {
     virtual ~event() {
     }
 };
+
 
 struct event_work : public event {
     Function<void()> w;
@@ -25,7 +27,8 @@ struct event_work : public event {
 };
 
 template <typename T>
-struct event_work_value : public event {
+struct event_work_value : public event
+{
     Function<void(T)> w;
     T value;
 

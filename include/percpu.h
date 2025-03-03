@@ -1,3 +1,6 @@
+#ifndef PERCPU_H
+#define PERCPU_H
+
 #include "utils.h"
 
 template <class T>
@@ -7,10 +10,14 @@ class PerCPU {
 
    public:
     inline T& forCPU(int id) {
+
         return data[id];
     }
 
-    inline T& mine() {
+    inline T &mine()
+    {
         return forCPU(getCoreID());
     }
 };
+
+#endif // PERCPU_H

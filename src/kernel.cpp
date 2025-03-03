@@ -9,6 +9,9 @@
 #include "mm.h"
 #include "printf.h"
 #include "queue.h"
+#include "percpu.h"
+#include "entry.h"
+#include "threads.h"
 #include "sched.h"
 #include "stdint.h"
 #include "timer.h"
@@ -66,7 +69,7 @@ extern char _frame_table_start[];
 extern "C" void kernel_main() {
     heapTests();
     event_loop_tests();
-    queue_test();
+    // queue_test();
     frame_alloc_tests();
     user_paging_tests();
 }
@@ -77,6 +80,8 @@ extern char __heap_end[];
 #define HEAP_START ((uintptr_t)__heap_start)
 #define HEAP_END ((uintptr_t)__heap_end)
 #define HEAP_SIZE (HEAP_END - HEAP_START)
+
+static Atomic<int> coresAwake(0);
 
 extern "C" void kernel_init() {
     if (getCoreID() == 0) {
@@ -104,17 +109,50 @@ extern "C" void kernel_init() {
         }
 
         smpInitDone = true;
+        threadsInit();
         wake_up_cores();
-        kernel_main();
+        // kernel_main();
     } else {
         init_mmu();
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
+    auto number_awake = coresAwake.add_fetch(1);
+    printf("There are %d cores awake\n", number_awake);
 
-    if (getCoreID() == 0) {
-        while (1) {
-            loop();
+    if (number_awake == CORE_COUNT)
+    {
+        event_loop_tests();
+        create_kernel_event([]
+                            { event_loop_tests(); });
+        printf("creating kernel thread\n", number_awake);
+        user_thread([]
+                    { kernel_main(); });
+        create_kernel_event([]
+                            { heapTests();
+                                int y = 1;
+                        user_thread([y]
+                            {
+                                int p = y;
+                                printf("y = %d\n", p);
+                                printf("i do nothing\n");
+                                yield();
+                                p++;
+                                printf("y++ = %d\n", p);
+                     }); });
+
+        user_thread([]
+                    { printf("i do nothing2\n"); });
+        user_thread([]
+                    { kernel_main(); });
+    }
+    stop();
+
+    if (getCoreID() == 0)
+    {
+        while (1)
+        {
+            stop();
         }
     }
 }

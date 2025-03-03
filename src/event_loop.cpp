@@ -6,6 +6,7 @@
 
 PerCPU<percpu_queue> cpu_queues;
 
+
 event* pop(int cpu) {
     auto& q = cpu_queues.forCPU(cpu);
     LockGuard<SpinLock> guard(q.lock);
@@ -19,15 +20,18 @@ event* pop(int cpu) {
     return nullptr;
 }
 
+
 void loop() {
     event* curr = pop(getCoreID());
     if (curr) {
         curr->run();
         return;
     }
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++)
+    {
         curr = nullptr;
-        if (curr = pop(i)) {
+        if (curr = pop(i))
+        {
             curr->run();
         }
     }
