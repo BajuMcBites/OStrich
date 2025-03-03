@@ -40,10 +40,8 @@ namespace alogx
 
     struct TCB
     {
-        // cpu_context context;
         TCB *next;
         bool wasDisabled = false; // previous interrupt state
-        Atomic<int> done{false};  // is tihs work complete
         bool kernel_event = true;
         virtual void run() = 0; // Abstract/virtual function that must be overridden
         virtual ~TCB() {};      // Allows child classes to be deleted
@@ -66,14 +64,10 @@ namespace alogx
     {
         cpu_context context;
         Function<void()> w;
-        // Work work;
         alignas(16) uint64_t stack[2048]; // Ensure proper 16-byte alignment
-        // uint64_t stack[2048];
         template <typename lambda>
         UserTCB(lambda w) : w(w)
         {
-            // this->work = Function<void()>(work); // Store the work as a Function
-            //  printf("stack addr: %x\n", (uint64_t)&stack[2048]);
             context.x19 = 0;
             context.x20 = 0;
             context.x21 = 0;
@@ -86,27 +80,21 @@ namespace alogx
             context.x28 = 0;
             context.sp = (uint64_t)&stack[2048]; // Stack grows downward
             context.pc = (uint64_t)&entry;       // Function to execute when the thread starts
-            done.set(false);
             kernel_event = false;
         }
 
         void run() override
         {
-
             w();
         }
     };
 
-    // template <typename Work>
     struct Event : public TCB
     {
         Function<void()> w;
-        // Work work;
         template <typename lambda>
         Event(lambda w) : w(w)
         {
-            // this->work = Function<void()>(work); // Store the work as a Function
-            done.set(false);
             kernel_event = true;
         }
 
@@ -121,7 +109,6 @@ namespace alogx
     {
         Function<void(T)> w;
         T value;
-        //  Work work;
         template <typename lambda>
         EventValue(lambda w, T value) : w(w), value(value)
         {
@@ -153,6 +140,15 @@ inline void user_thread(lambda work)
     // alogx::clearZombies();
     auto tcb = new UserTCB(work);
     readyQueue.mine().queues[1].add(tcb);
+}
+
+template <typename lambda>
+inline void user_thread(lambda work, int priority)
+{
+    using namespace alogx;
+    // alogx::clearZombies();
+    auto tcb = new UserTCB(work);
+    readyQueue.mine().queues[priority].add(tcb);
 }
 
 template <typename lambda>

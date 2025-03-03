@@ -49,7 +49,6 @@ namespace alogx
     {
         DummyThread()
         {
-            done.set(true);
             kernel_event = true;
         }
         void run() override
@@ -64,7 +63,6 @@ namespace alogx
         auto me = getCoreID();
         K::assert(runningThreads[me] != nullptr, "null pointer in entry");
         auto thread = runningThreads[me];
-        thread->done.set(false);
         thread->wasDisabled = false;
         restoreState();
         thread->run();
@@ -78,7 +76,6 @@ void threadsInit() // place to put any intialization logic
     for (int i = 0; i < CORE_COUNT; i++)
     {
         runningThreads[i] = new DummyThread();
-        runningThreads[i]->done.set(true);
         coreContext[i] = new cpu_context();
         // set sp or do I not need to. for the initial dummies
         // coreContext[i]->??;
@@ -202,7 +199,7 @@ namespace alogx
         // }
     }
 
-    void clearZombies()
+    void clearZombies() // function to delete completed events
     {
         auto killMe = zombieQ.remove();
         while (killMe)
