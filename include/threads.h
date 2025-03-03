@@ -152,9 +152,21 @@ inline void user_thread(lambda work)
     using namespace alogx;
     // alogx::clearZombies();
     auto tcb = new UserTCB(work);
-    // auto tcb = new alogx::UserTCB<T>(work);
     readyQueue.mine().queues[1].add(tcb);
-    // alogx::readyQ.add(tcb);
+}
+
+template <typename lambda>
+inline void create_kernel_event(lambda work, int priority)
+{
+    auto tcb = new alogx::Event(work);
+    alogx::readyQueue.mine().queues[priority].add(tcb);
+}
+
+template <typename T>
+inline void create_kernel_event(Function<void(T)> work, T value, int priority) // lambda that captures values
+{
+    auto tcb = new alogx::EventValue<T>(work, value);
+    alogx::readyQueue.mine().queues[priority].add(tcb);
 }
 
 template <typename lambda>
@@ -162,7 +174,6 @@ inline void create_kernel_event(lambda work)
 {
     auto tcb = new alogx::Event(work);
     alogx::readyQueue.mine().queues[1].add(tcb);
-    // alogx::readyQ.add(tcb);
 }
 
 template <typename T>
@@ -170,7 +181,5 @@ inline void create_kernel_event(Function<void(T)> work, T value) // lambda that 
 {
     auto tcb = new alogx::EventValue<T>(work, value);
     alogx::readyQueue.mine().queues[1].add(tcb);
-    // alogx::readyQ.add(tcb);
 }
-
 #endif

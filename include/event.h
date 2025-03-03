@@ -5,7 +5,6 @@
 #include "heap.h"
 #include "queue.h"
 #include "function.h"
-#include "threads.h"
 
 struct event
 {

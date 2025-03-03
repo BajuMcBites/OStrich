@@ -21,20 +21,6 @@ event *pop(int cpu)
     return nullptr;
 }
 
-// alogx::TCB *popTCB(int cpu)
-// {
-//     percpu_queue &q = cpu_queues.forCPU(cpu);
-//     for (int i = 0; i < MAX_PRIORITY; i++)
-//     {
-//         alogx::TCB **tcb = q.queues[i]->remove();
-//         if (tcb)
-//         {
-//             return *tcb;
-//         }
-//     }
-//     return nullptr;
-// }
-
 void loop()
 {
 

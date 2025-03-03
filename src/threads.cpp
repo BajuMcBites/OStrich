@@ -39,7 +39,6 @@ namespace alogx
             auto next = ready.queues[i].remove();
             if (next)
             {
-                // printf("found work!\n");
                 return next;
             }
         }
@@ -62,7 +61,6 @@ namespace alogx
     void entry()
     {
         // ASSERT(Interrupts::isDisabled());
-        // printf("Thread %p is starting (SP: %p)\n", getCoreID(), alogx::runningThreads[getCoreID()]->saved_SP);
         auto me = getCoreID();
         K::assert(runningThreads[me] != nullptr, "null pointer in entry");
         auto thread = runningThreads[me];
@@ -102,30 +100,23 @@ void stop()
 {
     using namespace alogx;
     clearZombies();
-    // printf("cleared zombies\n");
     while (true)
     {
         event_loop(&zombieQ, nullptr);
     }
-    // PANIC("Stop returning OH NO \n");
+    // PANIC("Should not go here. We should be in Event Loop\n");
 }
 
 namespace alogx
 {
     void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl)
     {
-        // printf("attempting to block\n");
         using namespace alogx;
         int me = getCoreID();
         // bool was = Interrupts::disable();
         auto nextThread = getNextEvent(me);
-        if (nextThread)
-        {
-            printf("foind work\n");
-        }
         if (nextThread == nullptr) // try to steal work
         {
-            // printf("stealing work\n");
             int nextCore = (me + 1) % CORE_COUNT;
             while (nextCore != me && nextThread == nullptr)
             {
@@ -142,11 +133,7 @@ namespace alogx
                 return;
             }
         }
-
-        // auto nextThread = alogx::readyQ.remove();
-        printf("got a thread\n");
-
-        K::assert(alogx::runningThreads[me] != nullptr, "null pointer in block");
+        K::assert(alogx::runningThreads[me] != nullptr, "null pointer trying to run as event");
 
         oldThreads[me] = runningThreads[me]; // save the old thread
         // oldThreads[me]->wasDisabled = was;   // save the interrupt state prior to block
@@ -155,38 +142,30 @@ namespace alogx
         myLock[me] = isl;  // save my lock
 
         alogx::runningThreads[me] = nextThread; // This is a lie, only observable by the core. its ok ?
+
         // cases: kernel to user, user to kernel, kernel to kernel. user to user
         if (oldThreads[me]->kernel_event && nextThread->kernel_event) // kernel to kernel
         {
             coreContext[me]->pc = (uint64_t)&entry; // Function to execute when the thread starts
-            printf("kernel to kernel\n");
             entry();
         }
         else if (!oldThreads[me]->kernel_event && !nextThread->kernel_event) // user to user
         {
-            printf("user to user\n");
             cpu_switch_to(&((UserTCB *)oldThreads[me])->context,
                           &((UserTCB *)nextThread)->context);
-            // cpu_switch_to(&((UserTCB<decltype(nextThread)> *)oldThreads[me])->context,
-            //               &((UserTCB<decltype(nextThread)> *)nextThread)->context);
         }
         else if (!oldThreads[me]->kernel_event && nextThread->kernel_event) // user to kernel
         {
             coreContext[me]->pc = (uint64_t)&entry; // Function to
-            printf("user to kernel\n");
             cpu_switch_to(&((UserTCB *)oldThreads[me])->context,
                           coreContext[me]);
             entry();
         }
         else // kernel to user
         {
-            printf("kernel to user\n");
             cpu_switch_to(coreContext[me],
                           &((UserTCB *)nextThread)->context);
         }
-
-        // context_switch(&oldThreads[me]->saved_SP, nextThread->saved_SP);
-        // printf("did I make it?\n");
         // ASSERT(Interrupts::isDisabled());
         restoreState();
     }

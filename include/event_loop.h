@@ -13,7 +13,6 @@ struct percpu_queue
 {
     SpinLock lock;
     queue<event *> *queue_list[MAX_PRIORITY];
-    LockedQueue<alogx::TCB *, SpinLock> *queues[MAX_PRIORITY];
 };
 
 extern PerCPU<percpu_queue> cpu_queues;
@@ -31,8 +30,6 @@ inline void create_event_value(Function<void(int)> w, T value, int priority)
     cpu_queues.mine().queue_list[priority]->push(e);
 }
 extern event *pop(int cpu);
-
-extern alogx::TCB *popTCB(int cpu);
 void loop();
 
 #endif
