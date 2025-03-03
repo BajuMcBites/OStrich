@@ -5,8 +5,10 @@
 #include "heap.h"
 #include "printf.h"
 #include "function.h"
+#include "percpu.h"
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
+#define PRIORITY_LEVELS 5
 
 //-------------
 //--threads.h--
@@ -47,10 +49,17 @@ namespace alogx
         virtual ~TCB() {};      // Allows child classes to be deleted
     };
 
-    extern void block(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl); // generalized yield
-    extern void entry();                                                     // have a thread start work
-    extern void restoreState();                                              // restore state post context switch
-    extern void clearZombies();                                              // delete threads that have called stop.
+    struct CPU_Queues
+    {
+        LockedQueue<alogx::TCB, SpinLock> *queues[PRIORITY_LEVELS];
+    };
+
+    extern PerCPU<CPU_Queues> readyQueue;
+
+    extern void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl); // generalized yield
+    extern void entry();                                                          // have a thread start work
+    extern void restoreState();                                                   // restore state post context switch
+    extern void clearZombies();                                                   // delete threads that have called stop.
 
     // template <typename Work>
     struct UserTCB : public TCB
@@ -138,24 +147,24 @@ namespace alogx
 };
 
 template <typename lambda>
-void user_thread(lambda work)
+inline void user_thread(lambda work)
 {
     using namespace alogx;
-    alogx::clearZombies();
+    // alogx::clearZombies();
     auto tcb = new UserTCB(work);
     // auto tcb = new alogx::UserTCB<T>(work);
     alogx::readyQ.add(tcb);
 }
 
 template <typename lambda>
-void create_kernel_event(lambda work)
+inline void create_kernel_event(lambda work)
 {
     auto tcb = new alogx::Event(work);
     alogx::readyQ.add(tcb);
 }
 
 template <typename T>
-void create_kernel_event_value(Function<void(T)> work, T value) // lambda that captures values
+inline void create_kernel_event(Function<void(T)> work, T value) // lambda that captures values
 {
     auto tcb = new alogx::EventValue<T>(work, value);
     alogx::readyQ.add(tcb);

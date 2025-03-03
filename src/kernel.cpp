@@ -129,20 +129,24 @@ extern "C" void kernel_init()
 
     if (number_awake == CORE_COUNT)
     {
+        event_loop_tests();
+        create_kernel_event([]
+                            { event_loop_tests(); });
         printf("creating kernel thread\n", number_awake);
         user_thread([]
                     { kernel_main(); });
-        user_thread([]
-                    { heapTests();
-                        int x = 1;
-                user_thread([&x]
-                    { 
-                        printf("x = %d\n", x);
-                        printf("i do nothing\n");
-                    yield();
-                    x++;
-                    printf("x = %d\n", x);
-             }); });
+        create_kernel_event([]
+                            { heapTests();
+                            int y = 1;
+                    user_thread([y]
+                        {
+                            int p = y;
+                            printf("y = %d\n", p);
+                            printf("i do nothing\n");
+                            yield();
+                            p++;
+                            printf("y++ = %d\n", p);
+                 }); });
 
         user_thread([]
                     { printf("i do nothing2\n"); });
@@ -155,7 +159,7 @@ extern "C" void kernel_init()
     {
         while (1)
         {
-            loop();
+            stop();
         }
     }
 }

@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "libk.h"
 #include "event.h"
+#include "percpu.h"
 // ------------
 // threads.cc -
 // ------------
@@ -14,6 +15,9 @@
 extern "C" void context_switch(uint64_t **saveOldSpHere, uint64_t *newSP);
 extern "C" void cpu_switch_to(alogx::cpu_context *prevTCB, alogx::cpu_context *nextTCB);
 // global ready queue
+
+PerCPU<alogx::CPU_Queues> readyQueue;
+
 namespace alogx
 {
     LockedQueue<TCB, SpinLock> readyQ{};         // Queue of threads ready to run
@@ -24,6 +28,20 @@ namespace alogx
     LockedQueue<TCB, SpinLock> *addMeHere[CORE_COUNT]; // save the queue I want to be added to before context switching
     /*ISL*/ SpinLock *myLock[CORE_COUNT];              // save the isl of the thread
     bool oldState[CORE_COUNT];                         // save interrupt state
+
+    TCB *getNextEvent()
+    {
+        auto ready = readyQueue.forCPU(getCoreID());
+        for (int i = 0; i < PRIORITY_LEVELS; i++)
+        {
+            auto next = ready.queues[i]->remove();
+            if (next)
+            {
+                return next;
+            }
+        }
+        return nullptr;
+    }
 
     struct DummyThread : public TCB
     {
@@ -68,7 +86,7 @@ void threadsInit() // place to put any intialization logic
 
 void yield()
 {
-    alogx::block(&alogx::readyQ, nullptr);
+    alogx::event_loop(&alogx::readyQ, nullptr);
 }
 
 void stop()
@@ -78,14 +96,14 @@ void stop()
     // printf("cleared zombies\n");
     while (true)
     {
-        block(&zombieQ, nullptr);
+        event_loop(&zombieQ, nullptr);
     }
     // PANIC("Stop returning OH NO \n");
 }
 
 namespace alogx
 {
-    void block(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl)
+    void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl)
     {
         // printf("attempting to block\n");
         using namespace alogx;
@@ -100,6 +118,7 @@ namespace alogx
             // Interrupts::restore(was);
             return;
         }
+        printf("got a thread\n");
         int me = getCoreID();
         K::assert(alogx::runningThreads[me] != nullptr, "null pointer in block");
 
@@ -113,7 +132,9 @@ namespace alogx
         // cases: kernel to user, user to kernel, kernel to kernel. user to user
         if (oldThreads[me]->kernel_event && nextThread->kernel_event) // kernel to kernel
         {
-            cpu_switch_to(coreContext[me], coreContext[me]);
+            coreContext[me]->pc = (uint64_t)&entry; // Function to execute when the thread starts
+            printf("kernel to kernel\n");
+            entry();
         }
         else if (!oldThreads[me]->kernel_event && !nextThread->kernel_event) // user to user
         {
@@ -125,9 +146,11 @@ namespace alogx
         }
         else if (!oldThreads[me]->kernel_event && nextThread->kernel_event) // user to kernel
         {
+            coreContext[me]->pc = (uint64_t)&entry; // Function to
             printf("user to kernel\n");
             cpu_switch_to(&((UserTCB *)oldThreads[me])->context,
                           coreContext[me]);
+            entry();
         }
         else // kernel to user
         {

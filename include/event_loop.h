@@ -5,28 +5,34 @@
 #include "percpu.h"
 #include "queue.h"
 #include "atomic.h"
+#include "threads.h"
 
-#define MAX_PRIORITY            5
+#define MAX_PRIORITY 5
 
-struct percpu_queue {
-	SpinLock lock;
-	queue<event*>* queue_list[MAX_PRIORITY];
+struct percpu_queue
+{
+    SpinLock lock;
+    queue<event *> *queue_list[MAX_PRIORITY];
+    LockedQueue<alogx::TCB *, SpinLock> *queues[MAX_PRIORITY];
 };
 
 extern PerCPU<percpu_queue> cpu_queues;
 
-inline void create_event(Function<void()> w, int priority) {
-    event* e = new event_work(w);
+inline void create_event(Function<void()> w, int priority)
+{
+    event *e = new event_work(w);
     cpu_queues.mine().queue_list[priority]->push(e);
 }
 
 template <typename T>
-inline void create_event_value(Function<void(int)> w, T value, int priority) {
-    event* e = new event_work_value<T>(w, value);
+inline void create_event_value(Function<void(int)> w, T value, int priority)
+{
+    event *e = new event_work_value<T>(w, value);
     cpu_queues.mine().queue_list[priority]->push(e);
 }
-extern event* pop(int cpu);
+extern event *pop(int cpu);
+
+extern alogx::TCB *popTCB(int cpu);
 void loop();
 
-
-#endif 
+#endif

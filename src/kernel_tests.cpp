@@ -117,31 +117,35 @@ void heapTests()
     foo();
 }
 
-// void test_ref_lambda()
-// {
-//     static int a = 0;
-//     Function<void()> lambda = [&]()
-//     { a++; printf("%d current a\n", a); };
-//     for (int i = 0; i < 10; i++)
-//     {
-//         create_event(lambda, 1);
-//     }
-// }
-// void test_val_lambda()
-// {
-//     int a = 2;
-//     Function<void()> lambda = [=]()
-//     { printf("%d should print 2\n", a); };
-//     create_event(lambda, 1);
-// }
+void test_ref_lambda()
+{
+    static int a = 0;
+    Function<void()> lambda = [&]()
+    { a++; printf("%d current a\n", a); };
+    for (int i = 0; i < 10; i++)
+    {
+        // create_event(lambda, 1);
+        // user_thread(lambda);
+        create_kernel_event(lambda);
+    }
+}
+void test_val_lambda()
+{
+    int a = 2;
+    Function<void()> lambda = [=]()
+    { printf("%d should print 2\n", a); };
+    // create_event(lambda, 1);
+    // user_thread(lambda);
+    create_kernel_event(lambda);
+}
 
-// void event_loop_tests()
-// {
-//     printf("Testing the event_loop..\n");
-//     test_ref_lambda();
-//     test_val_lambda();
-//     printf("All tests completed.\n");
-// }
+void event_loop_tests()
+{
+    printf("Testing the event_loop..\n");
+    test_ref_lambda();
+    test_val_lambda();
+    printf("event_loop tests completed.\n");
+}
 
 // void queue1()
 // {

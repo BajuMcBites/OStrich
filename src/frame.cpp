@@ -58,7 +58,7 @@ void alloc_frame2(int flags, Function<void(int)> w)
         {
             frame_table[index].flags = flags;
             frame_table[index].flags |= USED_PAGE_FLAG;
-            create_kernel_event_value<int>(w, index * PAGE_SIZE);
+            create_kernel_event<int>(w, index * PAGE_SIZE);
             index += 1;
             return;
         }
