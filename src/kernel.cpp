@@ -71,7 +71,7 @@ extern char _frame_table_start[];
 extern "C" void kernel_main()
 {
     heapTests();
-    // event_loop_tests();
+    event_loop_tests();
     // queue_test();
     frame_alloc_tests();
 }
@@ -137,16 +137,16 @@ extern "C" void kernel_init()
                     { kernel_main(); });
         create_kernel_event([]
                             { heapTests();
-                            int y = 1;
-                    user_thread([y]
-                        {
-                            int p = y;
-                            printf("y = %d\n", p);
-                            printf("i do nothing\n");
-                            yield();
-                            p++;
-                            printf("y++ = %d\n", p);
-                 }); });
+                                int y = 1;
+                        user_thread([y]
+                            {
+                                int p = y;
+                                printf("y = %d\n", p);
+                                printf("i do nothing\n");
+                                yield();
+                                p++;
+                                printf("y++ = %d\n", p);
+                     }); });
 
         user_thread([]
                     { printf("i do nothing2\n"); });

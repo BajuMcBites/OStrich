@@ -16,10 +16,11 @@ extern "C" void context_switch(uint64_t **saveOldSpHere, uint64_t *newSP);
 extern "C" void cpu_switch_to(alogx::cpu_context *prevTCB, alogx::cpu_context *nextTCB);
 // global ready queue
 
-PerCPU<alogx::CPU_Queues> readyQueue;
+// PerCPU<alogx::CPU_Queues> readyQueue;
 
 namespace alogx
 {
+    PerCPU<alogx::CPU_Queues> readyQueue;
     LockedQueue<TCB, SpinLock> readyQ{};         // Queue of threads ready to run
     LockedQueue<TCB, SpinLock> zombieQ{};        // Queue of threads ready to be deleted
     TCB *runningThreads[CORE_COUNT] = {nullptr}; // use an array for multiple cores, index with SMP::me()
@@ -29,14 +30,16 @@ namespace alogx
     /*ISL*/ SpinLock *myLock[CORE_COUNT];              // save the isl of the thread
     bool oldState[CORE_COUNT];                         // save interrupt state
 
-    TCB *getNextEvent()
+    TCB *getNextEvent(int core)
     {
-        auto ready = readyQueue.forCPU(getCoreID());
+        auto &ready = readyQueue.forCPU(core);
+
         for (int i = 0; i < PRIORITY_LEVELS; i++)
         {
-            auto next = ready.queues[i]->remove();
+            auto next = ready.queues[i].remove();
             if (next)
             {
+                // printf("found work!\n");
                 return next;
             }
         }
@@ -86,7 +89,13 @@ void threadsInit() // place to put any intialization logic
 
 void yield()
 {
-    alogx::event_loop(&alogx::readyQ, nullptr);
+    // Get the current core's ready queue
+    auto &ready = alogx::readyQueue.forCPU(getCoreID()); // Use getCoreID() for per-core access
+
+    // Retrieve the queue with a specific priority (1 in this case)
+    auto theQueue = &ready.queues[1]; // Use address of the queue
+
+    alogx::event_loop(theQueue, nullptr);
 }
 
 void stop()
@@ -107,19 +116,36 @@ namespace alogx
     {
         // printf("attempting to block\n");
         using namespace alogx;
-        // bool was = Interrupts::disable();
-        auto nextThread = alogx::readyQ.remove();
-        if (nextThread == nullptr) // no other threads. I can keep working/spinning
-        {
-            if (isl)
-            {
-                isl->unlock();
-            }
-            // Interrupts::restore(was);
-            return;
-        }
-        printf("got a thread\n");
         int me = getCoreID();
+        // bool was = Interrupts::disable();
+        auto nextThread = getNextEvent(me);
+        if (nextThread)
+        {
+            printf("foind work\n");
+        }
+        if (nextThread == nullptr) // try to steal work
+        {
+            // printf("stealing work\n");
+            int nextCore = (me + 1) % CORE_COUNT;
+            while (nextCore != me && nextThread == nullptr)
+            {
+                nextThread = getNextEvent(nextCore);
+                nextCore = (nextCore + 1) % CORE_COUNT; // Move to the next core
+            }
+            if (nextThread == nullptr) // no other threads. I can keep working/spinning
+            {
+                if (isl)
+                {
+                    isl->unlock();
+                }
+                // Interrupts::restore(was);
+                return;
+            }
+        }
+
+        // auto nextThread = alogx::readyQ.remove();
+        printf("got a thread\n");
+
         K::assert(alogx::runningThreads[me] != nullptr, "null pointer in block");
 
         oldThreads[me] = runningThreads[me]; // save the old thread

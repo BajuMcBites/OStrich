@@ -51,7 +51,7 @@ namespace alogx
 
     struct CPU_Queues
     {
-        LockedQueue<alogx::TCB, SpinLock> *queues[PRIORITY_LEVELS];
+        LockedQueue<alogx::TCB, SpinLock> queues[PRIORITY_LEVELS];
     };
 
     extern PerCPU<CPU_Queues> readyQueue;
@@ -153,21 +153,24 @@ inline void user_thread(lambda work)
     // alogx::clearZombies();
     auto tcb = new UserTCB(work);
     // auto tcb = new alogx::UserTCB<T>(work);
-    alogx::readyQ.add(tcb);
+    readyQueue.mine().queues[1].add(tcb);
+    // alogx::readyQ.add(tcb);
 }
 
 template <typename lambda>
 inline void create_kernel_event(lambda work)
 {
     auto tcb = new alogx::Event(work);
-    alogx::readyQ.add(tcb);
+    alogx::readyQueue.mine().queues[1].add(tcb);
+    // alogx::readyQ.add(tcb);
 }
 
 template <typename T>
 inline void create_kernel_event(Function<void(T)> work, T value) // lambda that captures values
 {
     auto tcb = new alogx::EventValue<T>(work, value);
-    alogx::readyQ.add(tcb);
+    alogx::readyQueue.mine().queues[1].add(tcb);
+    // alogx::readyQ.add(tcb);
 }
 
 #endif
