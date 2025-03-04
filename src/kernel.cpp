@@ -98,16 +98,6 @@ extern "C" void kernel_init() {
         breakpoint();
         print_ascii_art();
         uinit((void *)HEAP_START, HEAP_SIZE);
-
-        // event queues setup
-        // for (int i = 0; i < 4; i++)
-        // {
-        //     for (int j = 0; j < MAX_PRIORITY; j++)
-        //     {
-        //         cpu_queues.forCPU(i).queue_list[j] = new queue<event *>();
-        //     }
-        // }
-
         smpInitDone = true;
         threadsInit();
         wake_up_cores();
@@ -121,13 +111,11 @@ extern "C" void kernel_init() {
     printf("There are %d cores awake\n", number_awake);
 
     if (number_awake == CORE_COUNT) {
-        printf("core %d is the one running\n", getCoreID());
         create_event([] { kernel_main(); });
 
         // user_thread([]
         //             { printf("i do nothing2\n"); });
     }
-    // printf("onle one core should go here: core %d\n", getCoreID());
     stop();
     printf("PANIC I should not go here\n");
 }

@@ -34,7 +34,7 @@ void alloc_frame(int flags, Function<void(uint64_t)> w) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)) {
             frame_table[index].flags = flags;
             frame_table[index].flags |= USED_PAGE_FLAG;
-            create_event<uint64_t>(w, index * PAGE_SIZE);
+            create_event<uint64_t>(w, index * PAGE_SIZE, 1);
             index += 1;
             return;
         }
