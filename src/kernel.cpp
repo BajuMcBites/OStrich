@@ -1,5 +1,5 @@
 #include "core.h"
-#include "event_loop.h"
+#include "event.h"
 #include "fork.h"
 #include "frame.h"
 #include "heap.h"
@@ -12,7 +12,6 @@
 #include "queue.h"
 #include "sched.h"
 #include "stdint.h"
-#include "threads.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
@@ -123,7 +122,7 @@ extern "C" void kernel_init() {
 
     if (number_awake == CORE_COUNT) {
         printf("core %d is the one running\n", getCoreID());
-        create_kernel_event([] { kernel_main(); });
+        create_event([] { kernel_main(); });
 
         // user_thread([]
         //             { printf("i do nothing2\n"); });

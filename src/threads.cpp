@@ -1,6 +1,4 @@
 
-#include "threads.h"
-
 #include "atomic.h"
 #include "event.h"
 #include "libk.h"
@@ -10,7 +8,7 @@
 #include "stdint.h"
 #include "utils.h"
 // ------------
-// threads.cc -
+// event.cpp --
 // ------------
 
 extern "C" void cpu_switch_to(cpu_context *prevTCB, cpu_context *nextTCB);

@@ -4,7 +4,6 @@
 #include "event.h"
 #include "function.h"
 #include "stdint.h"
-#include "threads.h"
 #include "vm.h"
 
 #define USED_PAGE_FLAG 0x1

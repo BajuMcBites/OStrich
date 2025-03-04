@@ -1,6 +1,6 @@
 #include "kernel_tests.h"
 
-#include "event_loop.h"
+#include "event.h"
 #include "frame.h"
 #include "heap.h"
 #include "libk.h"
@@ -8,7 +8,6 @@
 #include "queue.h"
 #include "sched.h"
 #include "stdint.h"
-#include "threads.h"
 #include "vm.h"
 
 PageTable* page_table;
@@ -116,7 +115,7 @@ void test_ref_lambda() {
     for (int i = 0; i < 10; i++) {
         // create_event(lambda, 1);
         // user_thread(lambda);
-        create_kernel_event(lambda);
+        create_event(lambda);
     }
 }
 void test_val_lambda() {
@@ -124,7 +123,7 @@ void test_val_lambda() {
     Function<void()> lambda = [=]() { printf("%d should print 2\n", a); };
     // create_event(lambda, 1);
     // user_thread(lambda);
-    create_kernel_event(lambda);
+    create_event(lambda);
 }
 
 void event_loop_tests() {

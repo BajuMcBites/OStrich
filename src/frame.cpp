@@ -1,9 +1,8 @@
 #include "frame.h"
 
-#include "event_loop.h"
+#include "event.h"
 #include "printf.h"
 #include "stdint.h"
-#include "threads.h"
 #include "vm.h"
 
 int index = 0;
@@ -35,7 +34,7 @@ void alloc_frame(int flags, Function<void(uint64_t)> w) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)) {
             frame_table[index].flags = flags;
             frame_table[index].flags |= USED_PAGE_FLAG;
-            create_kernel_event<uint64_t>(w, index * PAGE_SIZE);
+            create_event<uint64_t>(w, index * PAGE_SIZE);
             index += 1;
             return;
         }
