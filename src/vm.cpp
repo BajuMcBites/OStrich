@@ -24,7 +24,7 @@ PageTable::PageTable(Function<void()> w) {
     alloc_frame(PINNED_PAGE_FLAG, [this, w](uint64_t paddr) {
         this->pgd = (pgd_t*)paddr_to_vaddr(paddr);
         K::assert(this->pgd != nullptr, "palloc failed");
-        create_event(w, 1);
+        create_kernel_event(w, 1);
     });
 }
 
@@ -89,11 +89,11 @@ void PageTable::map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint16
             pmd->descriptors[pmd_index] = paddr_to_table_descriptor(pte_paddr);
             pte_t* pte = (pte_t*)paddr_to_vaddr(pte_paddr);
             map_vaddr_pte(pte, vaddr, paddr, lower_attributes);
-            create_event(w, 1);
+            create_kernel_event(w, 1);
         });
     } else {
         map_vaddr_pte(pte, vaddr, paddr, lower_attributes);
-        create_event(w, 1);
+        create_kernel_event(w, 1);
     }
 }
 

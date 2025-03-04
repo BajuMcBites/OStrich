@@ -7,13 +7,12 @@
 #include "kernel_tests.h"
 #include "libk.h"
 #include "mm.h"
+#include "percpu.h"
 #include "printf.h"
 #include "queue.h"
-#include "percpu.h"
-#include "entry.h"
-#include "threads.h"
 #include "sched.h"
 #include "stdint.h"
+#include "threads.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
@@ -102,16 +101,18 @@ extern "C" void kernel_init() {
         uinit((void *)HEAP_START, HEAP_SIZE);
 
         // event queues setup
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < MAX_PRIORITY; j++) {
-                cpu_queues.forCPU(i).queue_list[j] = new queue<event *>();
-            }
-        }
+        // for (int i = 0; i < 4; i++)
+        // {
+        //     for (int j = 0; j < MAX_PRIORITY; j++)
+        //     {
+        //         cpu_queues.forCPU(i).queue_list[j] = new queue<event *>();
+        //     }
+        // }
 
         smpInitDone = true;
         threadsInit();
         wake_up_cores();
-        // kernel_main();
+        //  kernel_main();
     } else {
         init_mmu();
     }
@@ -120,39 +121,14 @@ extern "C" void kernel_init() {
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
 
-    if (number_awake == CORE_COUNT)
-    {
-        event_loop_tests();
-        create_kernel_event([]
-                            { event_loop_tests(); });
-        printf("creating kernel thread\n", number_awake);
-        user_thread([]
-                    { kernel_main(); });
-        create_kernel_event([]
-                            { heapTests();
-                                int y = 1;
-                        user_thread([y]
-                            {
-                                int p = y;
-                                printf("y = %d\n", p);
-                                printf("i do nothing\n");
-                                yield();
-                                p++;
-                                printf("y++ = %d\n", p);
-                     }); });
+    if (number_awake == CORE_COUNT) {
+        printf("core %d is the one running\n", getCoreID());
+        create_kernel_event([] { kernel_main(); });
 
-        user_thread([]
-                    { printf("i do nothing2\n"); });
-        user_thread([]
-                    { kernel_main(); });
+        // user_thread([]
+        //             { printf("i do nothing2\n"); });
     }
+    // printf("onle one core should go here: core %d\n", getCoreID());
     stop();
-
-    if (getCoreID() == 0)
-    {
-        while (1)
-        {
-            stop();
-        }
-    }
+    printf("PANIC I should not go here\n");
 }

@@ -11,7 +11,7 @@ static SpinLock* theLock = nullptr;
 // A sample pointer to the start of the free list.
 memory_block_t* free_head;
 
-namespace alogx2 {
+namespace heapHelpers {
 /*
  * is_allocated - returns true if a block is marked as allocated.
  */
@@ -178,34 +178,32 @@ memory_block_t* coalesce(memory_block_t* block) {
     }
     return block;
 }
-};  // namespace alogx2
+};  // namespace heapHelpers
 
 /*
  * uinit - Used initialize metadata required to manage the heap
  * along with allocating initial memory.
  */
 void uinit(void* base, size_t bytes) {
-    using namespace alogx2;
+    using namespace heapHelpers;
     free_head = (memory_block_t*)base;
     printf("| heap range 0x%x 0x%x\n", (uint64_t)free_head, (uint64_t)free_head + bytes);
-    printf("| heap range 0x%x 0x%x\n", (uint64_t)base, (uint64_t)base + bytes);
     // free_head = (memory_block_t *)csbrk(PAGESIZE * 4);
     if (free_head == nullptr) {
         // return -1;
     }
     put_block(free_head, bytes, false);
     free_head->next = nullptr;
-    printf("| heap range 0x%x 0x%x\n", (uint64_t)base, (uint64_t)base + get_block_size(free_head));
     // initialize lock
     theLock = new SpinLock();
 }
 
 /*
- * umalloc -  allocates size bytes and returns a pointer to the allocated
+ * kmalloc -  allocates size bytes and returns a pointer to the allocated
  * memory.
  */
-void* malloc(size_t size) {
-    using namespace alogx2;
+void* kmalloc(size_t size) {
+    using namespace heapHelpers;
     // lock
     LockGuardP g{theLock};
     size = ALIGN(size + sizeof(memory_block_t));
@@ -247,11 +245,11 @@ void* malloc(size_t size) {
 }
 
 /*
- * ufree -  frees the memory space pointed to by ptr, which must have been
+ * kfree -  frees the memory space pointed to by ptr, which must have been
  * called by a previous call to malloc.
  */
-void free(void* ptr) {
-    using namespace alogx2;
+void kfree(void* ptr) {
+    using namespace heapHelpers;
     LockGuardP g{theLock};
     // assert(ptr != nullptr);                        // check for null pointer
     memory_block_t* freeBlock = get_block(ptr);  // block we want to add back to free list
@@ -276,4 +274,37 @@ void free(void* ptr) {
         cur->next = freeBlock;
     }
     return;
+}
+
+/*****************/
+/* C++ operators */
+/*****************/
+// typedef long unsigned int size_t;
+
+void* operator new(size_t size) {
+    void* p = kmalloc(size);
+    // if (p == 0) Debug::panic("out of memory");
+    return p;
+}
+
+void operator delete(void* p) noexcept {
+    return kfree(p);
+}
+
+void operator delete(void* p, size_t sz) {
+    return kfree(p);
+}
+
+void* operator new[](size_t size) {
+    void* p = kmalloc(size);
+    // if (p == 0) Debug::panic("out of memory");
+    return p;
+}
+
+void operator delete[](void* p) noexcept {
+    return kfree(p);
+}
+
+void operator delete[](void* p, size_t sz) {
+    return kfree(p);
 }

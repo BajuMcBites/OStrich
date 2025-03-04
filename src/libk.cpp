@@ -36,36 +36,3 @@ void K::assert(bool condition, const char* msg) {
         }  // Halt on failure
     }
 }
-
-/*****************/
-/* C++ operators */
-/*****************/
-// typedef long unsigned int size_t;
-
-void* operator new(size_t size) {
-    void* p = malloc(size);
-    // if (p == 0) Debug::panic("out of memory");
-    return p;
-}
-
-void operator delete(void* p) noexcept {
-    return free(p);
-}
-
-void operator delete(void* p, size_t sz) {
-    return free(p);
-}
-
-void* operator new[](size_t size) {
-    void* p = malloc(size);
-    // if (p == 0) Debug::panic("out of memory");
-    return p;
-}
-
-void operator delete[](void* p) noexcept {
-    return free(p);
-}
-
-void operator delete[](void* p, size_t sz) {
-    return free(p);
-}

@@ -1,16 +1,14 @@
 #ifndef _QUEUE_H
 #define _QUEUE_H
 
-#include "heap.h"
 #include "atomic.h"
+#include "heap.h"
 
 template <typename T>
-class queue
-{
-private:
-    class node
-    {
-    public:
+class queue {
+   private:
+    class node {
+       public:
         node *before;
         T val;
     };
@@ -18,100 +16,82 @@ private:
     node *head;
     int sz;
 
-public:
-    queue()
-    {
-        tail = (node *)malloc(sizeof(node));
+   public:
+    queue() {
+        tail = (node *)kmalloc(sizeof(node));
         head = tail;
         sz = 0;
     }
-    ~queue()
-    {
-        while (tail != head)
-        {
+    ~queue() {
+        while (tail != head) {
             node *copy = tail;
             tail = tail->before;
-            if (copy)
-            {
-                free(copy);
+            if (copy) {
+                kfree(copy);
             }
         }
-        if (head)
-        {
-            free(head);
+        if (head) {
+            kfree(head);
         }
     }
-    void push(T obj)
-    {
-        node *n = (node *)malloc(sizeof(node));
+    void push(T obj) {
+        node *n = (node *)kmalloc(sizeof(node));
         n->val = obj;
         head->before = n;
         head = n;
         sz++;
     }
-    void pop()
-    {
+    void pop() {
         tail = tail->before;
         sz--;
     }
-    T top()
-    {
+    T top() {
         return tail->before->val;
     }
-    int size()
-    {
+    int size() {
         return sz;
     }
-    bool empty()
-    {
+    bool empty() {
         return sz == 0;
     }
 };
 
 template <typename T, typename LockType>
-class LockedQueue
-{
+class LockedQueue {
     T *volatile first = nullptr;
     T *volatile last = nullptr;
     LockType lock;
 
-public:
-    LockedQueue() : first(nullptr), last(nullptr), lock() {}
+   public:
+    LockedQueue() : first(nullptr), last(nullptr), lock() {
+    }
     LockedQueue(const LockedQueue &) = delete;
 
-    void add(T *t)
-    {
+    void add(T *t) {
         LockGuard g{lock};
         t->next = nullptr;
-        if (first == nullptr)
-        {
+        if (first == nullptr) {
             first = t;
-        }
-        else
-        {
+        } else {
             last->next = t;
         }
         last = t;
     }
 
-    T *remove()
-    {
+    T *remove() {
         LockGuard g{lock};
-        if (first == nullptr)
-        {
+        if (first == nullptr) {
             return nullptr;
         }
         auto it = first;
         first = it->next;
-        if (first == nullptr)
-        {
+        if (first == nullptr) {
             last = nullptr;
         }
         return it;
     }
 
-    T *remove_all()
-    {
+    T *remove_all() {
         LockGuard g{lock};
         auto it = first;
         first = nullptr;

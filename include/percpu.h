@@ -10,14 +10,12 @@ class PerCPU {
 
    public:
     inline T& forCPU(int id) {
-
         return data[id];
     }
 
-    inline T &mine()
-    {
+    inline T& mine() {
         return forCPU(getCoreID());
     }
 };
 
-#endif // PERCPU_H
+#endif  // PERCPU_H

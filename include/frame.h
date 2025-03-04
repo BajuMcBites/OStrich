@@ -3,16 +3,14 @@
 
 #include "event.h"
 #include "function.h"
-#include "threads.h"
 #include "stdint.h"
+#include "threads.h"
 #include "vm.h"
-
 
 #define USED_PAGE_FLAG 0x1
 #define PINNED_PAGE_FLAG 0x2
 
 void create_frame_table(uintptr_t start, int size);
-
 
 void alloc_frame2(int flags, Function<void(int)> w);
 
@@ -24,8 +22,7 @@ void pin_frame(uintptr_t frame_addr);
 
 void unpin_frame(uintptr_t frame_addr);
 
-typedef struct Frame
-{
+typedef struct Frame {
     int flags;
 } Frame;
 
