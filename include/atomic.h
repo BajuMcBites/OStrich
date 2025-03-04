@@ -4,6 +4,8 @@
 #include "function.h"
 #include "queue.h"
 #include "stdint.h"
+#include "queue.h"
+#include "function.h"
 
 #ifdef USE_MONITOR
 static inline void monitor(uintptr_t addr) {
