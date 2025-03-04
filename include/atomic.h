@@ -2,6 +2,8 @@
 #define _ATOMIC_H_
 
 #include "stdint.h"
+#include "queue.h"
+#include "function.h"
 
 #ifdef USE_MONITOR
 static inline void monitor(uintptr_t addr) {
@@ -288,5 +290,27 @@ public:
 };
 
 */
+
+class Semaphore {
+    SpinLock spin_lock;
+    volatile uint32_t value;
+    queue<Function<void()>*> blocking_queue;
+
+public:
+    Semaphore(uint32_t initial_value) {
+        value = initial_value;
+    }
+
+    Semaphore() {
+        value = 0;
+    }
+
+    Semaphore(const Semaphore&) = delete;
+
+    void up();
+
+    void down(Function<void()> w);
+};
+
 
 #endif

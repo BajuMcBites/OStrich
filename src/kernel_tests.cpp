@@ -9,6 +9,7 @@
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
+#include "atomic.h"
 
 PageTable* page_table;
 
@@ -207,3 +208,47 @@ void user_paging_tests() {
     basic_page_table_creation();
     printf("user paging tests complete\n");
 }
+
+void semaphore_tests() {
+    Semaphore* sema = new Semaphore(1);
+
+    Function<void()> func1 = [sema]() {
+        printf("in func1\n");
+        for (int i = 0; i < 5; i++) {
+            printf("func1 on core %d\n", getCoreID());
+        }
+        printf("getting semaphore from func1\n");
+        sema->down([sema]() {
+            printf("we have semaphore in func1\n");
+            for (int i = 0; i < 5; i++) {
+                printf("we are looping in func1\n");
+            }
+            printf("we still have semaphore in func1\n");
+            sema->up();
+        });
+    };
+
+    Function<void()> func2 = [sema]() {
+        printf("in func2\n");
+        for (int i = 0; i < 5; i++) {
+            printf("func2 on core %d\n", getCoreID());
+        }
+        printf("getting semaphore from func2\n");
+        sema->down([sema]() {
+            printf("we have semaphore in func2\n");
+            for (int i = 0; i < 5; i++) {
+                printf("we are looping in func2\n");
+            }
+            printf("we still have semaphore in func2\n");
+            sema->up();
+        });
+    };
+
+    create_event_core(func1, 1, 2);
+    create_event_core(func2, 1, 3);
+}
+
+void blocking_atomic_tests() {
+    semaphore_tests();
+}
+

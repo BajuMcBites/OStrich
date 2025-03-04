@@ -69,6 +69,7 @@ extern "C" void kernel_main() {
     queue_test();
     frame_alloc_tests();
     user_paging_tests();
+    blocking_atomic_tests();
 }
 
 extern char __heap_start[];
@@ -112,9 +113,9 @@ extern "C" void kernel_init() {
 
     printf("Hi, I'm core %d\n", getCoreID());
 
-    if (getCoreID() == 0) {
+    // if (getCoreID() == 0) {
         while (1) {
             loop();
         }
-    }
+    // }
 }
