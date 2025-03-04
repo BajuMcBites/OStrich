@@ -1,6 +1,7 @@
 
-#include "atomic.h"
 #include "event.h"
+
+#include "atomic.h"
 #include "libk.h"
 #include "percpu.h"
 #include "printf.h"
