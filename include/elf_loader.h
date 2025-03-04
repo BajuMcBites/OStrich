@@ -1,0 +1,181 @@
+#ifndef _EVENT_H
+#define _EVENT_H
+
+typedef uint16_t Elf64_Half;	// Unsigned half int
+typedef uint64_t Elf64_Off;	// Unsigned offset
+typedef uint64_t Elf64_Addr;	// Unsigned address
+typedef uint64_t Elf64_Word;	// Unsigned int
+typedef int64_t  Elf64_Sword;	// Signed int
+typedef uint64_t Elf64_Xword; // long
+typedef int64_t	 Elf64_Sxword; // signed long
+
+# define ELF_NIDENT	16
+
+typedef struct {
+	uint8_t		e_ident[ELF_NIDENT];
+	Elf64_Half	e_type;
+	Elf64_Half	e_machine;
+	Elf64_Word	e_version;
+	Elf64_Addr	e_entry;
+	Elf64_Off	e_phoff;
+	Elf64_Off	e_shoff;
+	Elf64_Word	e_flags;
+	Elf64_Half	e_ehsize;
+	Elf64_Half	e_phentsize;
+	Elf64_Half	e_phnum;
+	Elf64_Half	e_shentsize;
+	Elf64_Half	e_shnum;
+	Elf64_Half	e_shstrndx;
+} Elf64_Ehdr;
+
+enum Elf_Ident {
+	EI_MAG0		= 0, // 0x7F
+	EI_MAG1		= 1, // 'E'
+	EI_MAG2		= 2, // 'L'
+	EI_MAG3		= 3, // 'F'
+	EI_CLASS	= 4, // Architecture (64/64)
+	EI_DATA		= 5, // Byte Order
+	EI_VERSION	= 6, // ELF Version
+	EI_OSABI	= 7, // OS Specific
+	EI_ABIVERSION	= 8, // OS Specific
+	EI_PAD		= 9  // Padding
+};
+
+enum Elf_Type {
+	ET_NONE		= 0, // Unkown Type
+	ET_REL		= 1, // Relocatable File
+	ET_EXEC		= 2, // Executable File
+    ET_DYN      = 3, // Shared Object
+    ET_CORE     = 4, // Core File
+};
+
+
+
+# define ELFMAG0	0x7F // e_ident[EI_MAG0]
+# define ELFMAG1	'E'  // e_ident[EI_MAG1]
+# define ELFMAG2	'L'  // e_ident[EI_MAG2]
+# define ELFMAG3	'F'  // e_ident[EI_MAG3]
+# define ELFCLASS64	2  // 64-bit Architecture
+# define EM_ARM	    0xB7
+# define EV_CURRENT 1
+# define ELFDATA2LSB	1  // Little Endian
+
+// symbol table
+
+typedef struct {
+	Elf64_Word	st_name;
+	unsigned char	st_info;
+	unsigned char	st_other;
+	Elf64_Half	st_shndx;
+	Elf64_Addr	st_value;
+	Elf64_Xword	st_size;
+} Elf64_Sym;
+
+
+# define ELF64_ST_BIND(INFO)	((INFO) >> 4)
+# define ELF64_ST_TYPE(INFO)	((INFO) & 0x0F)
+
+enum StT_Bindings {
+	STB_LOCAL		= 0, // Local scope
+	STB_GLOBAL		= 1, // Global scope
+	STB_WEAK		= 2  // Weak, (ie. __attribute__((weak)))
+};
+
+enum StT_Types {
+	STT_NOTYPE		= 0, // No type
+	STT_OBJECT		= 1, // Variables, arrays, etc.
+	STT_FUNC		= 2, // Methods or functions
+	STT_SECTION		= 3, // Sections - for relocation
+	STT_FILE		= 4, // name of the source file
+	STT_COMMON		= 5, // uninit common block (??)
+	STT_TLS			= 6, // Thread local safe
+};
+
+enum StT_Visability {
+	STV_DEFAULT 	= 0, // global and weak symbols are visible outside of their defining component
+	STV_PROTECTED	= 1, // protected if it is visible in other components but not preemptable
+	STV_HIDDEN		= 2, // name not visible to other components
+	STV_INTERNAL	= 3  // whatever you want
+}
+
+// relocations
+
+typedef struct {
+	Elf64_Addr	r_offset;
+	Elf64_Xword	r_info;
+} Elf64_Rel;
+
+typedef struct {
+	Elf64_Addr	r_offset;
+	Elf64_Xword	r_info;
+	Elf64_Sxword	r_addend;
+} Elf64_Rela;
+
+#define ELF64_R_SYM(i)    ((i)>>32)
+#define ELF64_R_TYPE(i)   ((i)&0xffffffffL)
+#define ELF64_R_INFO(s,t) (((s)<<32)+((t)&0xffffffffL))
+
+enum RtT_Types {
+	R_ARM64_NONE		= 0, // No relocation
+	R_ARM64_32			= 1, // Symbol + Offset
+	R_ARM64_PC32		= 2  // Symbol + Offset - Section Offset
+};
+
+typedef struct {
+	Elf64_Word	sh_name;
+	Elf64_Word	sh_type;
+	Elf64_Xword	sh_flags;
+	Elf64_Addr	sh_addr;
+	Elf64_Off	sh_offset;
+	Elf64_Xword	sh_size;
+	Elf64_Word	sh_link;
+	Elf64_Word	sh_info;
+	Elf64_Xword	sh_addralign;
+	Elf64_Xword	sh_entsize;
+} Elf64_Shdr;
+
+static inline Elf64_Shdr *elf_sheader(Elf64_Ehdr *hdr) {
+	return (Elf64_Shdr *)((int)hdr + hdr->e_shoff);
+}
+
+static inline Elf64_Shdr *elf_section(Elf64_Ehdr *hdr, int idx) {
+	return &elf_sheader(hdr)[idx];
+}
+
+typedef struct {
+	Elf64_Word	p_type;
+	Elf64_Word	p_flags;
+	Elf64_Off	p_offset;
+	Elf64_Addr	p_vaddr;
+	Elf64_Addr	p_paddr;
+	Elf64_Xword	p_filesz;
+	Elf64_Xword	p_memsz;
+	Elf64_Xword	p_align;
+} Elf64_Phdr;
+
+enum Program_Type {
+	PT_NULL = 0, // null
+	PT_LOAD = 1, // loadable
+	PT_DYNAMIC = 2, // for dynamic linking
+	PT_INTERP = 3, // invoke a path name for an interpreter (MUST BE NULL TERMINATED)
+	PT_NOTE = 4, // location and size of auxillary info
+	PT_SHLIB = 5, 
+	PT_PHDR = 6, // specifies size and location of program header
+	PT_TLS = 7 // thread local storage
+}
+
+enum Program_Flags {
+	PF_X = 1, // can execute
+	PF_W = 2, // can write
+	PF_R = 4, // can read
+}
+
+static inline Elf64_Phdr *elf_pheader(Elf65_Ehdr *hdr) {
+	return (Elf64_Phdr *)((int)hdr + hdr->e_phoff);
+}
+
+static inline Elf64_Phdr *elf_program(Elf64_Ehdr *hdr, int idx) {
+	return &elf_pheader(hdr)[idx];
+}
+
+#endif
