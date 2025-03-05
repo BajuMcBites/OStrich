@@ -1,5 +1,6 @@
 #ifndef _EVENT_H
 #define _EVENT_H
+#include "stdint.h"
 
 typedef uint16_t Elf64_Half;	// Unsigned half int
 typedef uint64_t Elf64_Off;	// Unsigned offset
@@ -62,6 +63,9 @@ enum Elf_Type {
 
 // symbol table
 
+# define SHN_UNDEF	(0x00) // Undefined/Not Present
+# define SHN_ABS    0xFFF1 // Absolute symbol
+
 typedef struct {
 	Elf64_Word	st_name;
 	unsigned char	st_info;
@@ -89,6 +93,13 @@ enum StT_Types {
 	STT_FILE		= 4, // name of the source file
 	STT_COMMON		= 5, // uninit common block (??)
 	STT_TLS			= 6, // Thread local safe
+	SHT_NOBITS	= 8,   // Not present in file
+	SHT_REL		= 9,   // Relocation (no addend)
+};
+
+enum ShT_Attributes {
+	SHF_WRITE	= 0x01, // Writable section
+	SHF_ALLOC	= 0x02  // Exists in memory
 };
 
 enum StT_Visability {
@@ -96,7 +107,7 @@ enum StT_Visability {
 	STV_PROTECTED	= 1, // protected if it is visible in other components but not preemptable
 	STV_HIDDEN		= 2, // name not visible to other components
 	STV_INTERNAL	= 3  // whatever you want
-}
+};
 
 // relocations
 
@@ -135,7 +146,7 @@ typedef struct {
 } Elf64_Shdr;
 
 static inline Elf64_Shdr *elf_sheader(Elf64_Ehdr *hdr) {
-	return (Elf64_Shdr *)((int)hdr + hdr->e_shoff);
+	return (Elf64_Shdr *)(hdr + hdr->e_shoff);
 }
 
 static inline Elf64_Shdr *elf_section(Elf64_Ehdr *hdr, int idx) {
@@ -162,16 +173,16 @@ enum Program_Type {
 	PT_SHLIB = 5, 
 	PT_PHDR = 6, // specifies size and location of program header
 	PT_TLS = 7 // thread local storage
-}
+};
 
 enum Program_Flags {
 	PF_X = 1, // can execute
 	PF_W = 2, // can write
 	PF_R = 4, // can read
-}
+};
 
-static inline Elf64_Phdr *elf_pheader(Elf65_Ehdr *hdr) {
-	return (Elf64_Phdr *)((int)hdr + hdr->e_phoff);
+static inline Elf64_Phdr *elf_pheader(Elf64_Ehdr *hdr) {
+	return (Elf64_Phdr *)(hdr + hdr->e_phoff);
 }
 
 static inline Elf64_Phdr *elf_program(Elf64_Ehdr *hdr, int idx) {
