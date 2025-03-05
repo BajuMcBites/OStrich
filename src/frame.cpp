@@ -1,6 +1,6 @@
 #include "frame.h"
 
-#include "event_loop.h"
+#include "event.h"
 #include "printf.h"
 #include "stdint.h"
 #include "vm.h"
@@ -14,6 +14,7 @@ void create_frame_table(uintptr_t start, int size) {
     for (int i = 0; i < num_frames; i++) {
         frame_table[i].flags = 0;
     }
+
     for (int i = 0; i < (int)((start / PAGE_SIZE) + num_frames * sizeof(Frame) / PAGE_SIZE + 1);
          i++) {
         frame_table[i].flags |= USED_PAGE_FLAG;
@@ -33,7 +34,7 @@ void alloc_frame(int flags, Function<void(uint64_t)> w) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)) {
             frame_table[index].flags = flags;
             frame_table[index].flags |= USED_PAGE_FLAG;
-            create_event_value<uint64_t>(w, index * PAGE_SIZE, 1);
+            create_event<uint64_t>(w, index * PAGE_SIZE, 1);
             index += 1;
             return;
         }

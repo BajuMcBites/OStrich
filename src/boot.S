@@ -292,11 +292,3 @@ ret_from_fork:
 	bl	schedule_tail
 	mov	x0, x20
 	blr	x19 		//should never return
-
-
-.globl __gxx_personality_v0
-__gxx_personality_v0:
-    ret
-.globl _Unwind_Resume
-_Unwind_Resume:
-    ret

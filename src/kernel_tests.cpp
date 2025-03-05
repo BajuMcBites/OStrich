@@ -1,6 +1,6 @@
 #include "kernel_tests.h"
 
-#include "event_loop.h"
+#include "event.h"
 #include "frame.h"
 #include "heap.h"
 #include "libk.h"
@@ -80,6 +80,18 @@ void test_event(void* arg) {
     printf("new event dropped: %s\n", (char*)arg);
 }
 
+template <typename T>
+void test_function(T work) {
+    int x = 10;
+    user_thread([=] { work(x); });
+}
+
+void foo() {
+    auto bar = [](int a) { printf("I was given int:%d\n", a); };
+    test_function(bar);
+    printf("foo done\n");
+}
+
 void heapTests() {
     printf("Starting new/delete tests...\n");
 
@@ -90,6 +102,8 @@ void heapTests() {
     test_nullptr_deletion();
 
     printf("All tests completed.\n");
+    printf("foo test\n");
+    foo();
 }
 
 void test_ref_lambda() {
@@ -99,13 +113,17 @@ void test_ref_lambda() {
         printf("%d current a\n", a);
     };
     for (int i = 0; i < 10; i++) {
-        create_event(lambda, 1);
+        // create_event(lambda, 1);
+        // user_thread(lambda);
+        create_event(lambda);
     }
 }
 void test_val_lambda() {
     int a = 2;
     Function<void()> lambda = [=]() { printf("%d should print 2\n", a); };
-    create_event(lambda, 1);
+    // create_event(lambda, 1);
+    // user_thread(lambda);
+    create_event(lambda);
 }
 
 void event_loop_tests() {
@@ -116,7 +134,7 @@ void event_loop_tests() {
 }
 
 void queue1() {
-    queue<int>* q = (queue<int>*)malloc(sizeof(queue<int>));
+    queue<int>* q = (queue<int>*)kmalloc(sizeof(queue<int>));
     q->push(5);
     q->push(3);
     q->push(2);
@@ -132,7 +150,7 @@ void queue1() {
     q->pop();
     printf("size %d\n", q->size());       // 0
     printf("empty is %d\n", q->empty());  // 1
-    free(q);
+    kfree(q);
 }
 
 void queue_test() {
@@ -162,6 +180,7 @@ void test_frame_alloc_simple() {
 
 void test_frame_alloc_multiple() {
     Function<void(uint64_t)> lambda = [](uint64_t a) {
+        // printf("multi alloc\n"); check if all 600 ran
         K::assert(a, "got null frame");
         K::assert(free_frame(a), "could not free frame");
     };
@@ -173,6 +192,7 @@ void test_frame_alloc_multiple() {
 
 void test_pin_frame() {
     Function<void(uint64_t)> lambda = [](uint64_t a) {
+        // printf("pin frame\n"); check if all ran
         K::assert(a, "got null frame");
         pin_frame(a);
         K::assert(!free_frame(a), "freed pinned frame");
