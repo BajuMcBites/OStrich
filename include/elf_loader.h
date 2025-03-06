@@ -86,15 +86,23 @@ enum StT_Bindings {
 };
 
 enum StT_Types {
-	STT_NOTYPE		= 0, // No type
-	STT_OBJECT		= 1, // Variables, arrays, etc.
-	STT_FUNC		= 2, // Methods or functions
-	STT_SECTION		= 3, // Sections - for relocation
-	STT_FILE		= 4, // name of the source file
-	STT_COMMON		= 5, // uninit common block (??)
-	STT_TLS			= 6, // Thread local safe
-	SHT_NOBITS	= 8,   // Not present in file
-	SHT_REL		= 9,   // Relocation (no addend)
+	SHT_NULL		= 0,
+	SHT_PROGBITS	= 1, 
+	SHT_SYMTAB		= 2,
+	SHT_STRTAB		= 3,
+	SHT_RELA		= 4, 
+	SHT_HASH		= 5, 
+	SHT_DYNAMIC		= 6, 
+	SHT_NOTE		= 7, 
+	SHT_NOBITS		= 8, 
+	SHT_REL			= 9,   
+	SHT_SHLIB		= 10, 
+	SHT_DYNSYM		= 11, 
+	SHT_INIT_ARRAY	= 12, 
+	SHT_FINI_ARRAY	= 13,   
+	SHT_PREINIT_ARRAY		= 14, 
+	SHT_GROUP		= 15, 
+	SHT_SYMTAB_SHNDX	= 16,   
 };
 
 enum ShT_Attributes {
@@ -188,5 +196,6 @@ static inline Elf64_Phdr *elf_pheader(Elf64_Ehdr *hdr) {
 static inline Elf64_Phdr *elf_program(Elf64_Ehdr *hdr, int idx) {
 	return &elf_pheader(hdr)[idx];
 }
+
 
 #endif

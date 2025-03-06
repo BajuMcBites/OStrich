@@ -116,6 +116,20 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 
 // create bss sections (sections with a bunch of zeroes)
 
+void copy_memory(void* start, Elf64_Xword flagts, Elf64_Xword size, Elf64_Ehdr *hdr) {
+	if (flags & SHF_ALLOC) {
+		void* mem = malloc(size);
+		memcpy(mem, start, size);
+		section->sh_offset = (uint64_t)mem - (uint64_t)hdr;
+		if (flags & SHF_WRITE) {
+			// make it writable
+		}
+		if (flags & SHF_EXECINSTR) {
+			// make it executable
+		}
+	} 
+}
+
 static int elf_load_stage1(Elf64_Ehdr *hdr) {
 	Elf64_Shdr *shdr = elf_sheader(hdr);
 
@@ -123,21 +137,63 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 	// Iterate over section headers
 	for(i = 0; i < hdr->e_shnum; i++) {
 		Elf64_Shdr *section = &shdr[i];
-
-		// If the section isn't present in the file
-		if(section->sh_type == SHT_NOBITS) {
-			// Skip if it the section is empty
-			if(!section->sh_size) continue;
-			// If the section should appear in memory
-			if(section->sh_flags & SHF_ALLOC) {
-				// Allocate and zero some memory
-				void *mem = malloc(section->sh_size);
-				memset(mem, 0, section->sh_size);
-				// Assign the memory offset to the section offset
-				section->sh_offset = (uint64_t)mem - (uint64_t)hdr;
-			}
+		switch (section->sh_type) {
+			case SHT_NULL:
+				break;
+			case SHT_PROGBITS:
+				copy_memory((void*)section->sh_addr, flags, section, section->sh_size, hdr);
+				break;
+			case SHT_SYMTAB:
+				// LINKING STUFF
+				break;
+			case SHT_RELA: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_HASH: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_DYNAMIC: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_NOTE: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_NOBITS: 
+				// Skip if it the section is empty
+				if(!section->sh_size) continue;
+				// If the section should appear in memory
+				if(section->sh_flags & SHF_ALLOC) {
+					// Allocate and zero some memory
+					void *mem = malloc(section->sh_size);
+					memset(mem, 0, section->sh_size);
+					// Assign the memory offset to the section offset
+					section->sh_offset = (uint64_t)mem - (uint64_t)hdr;
+				}
+				break;
+			case SHT_REL: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_SHLIB: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_DYNSYM: 
+				// do something
+				break;
+			case SHT_INIT_ARRAY: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_FINI_ARRAY: 
+				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				break;
+			case SHT_GROUP: 
+				// do something
+				break;
+			case SHT_SYMTAB_SHNDX: 
+				// do something 
+				break;
+			default:
+				ERROR("undefined shtype: %d", section->sh_type);
 		}
-		// TODO parse the other shtypes
 	}
 	return 0;
 }
