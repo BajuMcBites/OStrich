@@ -26,6 +26,49 @@ bool K::streq(const char* a, const char* b) {
     }
 }
 
+int K::strncmp(const char* stra, const char* strb, int n) {
+    int index = 0;
+    while (index < n && stra[index] != '\0' && strb[index] != '\0') {
+        if (stra[index] != strb[index]) {
+            return stra[index] - strb[index];
+        }
+        index++;
+    }
+
+    if (index == n) {
+        return 0;
+    }
+
+    return stra[index] - strb[index];
+}
+
+int K::strncpy(char* dest, char* src, int n) {
+    int index = 0;
+    while (index < n && src[index] != '\0') {
+        dest[index] = src[index];
+        index++;
+    }
+
+    if (index == n) {
+        dest[n - 1] = '\0';
+        return n;
+    }
+
+    dest[index] = '\0';
+    return index + 1;
+}
+
+void* K::memcpy(void* dest, const void* src, int n) {
+    unsigned char* d = (unsigned char*)dest;
+    const unsigned char* s = (const unsigned char*)src;
+
+    while (n--) {
+        *d++ = *s++;
+    }
+
+    return dest;
+}
+
 // Helper function for basic assertions
 void K::assert(bool condition, const char* msg) {
     if (!condition) {
