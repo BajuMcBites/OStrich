@@ -6,6 +6,7 @@
 #include "libk.h"
 #include "printf.h"
 #include "queue.h"
+#include "ramfs.h"
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
@@ -226,4 +227,35 @@ void user_paging_tests() {
     printf("starting user paging tests\n");
     basic_page_table_creation();
     printf("user paging tests complete\n");
+}
+
+void ramfs_test_basic() {
+    // only passes if test1 file is included
+    int test1_index = get_ramfs_index("test1.txt");
+    K::assert(test1_index >= 0, "ramfs couldn't find test1.txt\n");
+    K::assert(ramfs_size(test1_index) == 51, "ramfs size method not working\n");
+    char buffer[100];
+    ramfs_read(buffer, 0, 51, test1_index);
+    K::assert(K::strncmp(buffer, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!", 51) == 0,
+              "reading from ramfs file not working");
+    printf("ramfs basic test passed\n");
+}
+
+void ramfs_big_file() {
+    int test2_index = get_ramfs_index("test2.txt");
+    char buffer[4096];
+    ramfs_read(buffer, 24, 4096, test2_index);
+    K::assert(
+        K::strncmp(buffer,
+                   "legendaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                   60) == 0,
+        "reading from ramfs big file not working");
+    printf("ramfs big file test passed\n");
+}
+
+void ramfs_tests() {
+    printf("start ramfs tests\n");
+    ramfs_test_basic();
+    ramfs_big_file();
+    printf("end ramfs tests\n");
 }

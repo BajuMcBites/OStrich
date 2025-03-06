@@ -1,8 +1,9 @@
+#include <stdint.h>
+#include <stdlib.h>
+
 #include <iostream>
 #include <string>
 #include <vector>
-#include <stdint.h>
-#include <stdlib.h>
 
 #define ramfs_id 0xf99482ea8f5ecce2
 
@@ -28,14 +29,13 @@ int copy_file_contents(FILE* dest, FILE* src) {
 }
 
 int main(int argc, char* argv[]) {
-
-    if (argc < 2) { // Check if at least one filename is provided
+    if (argc < 2) {  // Check if at least one filename is provided
         std::cerr << "Usage: " << argv[0] << " <file1> <file2> ... <fileN>" << std::endl;
-        return 1; // Indicate an error
+        return 1;  // Indicate an error
     }
 
     char ramfs_signiture[8];
-    *((uint64_t*) ramfs_signiture) = ramfs_id;
+    *((uint64_t*)ramfs_signiture) = ramfs_id;
 
     std::vector<std::string> filenames;
     printf("building ramfs.img:\n");
@@ -63,15 +63,15 @@ int main(int argc, char* argv[]) {
             return -1;
         }
 
-        if (fseek(file, 0, SEEK_END) != 0) { // Seek to the end
+        if (fseek(file, 0, SEEK_END) != 0) {  // Seek to the end
             printf("error seeking file %s", filenames[i].c_str());
             fclose(file);
-            return -1; 
+            return -1;
         }
-    
-        long size = ftell(file); // Get the current position (file size)
 
-        if (fseek(file, 0, SEEK_SET) != 0) { // SEEK_SET for beginning
+        long size = ftell(file);  // Get the current position (file size)
+
+        if (fseek(file, 0, SEEK_SET) != 0) {  // SEEK_SET for beginning
             printf("error seeking to beginning file %s", filenames[i].c_str());
             fclose(file);
             return -1;
@@ -82,13 +82,13 @@ int main(int argc, char* argv[]) {
     }
 
     const char* filename = "../ramfs.img";
-    FILE *out_file = fopen(filename, "wb");
+    FILE* out_file = fopen(filename, "wb");
     uint64_t file_count = filenames.size();
 
     uint64_t bytes_written = fwrite(ramfs_signiture, 1, 8, out_file);
     bytes_written += fwrite(&file_count, 1, 8, out_file);
-    bytes_written += fwrite((char*) ramfs_file_structs, 1, sizeof(ramfs_file) * filenames.size(), out_file);
-
+    bytes_written +=
+        fwrite((char*)ramfs_file_structs, 1, sizeof(ramfs_file) * filenames.size(), out_file);
 
     for (int i = 0; i < filenames.size(); i++) {
         if (copy_file_contents(out_file, *(files + i)) != 0) {

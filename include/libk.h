@@ -8,6 +8,9 @@ class K {
     static long strlen(const char* str);
     static int isdigit(int c);
     static bool streq(const char* left, const char* right);
+    static int strncmp(const char* stra, const char* strb, int n);
+    static int strncpy(char* dest, char* src, int n);
+    static void* memcpy(void* dest, const void* src, int n);
 
     template <typename T>
     static T min(T v) {

@@ -10,6 +10,7 @@
 #include "percpu.h"
 #include "printf.h"
 #include "queue.h"
+#include "ramfs.h"
 #include "sched.h"
 #include "stdint.h"
 #include "timer.h"
@@ -67,9 +68,10 @@ extern char _frame_table_start[];
 extern "C" void kernel_main() {
     heapTests();
     event_loop_tests();
-    // queue_test();
+    queue_test();
     frame_alloc_tests();
     user_paging_tests();
+    ramfs_tests();
 }
 
 extern char __heap_start[];
@@ -92,6 +94,7 @@ extern "C" void kernel_init() {
         enable_interrupt_controller();
         enable_irq();
         printf("printf initialized!!!\n");
+        init_ramfs();
         create_frame_table(frame_table_start,
                            0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
         printf("frame table initialized! \n");
