@@ -38,9 +38,10 @@ int main(int argc, char* argv[]) {
     *((uint64_t*) ramfs_signiture) = ramfs_id;
 
     std::vector<std::string> filenames;
-
+    printf("building ramfs.img:\n");
     for (int i = 1; i < argc; ++i) {
         filenames.push_back(argv[i]);
+        printf("---%s\n", argv[i]);
     }
 
     ramfs_file* ramfs_file_structs = new ramfs_file[filenames.size()];
@@ -98,5 +99,5 @@ int main(int argc, char* argv[]) {
 
     fclose(out_file);
 
-    return 0; // Indicate successful execution
+    return 0;
 }
