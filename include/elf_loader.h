@@ -43,7 +43,7 @@ enum Elf_Ident {
 };
 
 enum Elf_Type {
-	ET_NONE		= 0, // Unkown Type
+	ET_NONE		= 0, // Unknown Type
 	ET_REL		= 1, // Relocatable File
 	ET_EXEC		= 2, // Executable File
     ET_DYN      = 3, // Shared Object

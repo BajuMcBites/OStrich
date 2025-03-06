@@ -54,22 +54,6 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 	return true;
 }
 
-void *elf_load(void* ptr) {
-	Elf64_Ehdr *hdr = (Elf64_Ehdr *)ptr;
-	if(!elf_check_supported(hdr)) {
-		ERROR("ELF File cannot be loaded.\n");
-		return nullptr;
-	}
-	switch(hdr->e_type) {
-		case ET_EXEC:
-			// TODO : Implement
-			return nullptr;
-		case ET_REL:
-			return elf_load(hdr);
-	}
-	return nullptr;
-} 
-
 # define ELF_RELOC_ERR -1
 
 static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
@@ -364,3 +348,38 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr) {
 	}
 	return (void *)hdr->e_entry;
 }
+
+// load
+static inline void *elf_load_exec(Elf64_Ehdr *hdr) {
+	int result;
+	result = elf_load_stage1(hdr);
+	if(result == ELF_RELOC_ERR) {
+		ERROR("Unable to load ELF file.\n");
+		return nullptr;
+	}
+	// Parse the program header (if present)
+	result = elf_load_stage3(hdr);
+	if (result == ELF_PHDR_ERR) {
+		ERROR("Unable to load ELF file.\n");
+		return nullptr;
+	}
+	return (void *)hdr->e_entry;
+}
+
+void *elf_load(void* ptr) {
+	Elf64_Ehdr *hdr = (Elf64_Ehdr *)ptr;
+	if(!elf_check_supported(hdr)) {
+		ERROR("ELF File cannot be loaded.\n");
+		return nullptr;
+	}
+	switch(hdr->e_type) {
+		case ET_EXEC:
+			return elf_load_exec(hdr);
+		case ET_REL:
+			return elf_load_rel(hdr);
+		case ET_DYN:
+			// todo ... ?? ? ? ? ? ??
+			return nullptr;
+	}
+	return nullptr;
+} 
