@@ -197,5 +197,4 @@ static inline Elf64_Phdr *elf_program(Elf64_Ehdr *hdr, int idx) {
 	return &elf_pheader(hdr)[idx];
 }
 
-
 #endif

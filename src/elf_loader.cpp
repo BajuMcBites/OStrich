@@ -116,18 +116,19 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 
 // create bss sections (sections with a bunch of zeroes)
 
-void copy_memory(void* start, Elf64_Xword flagts, Elf64_Xword size, Elf64_Ehdr *hdr) {
+uint64_t copy_memory(void* start, Elf64_Xword flags, Elf64_Xword size, Elf64_Ehdr *hdr) {
 	if (flags & SHF_ALLOC) {
 		void* mem = malloc(size);
 		memcpy(mem, start, size);
-		section->sh_offset = (uint64_t)mem - (uint64_t)hdr;
 		if (flags & SHF_WRITE) {
 			// make it writable
 		}
 		if (flags & SHF_EXECINSTR) {
 			// make it executable
 		}
-	} 
+		return (uint64_t)mem - (uint64_t)hdr;
+	}
+	return nullptr;
 }
 
 static int elf_load_stage1(Elf64_Ehdr *hdr) {
@@ -141,22 +142,22 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 			case SHT_NULL:
 				break;
 			case SHT_PROGBITS:
-				copy_memory((void*)section->sh_addr, flags, section, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_SYMTAB:
 				// LINKING STUFF
 				break;
 			case SHT_RELA: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_HASH: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_DYNAMIC: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_NOTE: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_NOBITS: 
 				// Skip if it the section is empty
@@ -171,19 +172,19 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 				}
 				break;
 			case SHT_REL: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_SHLIB: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_DYNSYM: 
 				// do something
 				break;
 			case SHT_INIT_ARRAY: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_FINI_ARRAY: 
-				copy_memory((void*)section->sh_addr, flags, section->sh_size, hdr);
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_GROUP: 
 				// do something
