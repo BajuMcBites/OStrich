@@ -12,6 +12,12 @@ SECTIONS
         __paging_end = .;
     }
 
+    .stacks : ALIGN(16) {
+        __stacks_start = .;
+        *(.stacks)
+        __stacks_end = .;
+    }
+
     .bss (NOLOAD) : {
         . = ALIGN(16);
         __bss_start = .;

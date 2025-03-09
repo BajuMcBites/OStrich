@@ -77,16 +77,17 @@ secondary:
     add x1, x1, #LOW_MEMORY
     mov sp, x1
     bl pickKernelStack
-    mov sp, x0
+    //mov sp, x0
+    msr sp_el1, x0
 
 setup_el1_for_secondary:
     // Set up stack pointer for EL1 for secondary cores
-    mrs x0, mpidr_el1
-    and x0, x0, #0xFF
-    mov x1, #SECTION_SIZE
-    mul x1, x1, x0
-    add x1, x1, #LOW_MEMORY
-    msr sp_el1, x1
+    // mrs x0, mpidr_el1
+    //and x0, x0, #0xFF
+    //mov x1, #SECTION_SIZE
+    //mul x1, x1, x0
+    //add x1, x1, #LOW_MEMORY
+    //msr sp_el1, x1
 
     // Enable virtual and physical counter timers for EL1
     mrs     x0, cnthctl_el2

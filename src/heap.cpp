@@ -5,6 +5,7 @@
 // #include <stdint.h>
 // #include "blocking_lock.h"
 #include "atomic.h"
+#include "libk.h"
 
 static SpinLock* theLock = nullptr;
 // MY HEAP
@@ -242,6 +243,16 @@ void* kmalloc(size_t size) {
     validBlock->next = nullptr;
 
     return get_payload(validBlock);
+}
+
+/**
+ * kcalloc -  allocates size bytes and returns a pointer to the allocated
+ * memory, fills in bytes with val.
+ */
+void* kcalloc(unsigned char val, size_t size) {
+    void* block = kmalloc(size);
+    K::memset(block, val, size);
+    return block;
 }
 
 /*

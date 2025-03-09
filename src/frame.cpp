@@ -1,15 +1,15 @@
 #include "frame.h"
 
+#include "atomic.h"
 #include "event.h"
 #include "printf.h"
 #include "stdint.h"
 #include "vm.h"
-#include "atomic.h"
 
 int index = 0;
 int num_frames = 0;
 Frame* frame_table = 0;
-SpinLock lock; //switch to blocking lock
+SpinLock lock;  // switch to blocking lock
 
 void create_frame_table(uintptr_t start, int size) {
     frame_table = (Frame*)start;
