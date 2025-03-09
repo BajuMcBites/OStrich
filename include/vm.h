@@ -122,6 +122,72 @@ class PageTable {
     void map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes);
 };
 
+enum LocationType {
+    FILESYSTEM,
+    SWAP
+};
+
+enum PageSharingMode {
+    SHARED,
+    PRIVATE
+};
+
+/**
+ * These are local to a processes Supplemental Page Table, holds the specific 
+ * qualities of that page for a given process, as well as the PageLocation.
+ */
+struct LocalPageLocation {
+    //Lock lock; //lock so accessors from PageLocation and Supp Page Table dont intersect
+    bool read_only;
+    PageSharingMode sharing_mode;
+    // uint64_t tid; some way to know which process out of the PageLocation->users is the one we faulted on
+    //some way to get back to the page table in the case of an eviction
+
+    PageLocation* location;
+    LocalPageLocation* next;
+};
+
+/**
+ * holds the locations of pages, any changes to this struct must be reflected
+ * in the pagecache, these are shared between different processes that share
+ * pages in memory for any reason. (Have shared memory regions, share a common
+ * file that is not edited, shared object files)
+ */
+struct PageLocation {
+    // Lock lock;
+    LocationType location_type;
+    bool copy_on_write;
+    bool dirty;
+    bool present;
+    uint64_t paddr;
+    uint32_t ref_count;
+    LocalPageLocation* users;
+    union location {
+        SwapLocation swap;
+        FileLocation filesystem;
+    };
+};
+
+struct SwapLocation {
+    uint64_t swap_id;
+    // uint64_t hw_id;
+};
+
+struct FileLocation {
+    char file_name[32];
+    uint64_t offset;
+};
+
+class SupplementalPageTable {
+    // HashMap<LocalPageLocation> map;
+    // Lock map_lock; //only lock the map with this, Page location and LocalPageLocation are locked locally;
+    // correct use would be only locking the map operations.
+    
+    // void map_vaddr_swap(vaddr, file)
+    // void map
+
+}
+
 #endif
 
 #endif /*_VM_H*/
