@@ -373,9 +373,8 @@ void hash_test() {
     for (int i = 0; i < NUM_TIMES; i++) {
         printf("om %d\n", i);
         int randomNum = rand.random() % NUM_TIMES / 8;
-        if (randomNum == 0)
-            randomNum++;
-        hash.add(i, randomNum);
+        if (randomNum == 0) randomNum++;
+        hash.put(i, randomNum);
         keys[i] = randomNum;
     }
 
@@ -390,9 +389,8 @@ void hash_test() {
     printf("Reinserting %d random numbers into hashmap\n", NUM_TIMES);
     for (int i = 0; i < NUM_TIMES; i++) {
         int randomNum = rand.random() % 101;
-        if (randomNum == 0)
-            randomNum++;
-        hash.add(i, randomNum);
+        if (randomNum == 0) randomNum++;
+        hash.put(i, randomNum);
         keys[i] = randomNum;
     }
 
@@ -418,7 +416,6 @@ void hash_test() {
     for (int i = 0; i < NUM_TIMES / 2; i++) {
         K::assert(hash.get(i) == 0, "Got non-null value at index\n");
     }
-
 
     printf("Removing all values\n");
     for (int i = 0; i < NUM_TIMES; i++) {
