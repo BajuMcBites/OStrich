@@ -2,16 +2,16 @@
 
 #include "event.h"
 #include "frame.h"
+#include "hash.h"
 #include "heap.h"
 #include "libk.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
+#include "rand.h"
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
-#include "hash.h"
-#include "rand.h"
 
 #define NUM_TIMES 1000
 
@@ -241,8 +241,7 @@ void hash_test() {
     printf("Inserting %d random numbers\n", NUM_TIMES);
     for (int i = 0; i < NUM_TIMES; i++) {
         int randomNum = rand.random() % NUM_TIMES / 8;
-        if (randomNum == 0)
-            randomNum++;
+        if (randomNum == 0) randomNum++;
         hash.put(i, randomNum);
         keys[i] = randomNum;
     }
@@ -258,8 +257,7 @@ void hash_test() {
     printf("Reinserting %d random numbers into hashmap\n", NUM_TIMES);
     for (int i = 0; i < NUM_TIMES; i++) {
         int randomNum = rand.random() % 101;
-        if (randomNum == 0)
-            randomNum++;
+        if (randomNum == 0) randomNum++;
         hash.put(i, randomNum);
         keys[i] = randomNum;
     }
@@ -286,7 +284,6 @@ void hash_test() {
     for (int i = 0; i < NUM_TIMES / 2; i++) {
         K::assert(hash.get(i) == 0, "Got non-null value at index\n");
     }
-
 
     printf("Removing all values\n");
     for (int i = 0; i < NUM_TIMES; i++) {
@@ -334,4 +331,3 @@ void ramfs_tests() {
     ramfs_big_file();
     printf("end ramfs tests\n");
 }
-
