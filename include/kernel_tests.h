@@ -10,5 +10,6 @@ void test_frame_alloc_multiple();
 void test_pin_frame();
 void user_paging_tests();
 void hash_test();
+void ramfs_tests();
 
 #endif /*_KERNEL_TESTS_H */

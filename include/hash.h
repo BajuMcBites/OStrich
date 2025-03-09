@@ -18,15 +18,18 @@ class Hashmap {
 
             this->size = 0;
             true_size = size;
-            container = (HashNode<T>**)kmalloc(sizeof(struct HashNode<T>) * true_size);
+            container = (HashNode<T>**)kcalloc(0, sizeof(struct HashNode<T>) * true_size);
         }
 
         ~Hashmap() {
             for (unsigned long i = 0; i < true_size; i++) {
                 struct HashNode<T> *cur = container[i];
+                struct HashNode<T> *temp;
+
                 while (cur) {
+                    temp = cur->next;
                     kfree(cur);
-                    cur = cur->next;
+                    cur = temp;
                 }
             }
         
@@ -34,6 +37,7 @@ class Hashmap {
         }
 
         T get(uint64_t key) {
+            
             unsigned long index = key % true_size;
 
             if (container[index] != nullptr) {
@@ -51,7 +55,8 @@ class Hashmap {
             return nullptr;
         }
 
-        bool add(uint64_t key, T value) {
+        bool put(uint64_t key, T value) {
+
             if (size * 1.0 / true_size >= .75)
                 resize();
 
@@ -110,7 +115,7 @@ class Hashmap {
             }
 
             struct HashNode<T> *cur = container[index];
-            while (cur->next && cur->key != key) 
+            while (cur->next && cur->key != key)
                 cur = cur->next;
 
             if (cur->key == key) {
@@ -119,6 +124,7 @@ class Hashmap {
             }
 
             cur->next = create_node(key, value);
+
             return true;
         }
 
@@ -126,29 +132,33 @@ class Hashmap {
             unsigned long index = node->key % true_size;
 
             node->next = nullptr;
+    
             if (container[index] == nullptr) {
                 container[index] = node;
                 return;
             }
 
             struct HashNode<T> *cur = container[index];
-            while (cur->next) 
+            while (cur->next)
                 cur = cur->next;
 
             cur->next = node;
+
             return;
         }
 
         void resize() {
             unsigned long prev_size = true_size;
             true_size *= 2;
+            struct HashNode<T> *cur;
+            struct HashNode<T> *temp;
             struct HashNode<T> **prev = container;
-            container = (HashNode<T>**)kmalloc(sizeof(struct HashNode<T>) * true_size);
+            container = (HashNode<T>**)kcalloc(0, sizeof(struct HashNode<T>) * true_size);
 
             for (unsigned long i = 0; i < prev_size; i++) {
-                struct HashNode<T> *cur = prev[i];
+                cur = prev[i];
                 while (cur) {
-                    struct HashNode<T> *temp = cur->next;
+                    temp = cur->next;
                     reinsert(cur);
                     cur = temp;
                 }
