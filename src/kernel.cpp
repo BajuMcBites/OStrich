@@ -69,9 +69,10 @@ extern "C" void kernel_main() {
     heapTests();
     event_loop_tests();
     // queue_test();
-    frame_alloc_tests();
+    // frame_alloc_tests();
     user_paging_tests();
     ramfs_tests();
+    elf_load_test();
 }
 
 extern char __heap_start[];

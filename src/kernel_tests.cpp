@@ -10,6 +10,7 @@
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
+#include "elf_loader.h"
 
 PageTable* page_table;
 
@@ -258,4 +259,13 @@ void ramfs_tests() {
     ramfs_test_basic();
     ramfs_big_file();
     printf("end ramfs tests\n");
+}
+
+void elf_load_test() {
+    printf("start elf_load tests\n");
+    int elf_index = get_ramfs_index("temp.elf");
+    char buffer[15776];
+    ramfs_read(buffer, 0, 15776, elf_index);
+    elf_load((void*)buffer);
+    printf("end elf_load tests\n");
 }

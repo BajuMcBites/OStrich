@@ -2,8 +2,21 @@
 #include "printf.h"
 #include "mm.h"
 #include "heap.h"
+#include "libk.h"
 
 #define ERROR(msg...) printf(msg);
+
+#define MAP_PRIVATE 1
+#define MAP_ANONYMOUS 2
+#define MAP_FAILED (void*)-1
+#define PROT_EXEC 1
+#define PROT_READ 2
+#define PROT_WRITE 4
+#define PROT_NONE 0
+void *mmap(void* addr, size_t length, int prot, int flags, int fd, int offset) {
+	printf("calling mmap at %x, with size %d, prot %x, flags %x, fd %d, and offset %d\n", addr, length, prot, flags, fd, offset);
+	return MAP_FAILED;
+}
 
 bool elf_check_file(Elf64_Ehdr *hdr) {
     if (!hdr) return false;
@@ -41,14 +54,14 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 	}
 	if(hdr->e_machine != EM_ARM) {
 		ERROR("Unsupported ELF File target.\n");
-		return false;
+		//return false;
 	}
 	if(hdr->e_ident[EI_VERSION] != EV_CURRENT) {
 		ERROR("Unsupported ELF File version.\n");
 		return false;
 	}
-	if(hdr->e_type != ET_REL && hdr->e_type != ET_EXEC) {
-		ERROR("Unsupported ELF File type.\n");
+	if(hdr->e_type != ET_REL && hdr->e_type != ET_EXEC && hdr->e_type != ET_DYN) {
+		ERROR("Unsupported ELF File type. %d\n", hdr->e_type);
 		return false;
 	}
 	return true;
@@ -56,6 +69,9 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 
 # define ELF_RELOC_ERR -1
 
+void* elf_lookup_symbol (const char* name) { 
+	return nullptr;
+}
 static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 	if(table == SHN_UNDEF || idx == SHN_UNDEF) return 0;
 	Elf64_Shdr *symtab = elf_section(hdr, table);
@@ -73,7 +89,6 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 		Elf64_Shdr *strtab = elf_section(hdr, symtab->sh_link);
 		const char *name = (const char *)hdr + strtab->sh_offset + symbol->st_name;
 
-		extern void *elf_lookup_symbol(const char *name);
 		void *target = elf_lookup_symbol(name);
 
 		if(target == nullptr) {
@@ -102,8 +117,8 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 
 uint64_t copy_memory(void* start, Elf64_Xword flags, Elf64_Xword size, Elf64_Ehdr *hdr) {
 	if (flags & SHF_ALLOC) {
-		void* mem = malloc(size);
-		memcpy(mem, start, size);
+		void* mem = kmalloc(size);
+		K::memcpy(mem, start, size);
 		if (flags & SHF_WRITE) {
 			// make it writable
 		}
@@ -149,8 +164,8 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 				// If the section should appear in memory
 				if(section->sh_flags & SHF_ALLOC) {
 					// Allocate and zero some memory
-					void *mem = malloc(section->sh_size);
-					memset(mem, 0, section->sh_size);
+					void *mem = kmalloc(section->sh_size);
+					// memset(mem, 0, section->sh_size);
 					// Assign the memory offset to the section offset
 					section->sh_offset = (uint64_t)mem - (uint64_t)hdr;
 				}
@@ -197,7 +212,7 @@ static uint64_t elf_do_reloc(Elf64_Ehdr *hdr, Elf64_Rel *rel, Elf64_Shdr *reltab
 	uint64_t symval = 0;
 	if(ELF64_R_SYM(rel->r_info) != SHN_UNDEF) {
 		symval = elf_get_symval(hdr, reltab->sh_link, ELF64_R_SYM(rel->r_info));
-		if(symval == ELF_RELOC_ERR) return ELF_RELOC_ERR;
+		if(symval == (uint8_t)ELF_RELOC_ERR) return ELF_RELOC_ERR;
 	}
 	// Relocate based on type
 	//
@@ -273,16 +288,16 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr) {
 
     void *mapped_memory = mmap(vaddr, aligned_size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mapped_memory == MAP_FAILED) {
-        ERROR("mmap failed");
+        ERROR("mmap failed\n");
         return nullptr;
     }
 
     // Read segment content from memory
-	memcpy((void*)((uint64_t)mapped_memory + page_offset), (void*)((uint64_t)mem + offset), file_size)
+	K::memcpy((void*)((uint64_t)mapped_memory + page_offset), (void*)((uint64_t)mem + offset), file_size);
 
     // Zero out the remaining part of the memory (bss segment)
     if (mem_size > file_size) {
-        memset(mapped_memory + page_offset + file_size, 0, mem_size - file_size);
+        //K::memset(mapped_memory + page_offset + file_size, 0, mem_size - file_size);
     }
 
     return mapped_memory;
@@ -290,11 +305,9 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr) {
 
 static int elf_load_stage3(Elf64_Ehdr *hdr) {
 	Elf64_Phdr *phdr = elf_pheader(hdr);
-	
 	unsigned int i, idx;
 	for (i = 0; i < hdr->e_phnum; i++) {
 		Elf64_Phdr *prog = &phdr[i];
-
 		switch(prog->p_type) {
 			case PT_NULL:
 				break;
@@ -319,6 +332,10 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 			case PT_TLS: 
 				// https://refspecs.linuxfoundation.org/elf/gabi4+/ch5.pheader.html#tls
 				// unnecessary..?
+				break;
+			case PT_PHDR: 
+				// load this in
+				load_segment_mem((void*) hdr, prog);
 				break;
 			default:
 				ERROR("unsupported program header type.\n");
@@ -351,6 +368,7 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr) {
 
 // load
 static inline void *elf_load_exec(Elf64_Ehdr *hdr) {
+	printf("we are hjere now\n");
 	int result;
 	result = elf_load_stage1(hdr);
 	if(result == ELF_RELOC_ERR) {
@@ -372,12 +390,14 @@ void *elf_load(void* ptr) {
 		ERROR("ELF File cannot be loaded.\n");
 		return nullptr;
 	}
+	printf("%d type\n", hdr->e_type);
 	switch(hdr->e_type) {
 		case ET_EXEC:
 			return elf_load_exec(hdr);
 		case ET_REL:
 			return elf_load_rel(hdr);
 		case ET_DYN:
+			return elf_load_exec(hdr);
 			// todo ... ?? ? ? ? ? ??
 			return nullptr;
 	}

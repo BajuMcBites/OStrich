@@ -5,28 +5,28 @@
 typedef uint16_t Elf64_Half;	// Unsigned half int
 typedef uint64_t Elf64_Off;	// Unsigned offset
 typedef uint64_t Elf64_Addr;	// Unsigned address
-typedef uint64_t Elf64_Word;	// Unsigned int
-typedef int64_t  Elf64_Sword;	// Signed int
+typedef uint32_t Elf64_Word;	// Unsigned int
+typedef int32_t  Elf64_Sword;	// Signed int
 typedef uint64_t Elf64_Xword; // long
 typedef int64_t	 Elf64_Sxword; // signed long
 
-# define ELF_NIDENT	16
+# define EI_NIDENT	16
 
 typedef struct {
-	uint8_t		e_ident[ELF_NIDENT];
-	Elf64_Half	e_type;
-	Elf64_Half	e_machine;
-	Elf64_Word	e_version;
-	Elf64_Addr	e_entry;
-	Elf64_Off	e_phoff;
-	Elf64_Off	e_shoff;
-	Elf64_Word	e_flags;
-	Elf64_Half	e_ehsize;
-	Elf64_Half	e_phentsize;
-	Elf64_Half	e_phnum;
-	Elf64_Half	e_shentsize;
-	Elf64_Half	e_shnum;
-	Elf64_Half	e_shstrndx;
+	unsigned char   e_ident[EI_NIDENT];
+	Elf64_Half      e_type;
+	Elf64_Half      e_machine;
+	Elf64_Word      e_version;
+	Elf64_Addr      e_entry;
+	Elf64_Off       e_phoff;
+	Elf64_Off       e_shoff;
+	Elf64_Word      e_flags;
+	Elf64_Half      e_ehsize;
+	Elf64_Half      e_phentsize;
+	Elf64_Half      e_phnum;
+	Elf64_Half      e_shentsize;
+	Elf64_Half      e_shnum;
+	Elf64_Half      e_shstrndx;
 } Elf64_Ehdr;
 
 enum Elf_Ident {
@@ -107,7 +107,8 @@ enum StT_Types {
 
 enum ShT_Attributes {
 	SHF_WRITE	= 0x01, // Writable section
-	SHF_ALLOC	= 0x02  // Exists in memory
+	SHF_ALLOC	= 0x02,  // Exists in memory
+	SHF_EXECINSTR = 0x03,
 };
 
 enum StT_Visability {
@@ -154,7 +155,7 @@ typedef struct {
 } Elf64_Shdr;
 
 static inline Elf64_Shdr *elf_sheader(Elf64_Ehdr *hdr) {
-	return (Elf64_Shdr *)(hdr + hdr->e_shoff);
+	return (Elf64_Shdr *)((uint64_t)hdr + hdr->e_shoff);
 }
 
 static inline Elf64_Shdr *elf_section(Elf64_Ehdr *hdr, int idx) {
@@ -190,11 +191,13 @@ enum Program_Flags {
 };
 
 static inline Elf64_Phdr *elf_pheader(Elf64_Ehdr *hdr) {
-	return (Elf64_Phdr *)(hdr + hdr->e_phoff);
+	return (Elf64_Phdr *)((uint64_t)hdr + hdr->e_phoff);
 }
 
 static inline Elf64_Phdr *elf_program(Elf64_Ehdr *hdr, int idx) {
 	return &elf_pheader(hdr)[idx];
 }
+
+void* elf_load(void* ptr);
 
 #endif
