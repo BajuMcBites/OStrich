@@ -186,7 +186,22 @@ class SupplementalPageTable {
     // void map_vaddr_swap(vaddr, file)
     // void map
 
+    //vaddr mmap(mmap params) returns page mapped in kernel vm pinned (u must unpin) with all the location stuff set up for a process?
+
 }
+
+/*
+Process for laoding in initial pages that are not backed by file system but have info:ALIGN
+
+page alloc pinned
+write stuff to it
+map_vaddr in page table
+make page location struct mark it as swap, make present
+map that in supp page table with correct properties
+put loc in the frame
+unpin
+
+*/
 
 #endif
 
