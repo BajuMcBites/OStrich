@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cstring>
 
 #define ramfs_id 0xf99482ea8f5ecce2
 

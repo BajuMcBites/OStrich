@@ -460,3 +460,73 @@ void blocking_atomic_tests() {
     semaphore_tests();
     lock_tests();
 }
+
+void semaphore_tests() {
+    Semaphore* finish_sema = new Semaphore(-2);
+    Semaphore* sema = new Semaphore(1);
+    int* shared_value = (int*)kmalloc(sizeof(int));
+    *shared_value = 0;
+
+    Function<void()> func = [sema, finish_sema, shared_value]() {
+        sema->down([sema, shared_value, finish_sema]() {
+            for (int i = 0; i < 100; i++) {
+                *shared_value = *shared_value + 1;
+            }
+            sema->up();
+            finish_sema->up();
+        });
+    };
+
+    Function<void()> check_func = [sema, finish_sema, shared_value]() {
+        finish_sema->down([sema, finish_sema, shared_value]() {
+            printf("sema test shared value is %d\n", *shared_value);
+            K::assert(*shared_value == 300, "race condition in semaphore test\n");
+            delete sema;
+            delete finish_sema;
+            delete shared_value;
+        });
+    };
+
+    create_event_core(func, 1);
+    create_event_core(func, 2);
+    create_event_core(func, 3);
+    create_event(check_func);
+}
+
+void lock_tests() {
+    Semaphore* finish_sema = new Semaphore(-3);
+    Lock* lock = new Lock();
+    int* shared_value = (int*)kmalloc(sizeof(int));
+    *shared_value = 0;
+
+    Function<void()> func = [lock, finish_sema, shared_value]() {
+        lock->lock([lock, shared_value, finish_sema]() {
+            for (int i = 0; i < 100; i++) {
+                *shared_value = *shared_value + 1;
+            }
+            lock->unlock();
+            finish_sema->up();
+        });
+    };
+
+    Function<void()> check_func = [lock, finish_sema, shared_value]() {
+        finish_sema->down([lock, finish_sema, shared_value]() {
+            printf("lock test shared value is %d\n", *shared_value);
+            K::assert(*shared_value == 400, "race condition in lock test\n");
+            delete lock;
+            delete finish_sema;
+            delete shared_value;
+        });
+    };
+
+    create_event_core(func, 1);
+    create_event_core(func, 2);
+    create_event_core(func, 3);
+    create_event_core(func, 0);
+    create_event(check_func);
+}
+
+void blocking_atomic_tests() {
+    semaphore_tests();
+    lock_tests();
+}
