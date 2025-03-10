@@ -1,10 +1,14 @@
+#ifndef PERCPU_H
+#define PERCPU_H
+
 #include "utils.h"
 
-template<class T>
+template <class T>
 class PerCPU {
-private:
+   private:
     T data[4];
-public:
+
+   public:
     inline T& forCPU(int id) {
         return data[id];
     }
@@ -13,3 +17,5 @@ public:
         return forCPU(getCoreID());
     }
 };
+
+#endif  // PERCPU_H

@@ -105,21 +105,26 @@ This way the Makefile will use the default system compilers (`gcc`, `g++`) inste
    ~~~
    This will compile all .S and .cpp files and then link all of the compiled files into a kernel.elf file. Then it will convert the kernel.elf file into the kernel8.img file. The kernel8.img file will be placed in a directory named `build`
 
-2. **Clean the Build Directory:**
+2. **Make ramfs:**
+   To make the ram disk (this is done automatically by make, but if additional files are added), run make ramfs.
+   Add files to be build into the ramfs into ramfs/files. make ramfs will create build/ramfs.img. Note file names
+   must be 15 characters or shorter or they will be truncated.
+
+3. **Clean the Build Directory:**
    to remove all generated files and clean up the build directory, run:
    ~~~sh
    make clean
    ~~~
    This will delete the `build` directory and its contents.
 
-3. **Run the Kernel in QEMU:**
+4. **Run the Kernel in QEMU:**
    To emulate the kernel on a Raspberry Pi using QEMU, run:
    ~~~sh
    make run
    ~~~
    This will launch QEMU emulating the Raspberry Pi and display output through the serial console in the terminal.
 
-4. **Debug the Kernel:**
+5. **Debug the Kernel:**
    To debug the kernel with GDB, run:
    ~~~sh
    make debug

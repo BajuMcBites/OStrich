@@ -12,14 +12,25 @@
  * bits 1-3 are unused.
  * and the remaining 60 bit represent the size.
  */
-typedef struct memory_block_struct
-{
+typedef struct memory_block_struct {
     size_t block_size_alloc;
     struct memory_block_struct *next;
 } memory_block_t;
 
-extern void uinit(void *start, size_t bytes);
-extern "C" void *malloc(size_t size);
-extern "C" void free(void *ptr);
+// extern void uinit(void *start, size_t bytes);
+// extern "C" void *kmalloc(size_t size);
+// extern "C" void kfree(void *ptr);
+
+void uinit(void *start, size_t bytes);
+void *kmalloc(size_t size);
+void kfree(void *ptr);
+
+void *operator new(size_t size);
+void operator delete(void *p) noexcept;
+
+void operator delete(void *p, size_t sz);
+void *operator new[](size_t size);
+void operator delete[](void *p) noexcept;
+void operator delete[](void *p, size_t sz);
 
 #endif

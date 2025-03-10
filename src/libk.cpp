@@ -1,86 +1,81 @@
 #include "libk.h"
-#include "stdint.h"
+
 #include "heap.h"
 #include "printf.h"
+#include "stdint.h"
 
-long K::strlen(const char *str)
-{
+long K::strlen(const char* str) {
     long n = 0;
-    while (*str++ != 0)
-        n++;
+    while (*str++ != 0) n++;
     return n;
 }
 
-int K::isdigit(int c)
-{
+int K::isdigit(int c) {
     return (c >= '0') && (c <= '9');
 }
 
-bool K::streq(const char *a, const char *b)
-{
+bool K::streq(const char* a, const char* b) {
     int i = 0;
 
-    while (true)
-    {
+    while (true) {
         char x = a[i];
         char y = b[i];
-        if (x != y)
-            return false;
-        if (x == 0)
-            return true;
+        if (x != y) return false;
+        if (x == 0) return true;
         i++;
     }
 }
 
+int K::strncmp(const char* stra, const char* strb, int n) {
+    int index = 0;
+    while (index < n && stra[index] != '\0' && strb[index] != '\0') {
+        if (stra[index] != strb[index]) {
+            return stra[index] - strb[index];
+        }
+        index++;
+    }
+
+    if (index == n) {
+        return 0;
+    }
+
+    return stra[index] - strb[index];
+}
+
+int K::strncpy(char* dest, char* src, int n) {
+    int index = 0;
+    while (index < n && src[index] != '\0') {
+        dest[index] = src[index];
+        index++;
+    }
+
+    if (index == n) {
+        dest[n - 1] = '\0';
+        return n;
+    }
+
+    dest[index] = '\0';
+    return index + 1;
+}
+
+void* K::memcpy(void* dest, const void* src, int n) {
+    unsigned char* d = (unsigned char*)dest;
+    const unsigned char* s = (const unsigned char*)src;
+
+    while (n--) {
+        *d++ = *s++;
+    }
+
+    return dest;
+}
+
 // Helper function for basic assertions
-void K::assert(bool condition, const char *msg)
-{
-    if (!condition)
-    {
+void K::assert(bool condition, const char* msg) {
+    if (!condition) {
         printf("Assertion failed: ");
         printf(msg);
         printf("\n");
-        while (1)
-        {
-        } // Halt on failure
+        while (1) {
+        }  // Halt on failure
     }
-}
-
-/*****************/
-/* C++ operators */
-/*****************/
-// typedef long unsigned int size_t;
-
-void *operator new(size_t size)
-{
-    void *p = malloc(size);
-    // if (p == 0) Debug::panic("out of memory");
-    return p;
-}
-
-void operator delete(void *p) noexcept
-{
-    return free(p);
-}
-
-void operator delete(void *p, size_t sz)
-{
-    return free(p);
-}
-
-void *operator new[](size_t size)
-{
-    void *p = malloc(size);
-    // if (p == 0) Debug::panic("out of memory");
-    return p;
-}
-
-void operator delete[](void *p) noexcept
-{
-    return free(p);
-}
-
-void operator delete[](void *p, size_t sz)
-{
-    return free(p);
 }

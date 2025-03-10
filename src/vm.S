@@ -62,7 +62,7 @@ init_mmu:
     adr x0, __paging_start
 	orr x0, x0, #1
     msr ttbr1_el1, x0
-    msr ttbr0_el1, x0 //added
+    msr ttbr0_el1, x0 
 
     //Translation Control Register
     ldr x0, =(TCR_VALUE)
@@ -84,4 +84,10 @@ init_mmu:
     msr sctlr_el1, x0 
 	
 	ret
+
+.global switch_ttbr0
+switch_ttbr0:
+    msr ttbr0_el1, x0
+	ret
+
 	
