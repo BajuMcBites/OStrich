@@ -9,6 +9,7 @@
 #include "kernel_tests.h"
 #include "libk.h"
 #include "mm.h"
+#include "partition_tests.h"
 #include "percpu.h"
 #include "printf.h"
 #include "queue.h"
@@ -82,6 +83,8 @@ extern "C" void kernel_main() {
     blocking_atomic_tests();
     ramfs_tests();
     sdioTests();
+    // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
+    // it out.
 }
 
 extern char __heap_start[];
