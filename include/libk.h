@@ -11,6 +11,7 @@ class K {
     static int strncmp(const char* stra, const char* strb, int n);
     static int strncpy(char* dest, char* src, int n);
     static void* memcpy(void* dest, const void* src, int n);
+    static void* memset(void* dest, int c, int n);
 
     template <typename T>
     static T min(T v) {
