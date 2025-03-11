@@ -7,6 +7,16 @@
         "cstdint": "cpp",
         "random": "cpp",
         "*.tcc": "cpp",
-        "format": "cpp"
+        "format": "cpp",
+        "charconv": "cpp",
+        "optional": "cpp",
+        "ratio": "cpp",
+        "system_error": "cpp",
+        "array": "cpp",
+        "functional": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "mutex": "cpp"
     }
 }

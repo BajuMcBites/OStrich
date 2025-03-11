@@ -14,9 +14,15 @@ proc_hang:
 
 master:
     // Set up stack pointer for EL1
-    ldr x0, =LOW_MEMORY
+    mrs x0, mpidr_el1
+    and x0, x0, #0xFF
+    mov x1, #SECTION_SIZE
+    mul x1, x1, x0
+    add x1, x1, #LOW_MEMORY
+    mov sp, x1
+    bl pickKernelStack
+    mov sp, x0
     msr sp_el1, x0
-
 
     // Enable virtual and physical counter timers for EL1
     mrs     x0, cnthctl_el2
@@ -67,24 +73,20 @@ el1_entry:
     bl    primary_kernel_init
     b     proc_hang        // should never come here
 
-secondary:
-    mrs x0, mpidr_el1
-    and x0, x0, #0xFF
-    mov x1, #SECTION_SIZE
-    mul x1, x1, x0
-    add x1, x1, #LOW_MEMORY
-    mov sp, x1
-    bl pickKernelStack
-    mov sp, x0
 
-setup_el1_for_secondary:
+secondary:
     // Set up stack pointer for EL1 for secondary cores
     mrs x0, mpidr_el1
     and x0, x0, #0xFF
     mov x1, #SECTION_SIZE
     mul x1, x1, x0
     add x1, x1, #LOW_MEMORY
+    mov sp, x1
     msr sp_el1, x1
+    mov x0, x0
+    bl pickKernelStack
+    mov sp, x0
+    msr sp_el1, x0
 
     // Enable virtual and physical counter timers for EL1
     mrs     x0, cnthctl_el2
@@ -104,6 +106,9 @@ setup_el1_for_secondary:
     ldr x0, =HCR_VALUE
     msr hcr_el2, x0
 
+    ldr     x0, =_vectors
+    msr     vbar_el1, x0
+
     // Set up SPSR_EL2 to transition to EL1h
     ldr x0, =SPSR_VALUE
     msr spsr_el2, x0
@@ -116,16 +121,21 @@ setup_el1_for_secondary:
     eret
 
 secondary_kernel_main:
+    dsb sy
+    isb
     bl secondary_kernel_init
     b proc_hang
 
 .global wake_up_cores
 wake_up_cores:
-
+    
     mov x0, #0
     adr x0, secondary 
     ldr x4, =(VA_START)
     sub x0, x0, x4
+
+    dsb sy
+    isb
 
     mov x1, #0xe0
     str x0, [x1]
@@ -133,7 +143,21 @@ wake_up_cores:
     str x0, [x1]
     mov x1, #0xf0
     str x0, [x1]
+
+    // we wrote to addresses 0xe0, 0xe8, and 0xf0, we must now write them back to memory since 
+    // primary core has data cache on at this point
+    movz x0, #0xe0
+    dc cvac, x0
+    movz x0, #0xe8
+    dc cvac, x0
+    movz x0, #0xf0
+    dc cvac, x0
+    
+    dsb sy
+    isb
+    
     sev
+    
     ret
 
     // important, code has to be properly aligned

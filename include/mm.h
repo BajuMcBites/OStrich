@@ -37,26 +37,25 @@
     (16LL    << 0)    /* [5:0]   T0SZ: VA Size (TTBR0) - 16 = 256TB (Same options as T1SZ) */ \
 )
 
+// Memory attribute indices
+#define MT_DEVICE_nGnRnE     0   // Device memory: non-Gathering, non-Reordering, non-Early write ack
+#define MT_DEVICE_nGnRE      1   // Device memory: non-Gathering, non-Reordering, Early write ack
+#define MT_DEVICE_GRE        2   // Device memory: Gathering, Reordering, Early write ack
+#define MT_NORMAL_NC         3   // Normal memory: Non-cacheable
+#define MT_NORMAL            4   // Normal memory: Cacheable
 
-#define MT_DEVICE_NGNRNE	0
-#define MT_DEVICE_NGNRE		1
-#define MT_DEVICE_GRE		2
-#define MT_NORMAL_NC		3
-#define MT_NORMAL		    4
-
-
-#define MAIR_VALUE ( (0x00ul << (MT_DEVICE_NGNRNE * 8)) |\
-                 (0x04ul << (MT_DEVICE_NGNRE * 8)) |\
-				 (0x0cul << (MT_DEVICE_GRE * 8)) |\
-                 (0x44ul << (MT_NORMAL_NC * 8)) |\
-				 (0xfful << (MT_NORMAL * 8)) )
-// #define SCTLR_MMU_ENABLED 0x1
+// Memory Attribute Indirection Register (MAIR) settings
+#define MAIR_VALUE ( \
+    (0x00ul << (MT_DEVICE_nGnRnE * 8)) | /* [0] Device-nGnRnE */ \
+    (0x04ul << (MT_DEVICE_nGnRE * 8)) |  /* [1] Device-nGnRE */ \
+    (0x0Cul << (MT_DEVICE_GRE * 8)) |    /* [2] Device-GRE */ \
+    (0x44ul << (MT_NORMAL_NC * 8)) |     /* [3] Normal Non-cacheable */ \
+    (0xFFul << (MT_NORMAL * 8))          /* [4] Normal memory with write-back */ \
+)
 
 #ifndef __ASSEMBLER__
 
 void memzero(unsigned long src, unsigned long n);
-extern "C" void create_page_tables();
-extern "C" void init_mmu();
 #endif
 
 #endif  /*_MM_H */

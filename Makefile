@@ -15,10 +15,11 @@ INCLUDE_DIR = include
 ASM_SRC = $(wildcard $(SRC_DIR)/*.S)
 C_SRC = $(wildcard $(SRC_DIR)/*.c)
 CPP_SRC = $(wildcard $(SRC_DIR)/*.cpp)
+
 # Object files
-ASM_OBJ = $(ASM_SRC:$(SRC_DIR)/%.S=$(BUILD_DIR)/%.o)
-C_OBJ = $(C_SRC:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
-CPP_OBJ = $(CPP_SRC:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%.o)
+ASM_OBJ = $(ASM_SRC:$(SRC_DIR)/%.S=$(BUILD_DIR)/%_S.o)
+C_OBJ = $(C_SRC:$(SRC_DIR)/%.c=$(BUILD_DIR)/%_c.o)
+CPP_OBJ = $(CPP_SRC:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%_cpp.o)
 
 # Output files
 KERNEL_ELF = $(BUILD_DIR)/kernel.elf
@@ -35,17 +36,17 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Preprocess and assemble the assembly files
-$(ASM_OBJ): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.S | $(BUILD_DIR)
+$(ASM_OBJ): $(BUILD_DIR)/%_S.o : $(SRC_DIR)/%.S | $(BUILD_DIR)
 	$(CC) -E -x assembler-with-cpp -I$(INCLUDE_DIR) $< -o $(BUILD_DIR)/$(<F).i
 	$(AS) $(BUILD_DIR)/$(<F).i -o $@
 	rm $(BUILD_DIR)/$(<F).i
 
 # Compile the C source files
-$(C_OBJ): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c | $(BUILD_DIR)
+$(C_OBJ): $(BUILD_DIR)/%_c.o : $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Compile the C++ source files
-$(CPP_OBJ): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+$(CPP_OBJ): $(BUILD_DIR)/%_cpp.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
 # Link the object files into the kernel ELF
@@ -64,8 +65,3 @@ run:
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
-
-debug_mac:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -s -S
-
-.PHONY: all clean run debug
