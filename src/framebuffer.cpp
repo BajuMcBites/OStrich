@@ -73,6 +73,7 @@ int fb_init(void) {
             printf("Pitch: %d, Buffer size: %d\n", fb.pitch, fb.size);
             printf("Buffer address: %x\n", (unsigned long)fb.buffer);
 
+
             printf("Setting white background...\n");
             unsigned int* ptr = (unsigned int*)fb.buffer;
             for (unsigned int y = 0; y < fb.height; y++) {
