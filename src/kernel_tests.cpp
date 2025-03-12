@@ -263,9 +263,9 @@ void ramfs_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("temp.elf");
-    char buffer[15776];
-    ramfs_read(buffer, 0, 15776, elf_index);
+    int elf_index = get_ramfs_index("calc.elf");
+    char buffer[70393];
+    ramfs_read(buffer, 0, 70392, elf_index);
     elf_load((void*)buffer);
     printf("end elf_load tests\n");
 }

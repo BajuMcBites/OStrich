@@ -147,7 +147,7 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 				// LINKING STUFF
 				break;
 			case SHT_RELA: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				// not here
 				break;
 			case SHT_HASH: 
 				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
@@ -192,18 +192,14 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 				// do something 
 				break;
 			default:
-				ERROR("undefined shtype: %d", section->sh_type);
+				ERROR("undefined shtype: %d\n", section->sh_type);
 		}
 	}
 	return 0;
 }
 
 // relocation
-
-# define DO_ARM_32(S, A)	((S) + (A))
-# define DO_ARM_PC32(S, A, P)	((S) + (A) - (P))
-
-static uint64_t elf_do_reloc(Elf64_Ehdr *hdr, Elf64_Rel *rel, Elf64_Shdr *reltab) {
+static uint64_t elf_do_reloc(Elf64_Ehdr *hdr, Elf64_Rela *rel, Elf64_Shdr *reltab) {
 	Elf64_Shdr *target = elf_section(hdr, reltab->sh_info);
 
 	uint64_t addr = (uint64_t)hdr + target->sh_offset;
@@ -216,21 +212,45 @@ static uint64_t elf_do_reloc(Elf64_Ehdr *hdr, Elf64_Rel *rel, Elf64_Shdr *reltab
 	}
 	// Relocate based on type
 	//
-	// LIKELY WRONG: LOOK INTO ARM RELOCATION TYPES LATER
-	//
-	//
-	//
+	printf("THE RELOCATIONTYPE IS %d\n", ELF64_R_TYPE(rel->r_info));
 	switch(ELF64_R_TYPE(rel->r_info)) {
-		case R_ARM64_NONE:
-			// No relocation
+		case R_AARCH64_ABS64:
+		case R_AARCH64_GLOB_DAT:
+		case R_AARCH64_JUMP_SLOT:
+			*ref = rel->r_addend;
 			break;
-		case R_ARM64_32:
-			// Symbol + Offset
-			*ref = DO_ARM_32(symval, *ref);
+		case R_AARCH64_ABS32:
+			*ref = (*ref + rel->r_addend) & 0xFFFFFFFF;
 			break;
-		case R_ARM64_PC32:
-			// Symbol + Offset - Section Offset
-			*ref = DO_ARM_PC32(symval, *ref, (uint64_t)ref);
+		case R_AARCH64_ABS16:
+			*ref = (*ref + rel->r_addend) & 0xFFFF;
+			break;
+		case R_AARCH64_PREL64:
+			*ref += rel->r_addend - rel->r_offset;
+			break;
+		case R_AARCH64_PREL32:
+			*ref = (*ref + rel->r_addend - rel->r_offset) & 0xFFFFFFFF;
+			break;
+		case R_AARCH64_PREL16:
+			*ref = (*ref + rel->r_addend - rel->r_offset) & 0xFFFF;
+			break;
+		case R_AARCH64_MOVW_UABS_G0:
+			*ref = rel->r_addend & 0xFFFF;
+			break;
+		case R_AARCH64_MOVW_UABS_G1:
+			*ref = (rel->r_addend >> 16) & 0xFFFF;
+			break;
+		case R_AARCH64_MOVW_UABS_G2:
+			*ref = (rel->r_addend >> 32) & 0xFFFF;
+			break;
+		case R_AARCH64_MOVW_UABS_G3:
+			*ref = (rel->r_addend >> 48) & 0xFFFF;
+			break;
+		case R_AARCH64_RELATIVE:
+			*ref = *ref + rel->r_addend;
+			break;
+		case R_AARCH64_TLS_TPREL64:
+			*ref = rel->r_addend;
 			break;
 		default:
 			// Relocation type not supported, display error and return
@@ -253,13 +273,30 @@ static int elf_load_stage2(Elf64_Ehdr *hdr) {
 		// If this is a relocation section
 		if(section->sh_type == SHT_REL) {
 			// Process each entry in the table
-			for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
+			/*for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
 				Elf64_Rel *reltab = &((Elf64_Rel *)((uint64_t)hdr + section->sh_offset))[idx];
 				int result = elf_do_reloc(hdr, reltab, section);
 				// On error, display a message and return
 				if(result == ELF_RELOC_ERR) {
 					ERROR("Failed to relocate symbol.\n");
 					return ELF_RELOC_ERR;
+				}
+			}*/
+			ERROR("ITS SHT_REL...");
+			continue;
+		}
+		
+		if(section->sh_type == SHT_RELA) {
+			printf("THIS IS A SHTRELA %d!\n", i);
+			// Process each entry in the table
+			for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
+				Elf64_Rela *reltab = &((Elf64_Rela *)((uint64_t)hdr + section->sh_offset))[idx];
+				printf("off: %x info: %x addend: %x\n", reltab->r_offset, reltab->r_info, reltab->r_addend);
+				int result = elf_do_reloc(hdr, reltab, section);
+				// On error, display a message and return
+				if(result == ELF_RELOC_ERR) {
+					ERROR("Failed to relocate symbol.\n");
+					//return ELF_RELOC_ERR;
 				}
 			}
 		}
@@ -397,7 +434,7 @@ void *elf_load(void* ptr) {
 		case ET_REL:
 			return elf_load_rel(hdr);
 		case ET_DYN:
-			return elf_load_exec(hdr);
+			return elf_load_rel(hdr);
 			// todo ... ?? ? ? ? ? ??
 			return nullptr;
 	}
