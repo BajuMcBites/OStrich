@@ -16,7 +16,9 @@ proc_hang:
 
 master:
     // Set up stack pointer for EL1
-    ldr x0, =LOW_MEMORY
+    mrs x0, CurrentEL
+    mov sp, #LOW_MEMORY
+    bl pickKernelStack
     msr sp_el1, x0
 
 
@@ -42,7 +44,7 @@ master:
     msr     vbar_el1, x0
 
     // Set up SPSR_EL2 to transition to EL1h
-    mov x0, #0x3c4
+    ldr x0, =SPSR_VALUE
     msr spsr_el2, x0
 
     // Set ELR_EL2 to point to el1_entry
@@ -59,13 +61,6 @@ el1_entry:
     sub    x1, x1, x0
     bl     memzero
 
-    // Set up the stack pointer (SP) for EL1
-    mov    sp, #LOW_MEMORY
-    bl pickKernelStack
-    mov    sp, x0
-
-    //bl    wake_up_cores
-
     bl    kernel_init
     b     proc_hang        // should never come here
 
@@ -76,18 +71,12 @@ secondary:
     mul x1, x1, x0
     add x1, x1, #LOW_MEMORY
     mov sp, x1
+
+    // Set up stack pointer for EL1 for secondary cores
     bl pickKernelStack
-    //mov sp, x0
     msr sp_el1, x0
 
 setup_el1_for_secondary:
-    // Set up stack pointer for EL1 for secondary cores
-    // mrs x0, mpidr_el1
-    //and x0, x0, #0xFF
-    //mov x1, #SECTION_SIZE
-    //mul x1, x1, x0
-    //add x1, x1, #LOW_MEMORY
-    //msr sp_el1, x1
 
     // Enable virtual and physical counter timers for EL1
     mrs     x0, cnthctl_el2
@@ -114,6 +103,9 @@ setup_el1_for_secondary:
     // Set ELR_EL2 to point to secondary_kernel_main
     adr x0, secondary_kernel_main
     msr elr_el2, x0
+
+    ldr     x0, =_vectors
+    msr     vbar_el1, x0
 
     // Transition to EL1
     eret
