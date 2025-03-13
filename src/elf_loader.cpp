@@ -69,9 +69,42 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 
 # define ELF_RELOC_ERR -1
 
-void* elf_lookup_symbol (const char* name) { 
+Elf64_Shdr *find_section(Elf64_Ehdr* hdr, const char* name) {
+	Elf64_Shdr *shdr = elf_sheader(hdr);
+	for(int i = 0; i < hdr->e_shnum; i++) {
+		
+		Elf64_Shdr *section = &shdr[i];
+		Elf64_Shdr *shstrndx = elf_section(hdr, hdr->e_shstrndx);
+		const char *cname = (const char *)hdr + shstrndx->sh_offset + section->sh_name;
+		if (K::strcmp(name, cname) == 0) {
+			return section;
+		}
+	}
 	return nullptr;
 }
+
+void* elf_lookup_symbol (Elf64_Ehdr* hdr, const char* name) { 
+	Elf64_Shdr *dynsym = find_section(hdr, ".dynsym");
+	Elf64_Shdr *dynstr = find_section(hdr, ".dynstr");
+
+	if (!dynsym || !dynstr) {
+		ERROR("Symbol or string table not found!");
+		return nullptr;
+	}
+
+	uint64_t dynsym_entries = dynsym->sh_size / dynsym->sh_entsize;
+	uint64_t symaddr = (uint64_t)hdr + dynsym->sh_offset;
+	for (int i = 0; i < dynsym_entries; i++) {
+		Elf64_Sym *symbol = &((Elf64_Sym *)symaddr)[i];
+		const char *cname = (const char*)((uint64_t)hdr + dynstr->sh_offset + symbol->st_name);
+		if (K::strcmp(name, cname) == 0) {
+			printf("WE FOUND %s, returning %x\n", cname, symbol->st_value);
+			return (void*)symbol->st_value;
+		}
+	}
+	return nullptr;
+}
+
 static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 	if(table == SHN_UNDEF || idx == SHN_UNDEF) return 0;
 	Elf64_Shdr *symtab = elf_section(hdr, table);
@@ -89,7 +122,7 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 		Elf64_Shdr *strtab = elf_section(hdr, symtab->sh_link);
 		const char *name = (const char *)hdr + strtab->sh_offset + symbol->st_name;
 
-		void *target = elf_lookup_symbol(name);
+		void *target = elf_lookup_symbol(hdr, name);
 
 		if(target == nullptr) {
 			// Extern symbol not found
