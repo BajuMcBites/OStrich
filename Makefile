@@ -74,7 +74,11 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -drive file=test.dd,if=sd,format=raw
+	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio
+
+run-with-sd:
+	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -drive file=sdcard.dd,if=sd,format=raw
+
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
 
