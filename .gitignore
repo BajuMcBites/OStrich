@@ -4,3 +4,8 @@ copy_kernel.sh
 Makefile
 gdb_start.sh
 .vscode/
+*.img
+*.dtb
+*.dts
+*.qcow2
+*.dd

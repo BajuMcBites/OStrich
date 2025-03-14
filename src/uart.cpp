@@ -1,13 +1,10 @@
 #include "uart.h"
-
-#include "peripherals/base.h"
 #include "utils.h"
+#include "gpio.h"
+#include "peripherals/base.h"
 
 // Base addresses for UART0 and GPIO
-#define MMIO_BASE 0xFFFF00003F000000
-#define GPFSEL1 ((volatile unsigned int*)(MMIO_BASE + 0x200004))
-#define GPPUD ((volatile unsigned int*)(MMIO_BASE + 0x200094))
-#define GPPUDCLK0 ((volatile unsigned int*)(MMIO_BASE + 0x200098))
+#define MMIO_BASE 0x3F000000
 #define UART0_BASE (MMIO_BASE + 0x201000)
 #define UART0_DR ((volatile unsigned int*)(UART0_BASE + 0x00))
 #define UART0_FR ((volatile unsigned int*)(UART0_BASE + 0x18))
@@ -19,22 +16,17 @@
 #define UART0_ICR ((volatile unsigned int*)(UART0_BASE + 0x44))
 
 void uart_init(void) {
-    unsigned int selector;
+    const char* gpio_14 = "GPIO_14";
+    const char* gpio_15 = "GPIO_15";
 
-    // Set GPIO 14 and 15 to ALT0 for UART0 (TXD0/RXD0)
-    selector = get32(GPFSEL1);
-    selector &= ~(7 << 12);  // Clear bits 14:12 for GPIO 14
-    selector |= 4 << 12;     // Set bits 14:12 to 100 (ALT0) for GPIO 14
-    selector &= ~(7 << 15);  // Clear bits 17:15 for GPIO 15
-    selector |= 4 << 15;     // Set bits 17:15 to 100 (ALT0) for GPIO 15
-    put32(GPFSEL1, selector);
+    gpio_request(14, gpio_14);
+    gpio_request(15, gpio_15);
 
-    // Disable pull-up/down for all GPIO pins & delay for changes to take effect
-    put32(GPPUD, 0);
-    delay(150);
-    put32(GPPUDCLK0, (1 << 14) | (1 << 15));
-    delay(150);
-    put32(GPPUDCLK0, 0);
+    gpio_set_direction(14, DIR_ALT0);
+    gpio_set_direction(15, DIR_ALT0);
+
+    gpio_pull(14, GPPUD_DISABLED);
+    gpio_pull(15, GPPUD_DISABLED);
 
     // Disable UART0.
     put32(UART0_CR, 0);
