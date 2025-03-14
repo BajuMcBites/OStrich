@@ -2,6 +2,7 @@
 #define _P_IRQ_H
 
 #include "peripherals/base.h"
+#include "vm.h"
 
 #define IRQ_BASIC_PENDING (volatile unsigned int*)(PBASE + 0x0000B200)
 #define IRQ_PENDING_1 (volatile unsigned int*)(PBASE + 0x0000B204)

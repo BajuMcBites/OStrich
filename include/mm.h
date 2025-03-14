@@ -1,7 +1,7 @@
 #include "peripherals/base.h"
 #ifndef _MM_H
 #define _MM_H
-#define VA_START 0xffff000000000000
+
 #define PAGE_SHIFT 12
 #define TABLE_SHIFT 9
 #define SECTION_SHIFT (PAGE_SHIFT + TABLE_SHIFT)

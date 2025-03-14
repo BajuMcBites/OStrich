@@ -23,7 +23,7 @@ struct Stack {
     uint64_t bytes[BYTES] __attribute__((aligned(16)));
 };
 
-PerCPU<Stack> stacks;
+PerCPU<Stack> stacks __attribute__((section(".stacks")));
 
 static bool smpInitDone = false;
 
@@ -66,9 +66,11 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
+    // queue_test();
+    printf("All tests passed\n");
     heapTests();
     event_loop_tests();
-    // queue_test();
+    hash_test();
     frame_alloc_tests();
     user_paging_tests();
     ramfs_tests();
