@@ -9,3 +9,4 @@ gdb_start.sh
 *.dts
 *.qcow2
 *.dd
+!sdcard.dd
