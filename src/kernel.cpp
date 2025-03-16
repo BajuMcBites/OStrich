@@ -7,11 +7,14 @@
 #include "kernel_tests.h"
 #include "libk.h"
 #include "mm.h"
+#include "partition_tests.h"
 #include "percpu.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "sdio.h"
+#include "sdio_tests.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
@@ -72,6 +75,9 @@ extern "C" void kernel_main() {
     frame_alloc_tests();
     user_paging_tests();
     ramfs_tests();
+    sdioTests();
+    // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
+    // it out.
 }
 
 extern char __heap_start[];
@@ -91,6 +97,10 @@ extern "C" void kernel_init() {
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         timer_init();
+        gpio_init();
+        if (sd_init() != 0) {
+            printf("SDIO init failed\n");
+        }
         enable_interrupt_controller();
         enable_irq();
         printf("printf initialized!!!\n");

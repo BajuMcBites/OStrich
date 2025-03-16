@@ -69,6 +69,14 @@ void* K::memcpy(void* dest, const void* src, int n) {
     return dest;
 }
 
+void* K::memset(void* dest, int c, int n) {
+    unsigned char* d = (unsigned char*)dest;
+    while (n--) {
+        *d++ = (unsigned char)c;
+    }
+    return dest;
+}
+
 // Helper function for basic assertions
 void K::assert(bool condition, const char* msg) {
     if (!condition) {
