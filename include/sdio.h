@@ -3,6 +3,7 @@
 
 #include "atomic.h"
 #include "peripherals/sdio.h"
+#include "stdint.h"
 
 // SW return codes (unrelated to HW).
 #define SD_OK 0
@@ -12,6 +13,7 @@
 #define MBR_SECTOR 0
 #define PARTITION_TABLE_OFFSET 0x1BE
 #define NUM_PARTITIONS 4
+#define NUM_SD_MB_AVAILABLE 1  // 1MB card.
 
 static SpinLock sd_lock;
 
@@ -53,7 +55,7 @@ int sd_write_block(unsigned char* buffer, unsigned int block_addr, unsigned int 
  *
  * @return The number of blocks on the SD card.
  */
-int sd_get_num_blocks();
+uint32_t sd_get_num_blocks();
 
 /**
  * @brief Initialize SD card.
