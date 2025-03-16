@@ -129,11 +129,22 @@ void test_delete_partition() {
     printf("test_delete_partition(): passed\n");
 }
 
+void test_get_num_partition_blocks() {
+    int ret = get_num_partition_blocks(TEST_PARTITION_SYSTEM_ID);
+    if (ret < 0) {
+        printf("test_get_num_partition_blocks(): Failed to get partition blocks, error %d\n", ret);
+        return;
+    }
+
+    printf("test_get_num_partition_blocks(): passed\n");
+}
+
 // Run all partition-related tests
 void partitionTests() {
     printf("Starting partition tests...\n");
     test_read_mbr();
     test_create_partition();
+    test_get_num_partition_blocks();
     test_delete_partition();
     printf("Partition tests complete\n");
 }

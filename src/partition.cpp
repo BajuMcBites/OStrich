@@ -113,6 +113,22 @@ int create_partition(uint32_t num_sectors, uint8_t system_id) {
     return SD_OK;
 }
 
+int get_num_partition_blocks(int system_id) {
+    unsigned char mbr_block[512];
+    MasterBootRecord* mbr = read_mbr(mbr_block);
+    if (!mbr) {
+        return SD_ERROR;
+    }
+
+    for (int i = 0; i < NUM_PARTITIONS; i++) {
+        if (mbr->partitions[i].system_id == system_id) {
+            return mbr->partitions[i].total_sectors;
+        }
+    }
+
+    return SD_ERROR;
+}
+
 int delete_partition(int partition_number) {
     if (partition_number < 0 || partition_number >= NUM_PARTITIONS) {
         return SD_ERROR;
