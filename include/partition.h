@@ -96,3 +96,14 @@ int create_partition(uint32_t num_sectors, uint8_t system_id);
  * @return SD_OK on success, error code on failure.
  */
 int delete_partition(int partition_number);
+
+/**
+ * @brief Get the number of blocks in a partition.
+ *
+ * This function returns the number of blocks in a partition based on the system ID.
+ *
+ * @param system_id System ID of the partition.
+ *
+ * @return Number of blocks in the partition, or negative error code.
+ */
+int get_num_partition_blocks(int system_id);
