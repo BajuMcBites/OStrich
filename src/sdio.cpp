@@ -70,12 +70,14 @@ int sd_int(unsigned int mask) {
     int cnt = 100000;
     while (!(*SD_INTERRUPT & m) && cnt--) wait_msec(1);
     r = *SD_INTERRUPT;
+    // printf("response: %x\n", r);
     if (cnt <= 0 || (r & INT_CMD_TIMEOUT) || (r & INT_DATA_TIMEOUT)) {
-        printf("here a %d, %d, %d\n", cnt, (r & INT_CMD_TIMEOUT), (r & INT_DATA_TIMEOUT));
+        printf("sd_interrupt reg: cmd / data timeout %d, %d, %d\n", cnt, (r & INT_CMD_TIMEOUT),
+               (r & INT_DATA_TIMEOUT));
         *SD_INTERRUPT = r;
         return -2;
     } else if (r & INT_ERROR_MASK) {
-        printf("here b\n");
+        printf("interrupt error\n");
         *SD_INTERRUPT = r;
         return -1;
     }
@@ -92,6 +94,7 @@ int sd_status(unsigned int mask) {
 }
 
 int send_command(unsigned int command, unsigned int arg, int *res) {
+    // printf("sending command %x\n", command);
     if (command & APP_CMD) {
         int resp;
         int status = send_command(CMD_SEND_APP | (sd_rca ? 0x00020000 : 0), sd_rca, &resp);
@@ -307,6 +310,7 @@ int init_cmd_seq() {
     *SD_BLKSIZECNT = (1 << 16) /* 1 block / transfer */ | 8 /* block size in bytes */;
 
     if (send_command(ACMD_SEND_SCR, 0, nullptr) || sd_int(0x00000020)) {
+        printf("error sending scr\n");
         return -1;
     }
 
@@ -323,7 +327,6 @@ int init_cmd_seq() {
     if (r != 2) {
         return -1;
     }
-
     if (sd_scr[0] & 0x00000400) {
         if (send_command(ACMD_SET_BUT_WIDTH, sd_rca | 2, nullptr)) {
             return -1;
@@ -333,6 +336,9 @@ int init_cmd_seq() {
     sd_scr[0] &= ~0x00000001;
     sd_scr[0] |= ccs;
 
+    // Query the card capacity during initialization.
+    // NOT WORKING ATM.
+    sd_get_num_blocks();
     return 0;
 }
 
@@ -349,10 +355,91 @@ uint32_t extract_bits(const uint32_t *csd, int start_bit, int num_bits) {
     return result;
 }
 
-// Returns the total number of 512-byte blocks on the SD card.
-// For now, since we will know the SD card size beforehand, we can just return a constant.
-int sd_get_num_blocks() {
-    return 1024 * 1024 / SD_BLK_SIZE;  // 1MB
+// Add this global variable at the top with other globals
+uint32_t sd_card_blocks = (NUM_SD_MB_AVAILABLE * 1024 * 1024) / SD_BLK_SIZE;  // 1MB card.
+
+/**
+ * Retrieves the total number of blocks available on the SD card.
+ * The first call reads from the card's CSD register and caches the result.
+ * Subsequent calls return the cached value for performance.
+ *
+ * @return The total number of blocks (sectors) on the card, or 0 on failure
+ * THIS IS NOT WORKING ATM.
+ */
+uint32_t sd_get_num_blocks() {
+    // If we already queried the card, return cached value
+    if (sd_card_blocks > 0) {
+        return sd_card_blocks;
+    }
+
+    LockGuard<SpinLock> g{sd_lock};
+
+    // Storage for CSD register data (128 bits = 16 bytes)
+    uint32_t csd[4] = {0};
+    int status = 0;
+    int response = 0;
+
+    csd[0] = *SD_RESP_REG_0;
+    csd[1] = *SD_RESP_REG_1;
+    csd[2] = *SD_RESP_REG_2;
+    csd[3] = *SD_RESP_REG_3;
+
+    printf("csd: %x, %x, %x, %x\n", csd[0], csd[1], csd[2], csd[3]);
+
+    // Send CMD9 (SEND_CSD) to get the card's CSD register
+    HANDLE_ERROR(send_command(CMD_SEND_CSD, sd_rca, &response), status, 0);
+
+    // time out for 10 seconds
+    for (int i = 0; i < 1000000; i++) {
+        wait_msec(1);
+    }
+
+    // Wait for data to be ready
+    // HANDLE_ERROR(sd_int(INT_READ_RDY), status, 0);
+
+    printf("CMD sent. Reading from response registers.\n");
+    // Read the CSD data (16 bytes = 4 words)
+    csd[0] = *SD_RESP_REG_0;
+    csd[1] = *SD_RESP_REG_1;
+    csd[2] = *SD_RESP_REG_2;
+    csd[3] = *SD_RESP_REG_3;
+
+    printf("csd: %x, %x, %x, %x\n", csd[0], csd[1], csd[2], csd[3]);
+
+    // Check if the card is high capacity (SDHC/SDXC) or standard capacity (SDSC)
+    bool is_high_capacity = (sd_scr[0] & SCR_SUPP_CCS) != 0;
+    is_high_capacity = true;
+    uint32_t num_blocks = 0;
+
+    if (is_high_capacity) {
+        // For SDHC/SDXC (CSD Version 2.0)
+        // C_SIZE is bits 69:48 of the CSD
+        uint32_t c_size = ((csd[1] & 0x3F) << 16) | ((csd[2] & 0xFFFF0000) >> 16);
+        // Capacity = (C_SIZE + 1) * 512KiB
+        // Convert to 512-byte blocks: (C_SIZE + 1) * 1024
+        num_blocks = (c_size + 1) * 1024;
+    } else {
+        // For SDSC (CSD Version 1.0)
+        // Extract C_SIZE (bits 73:62), C_SIZE_MULT (bits 49:47), and READ_BL_LEN (bits 83:80)
+        uint32_t c_size = ((csd[1] & 0x03FF) << 2) | ((csd[2] & 0xC0000000) >> 30);
+        uint32_t c_size_mult = (csd[2] & 0x00038000) >> 15;
+        uint32_t read_bl_len = (csd[1] & 0x00F00000) >> 20;
+
+        // Calculate capacity in bytes: (C_SIZE + 1) * 2^(C_SIZE_MULT + 2) * 2^READ_BL_LEN
+        uint64_t capacity_bytes =
+            (uint64_t)(c_size + 1) * (1ULL << (c_size_mult + 2)) * (1ULL << read_bl_len);
+        // Convert to number of 512-byte blocks
+        num_blocks = capacity_bytes / SD_BLK_SIZE;
+    }
+
+    if (DEBUG) {
+        printf("SD Card capacity: %u blocks (%u MB)\n", num_blocks,
+               (num_blocks / 2048));  // Convert to MB (2048 blocks = 1MB)
+    }
+
+    // Cache the result for future calls
+    sd_card_blocks = num_blocks;
+    return num_blocks;
 }
 
 int sd_init() {
