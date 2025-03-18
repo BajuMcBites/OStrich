@@ -2,14 +2,18 @@
 
 #include "event.h"
 #include "frame.h"
+#include "hash.h"
 #include "heap.h"
 #include "libk.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
+#include "rand.h"
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
+
+#define NUM_TIMES 1000
 
 PageTable* page_table;
 
@@ -227,6 +231,74 @@ void user_paging_tests() {
     printf("starting user paging tests\n");
     basic_page_table_creation();
     printf("user paging tests complete\n");
+}
+
+void hash_test() {
+    Rand rand;
+    int keys[NUM_TIMES];
+    Hashmap<int> hash(1);
+
+    printf("Inserting %d random numbers\n", NUM_TIMES);
+    for (int i = 0; i < NUM_TIMES; i++) {
+        int randomNum = rand.random() % NUM_TIMES / 8;
+        if (randomNum == 0) randomNum++;
+        hash.put(i, randomNum);
+        keys[i] = randomNum;
+    }
+
+    printf("Checking size is %d\n", NUM_TIMES);
+    K::assert(hash.size == NUM_TIMES, "Got incorrect size\n");
+
+    printf("Checking values are correct\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        K::assert(keys[i] == hash.get(i), "Got incorrect value\n");
+    }
+
+    printf("Reinserting %d random numbers into hashmap\n", NUM_TIMES);
+    for (int i = 0; i < NUM_TIMES; i++) {
+        int randomNum = rand.random() % 101;
+        if (randomNum == 0) randomNum++;
+        hash.put(i, randomNum);
+        keys[i] = randomNum;
+    }
+
+    printf("Checking size is %d\n", NUM_TIMES);
+    K::assert(hash.size == NUM_TIMES, "Got incorrect size\n");
+
+    printf("Checking values are correct\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        if (keys[i] != hash.get(i)) {
+            K::assert(keys[i] == hash.get(i), "Got incorrect value\n");
+        }
+    }
+
+    printf("Removing first half of values\n");
+    for (int i = 0; i < NUM_TIMES / 2; i++) {
+        hash.remove(i);
+    }
+
+    printf("Checking size is %d\n", NUM_TIMES - NUM_TIMES / 2);
+    K::assert(hash.size == NUM_TIMES - NUM_TIMES / 2, "Got incorrect size\n");
+
+    printf("Checking values are null for first half of values\n");
+    for (int i = 0; i < NUM_TIMES / 2; i++) {
+        K::assert(hash.get(i) == 0, "Got non-null value at index\n");
+    }
+
+    printf("Removing all values\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        hash.remove(i);
+    }
+
+    printf("Checking size is 0\n");
+    K::assert(hash.size == 0, "Got incorrect size\n");
+
+    printf("Checking values are null for all keys\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        K::assert(hash.size == 0, "Got non-null value\n");
+    }
+
+    printf("Passed\n");
 }
 
 void ramfs_test_basic() {
