@@ -106,7 +106,8 @@ bool K::check_stack() {
     uint64_t stack_start = stack_end + stack_size * 8;
 
     if (sp <= stack_end || sp > stack_start) {
-        printf("Stack (%d) has overflowed. end (%X), sp (%X), start (%X)\n", getCoreID(), stack_end, sp, stack_start);
+        printf("Stack (%d) has overflowed. end (%X), sp (%X), start (%X)\n", getCoreID(), stack_end,
+               sp, stack_start);
         K::assert(false, "we have failed stack check");
     }
 
