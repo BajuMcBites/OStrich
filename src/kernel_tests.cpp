@@ -1,19 +1,19 @@
 #include "kernel_tests.h"
 
+#include "atomic.h"
 #include "event.h"
 #include "frame.h"
 #include "hash.h"
 #include "heap.h"
 #include "libk.h"
+#include "locked_queue.h"
 #include "printf.h"
 #include "queue.h"
-#include "locked_queue.h"
 #include "ramfs.h"
 #include "rand.h"
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
-#include "atomic.h"
 
 #define NUM_TIMES 1000
 
@@ -376,4 +376,3 @@ void semaphore_tests() {
 void blocking_atomic_tests() {
     semaphore_tests();
 }
-

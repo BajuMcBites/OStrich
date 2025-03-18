@@ -1,7 +1,8 @@
 #include "atomic.h"
-#include "queue.h"
-#include "printf.h"
+
 #include "event.h"
+#include "printf.h"
+#include "queue.h"
 
 void Semaphore::up() {
     LockGuard<SpinLock> guard(spin_lock);

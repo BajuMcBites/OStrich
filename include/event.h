@@ -3,9 +3,9 @@
 #include "atomic.h"
 #include "function.h"
 #include "heap.h"
+#include "locked_queue.h"
 #include "percpu.h"
 #include "printf.h"
-#include "locked_queue.h"
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
@@ -182,8 +182,9 @@ inline void create_event(Function<void(T)> work, T value,
     readyQueue.mine().queues[priority].add(tcb);
 }
 
-inline void create_event_core(Function<void()> work,
-                         int core)  // Queues work on a deticated core (used for testing semaphores)
+inline void create_event_core(
+    Function<void()> work,
+    int core)  // Queues work on a deticated core (used for testing semaphores)
 {
     auto tcb = new Event(work);
     readyQueue.forCPU(core).queues[1].add(tcb);

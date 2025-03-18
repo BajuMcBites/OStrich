@@ -1,9 +1,9 @@
 #ifndef _ATOMIC_H_
 #define _ATOMIC_H_
 
-#include "stdint.h"
 #include "function.h"
 #include "queue.h"
+#include "stdint.h"
 
 #ifdef USE_MONITOR
 static inline void monitor(uintptr_t addr) {
@@ -292,20 +292,19 @@ public:
 */
 
 struct SemaphoreNode {
-    SemaphoreNode(Function<void()> w) : work(w) { }
+    SemaphoreNode(Function<void()> w) : work(w) {
+    }
 
     Function<void()> work;
     SemaphoreNode* next;
 };
-
-
 
 class Semaphore {
     SpinLock spin_lock;
     Queue<SemaphoreNode> blocked_queue;
     volatile uint32_t value;
 
-public:
+   public:
     Semaphore(uint32_t initial_value) {
         value = initial_value;
     }
@@ -320,6 +319,5 @@ public:
 
     void down(Function<void()> w);
 };
-
 
 #endif

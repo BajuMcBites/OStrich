@@ -4,7 +4,6 @@
 #include "atomic.h"
 #include "heap.h"
 
-
 template <typename T, typename LockType>
 class LockedQueue {
     T *volatile first = nullptr;
@@ -50,4 +49,3 @@ class LockedQueue {
 };
 
 #endif
-
