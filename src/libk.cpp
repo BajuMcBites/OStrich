@@ -97,11 +97,18 @@ extern char __stacks_end[];
  */
 bool K::check_stack() {
     uint64_t sp = get_sp();
+    uint64_t stack_size = 16384;
 
     uint64_t stack_end = (uint64_t)__stacks_start;
-    stack_end += 4096 * 8 * (getCoreID());
-    uint64_t stack_start = stack_end + 4096 * 8;
 
-    K::assert(sp > stack_end, "stack has overflowed!!!");
+    stack_end += stack_size * 8 * (getCoreID());
+
+    uint64_t stack_start = stack_end + stack_size * 8;
+
+    if (sp <= stack_end || sp > stack_start) {
+        printf("Stack (%d) has overflowed. end (%X), sp (%X), start (%X)\n", getCoreID(), stack_end, sp, stack_start);
+        K::assert(false, "we have failed stack check");
+    }
+
     return sp > stack_end;
 }
