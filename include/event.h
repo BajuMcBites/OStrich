@@ -202,15 +202,4 @@ inline void create_event(Function<void(T)> work, T value,
     auto tcb = new EventValue<T>(work, value);
     readyQueue.mine().queues[priority].add(tcb);
 }
-
-inline void create_event_core(
-    Function<void()> work,
-    int core)  // Queues work on a deticated core (used for testing semaphores)
-{
-    auto tcb = new Event(work);
-    readyQueue.forCPU(core).queues[1].add(tcb);
-}
-
-TCB* currentTCB(int core);
-
 #endif
