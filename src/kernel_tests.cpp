@@ -1,15 +1,21 @@
 #include "kernel_tests.h"
 
-#include "event_loop.h"
+#include "event.h"
 #include "frame.h"
+#include "hash.h"
 #include "heap.h"
 #include "libk.h"
 #include "printf.h"
 #include "queue.h"
+#include "locked_queue.h"
+#include "ramfs.h"
+#include "rand.h"
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
 #include "atomic.h"
+
+#define NUM_TIMES 1000
 
 PageTable* page_table;
 
@@ -81,6 +87,18 @@ void test_event(void* arg) {
     printf("new event dropped: %s\n", (char*)arg);
 }
 
+template <typename T>
+void test_function(T work) {
+    int x = 10;
+    user_thread([=] { work(x); });
+}
+
+void foo() {
+    auto bar = [](int a) { printf("I was given int:%d\n", a); };
+    test_function(bar);
+    printf("foo done\n");
+}
+
 void heapTests() {
     printf("Starting new/delete tests...\n");
 
@@ -91,6 +109,8 @@ void heapTests() {
     test_nullptr_deletion();
 
     printf("All tests completed.\n");
+    printf("foo test\n");
+    foo();
 }
 
 void test_ref_lambda() {
@@ -100,13 +120,17 @@ void test_ref_lambda() {
         printf("%d current a\n", a);
     };
     for (int i = 0; i < 10; i++) {
-        create_event(lambda, 1);
+        // create_event(lambda, 1);
+        // user_thread(lambda);
+        create_event(lambda);
     }
 }
 void test_val_lambda() {
     int a = 2;
     Function<void()> lambda = [=]() { printf("%d should print 2\n", a); };
-    create_event(lambda, 1);
+    // create_event(lambda, 1);
+    // user_thread(lambda);
+    create_event(lambda);
 }
 
 void event_loop_tests() {
@@ -117,23 +141,23 @@ void event_loop_tests() {
 }
 
 void queue1() {
-    queue<int>* q = (queue<int>*)malloc(sizeof(queue<int>));
-    q->push(5);
-    q->push(3);
-    q->push(2);
-    q->push(1);
-    printf("size %d\n", q->size());  // 4
-    printf("%d ", q->top());         // 5
-    q->pop();
-    printf("%d ", q->top());  // 3
-    q->pop();
-    printf("%d ", q->top());  // 2
-    q->pop();
-    printf("%d\n", q->top());  // 1
-    q->pop();
-    printf("size %d\n", q->size());       // 0
-    printf("empty is %d\n", q->empty());  // 1
-    free(q);
+    // Queue<int>* q = (queue<int>*)kmalloc(sizeof(queue<int>));
+    // q->push(5);
+    // q->push(3);
+    // q->push(2);
+    // q->push(1);
+    // printf("size %d\n", q->size());  // 4
+    // printf("%d ", q->top());         // 5
+    // q->pop();
+    // printf("%d ", q->top());  // 3
+    // q->pop();
+    // printf("%d ", q->top());  // 2
+    // q->pop();
+    // printf("%d\n", q->top());  // 1
+    // q->pop();
+    // printf("size %d\n", q->size());       // 0
+    // printf("empty is %d\n", q->empty());  // 1
+    // kfree(q);
 }
 
 void queue_test() {
@@ -163,6 +187,7 @@ void test_frame_alloc_simple() {
 
 void test_frame_alloc_multiple() {
     Function<void(uint64_t)> lambda = [](uint64_t a) {
+        // printf("multi alloc\n"); check if all 600 ran
         K::assert(a, "got null frame");
         K::assert(free_frame(a), "could not free frame");
     };
@@ -174,6 +199,7 @@ void test_frame_alloc_multiple() {
 
 void test_pin_frame() {
     Function<void(uint64_t)> lambda = [](uint64_t a) {
+        // printf("pin frame\n"); check if all ran
         K::assert(a, "got null frame");
         pin_frame(a);
         K::assert(!free_frame(a), "freed pinned frame");
@@ -209,6 +235,105 @@ void user_paging_tests() {
     printf("user paging tests complete\n");
 }
 
+void hash_test() {
+    Rand rand;
+    int keys[NUM_TIMES];
+    Hashmap<int> hash(1);
+
+    printf("Inserting %d random numbers\n", NUM_TIMES);
+    for (int i = 0; i < NUM_TIMES; i++) {
+        int randomNum = rand.random() % NUM_TIMES / 8;
+        if (randomNum == 0) randomNum++;
+        hash.put(i, randomNum);
+        keys[i] = randomNum;
+    }
+
+    printf("Checking size is %d\n", NUM_TIMES);
+    K::assert(hash.size == NUM_TIMES, "Got incorrect size\n");
+
+    printf("Checking values are correct\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        K::assert(keys[i] == hash.get(i), "Got incorrect value\n");
+    }
+
+    printf("Reinserting %d random numbers into hashmap\n", NUM_TIMES);
+    for (int i = 0; i < NUM_TIMES; i++) {
+        int randomNum = rand.random() % 101;
+        if (randomNum == 0) randomNum++;
+        hash.put(i, randomNum);
+        keys[i] = randomNum;
+    }
+
+    printf("Checking size is %d\n", NUM_TIMES);
+    K::assert(hash.size == NUM_TIMES, "Got incorrect size\n");
+
+    printf("Checking values are correct\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        if (keys[i] != hash.get(i)) {
+            K::assert(keys[i] == hash.get(i), "Got incorrect value\n");
+        }
+    }
+
+    printf("Removing first half of values\n");
+    for (int i = 0; i < NUM_TIMES / 2; i++) {
+        hash.remove(i);
+    }
+
+    printf("Checking size is %d\n", NUM_TIMES - NUM_TIMES / 2);
+    K::assert(hash.size == NUM_TIMES - NUM_TIMES / 2, "Got incorrect size\n");
+
+    printf("Checking values are null for first half of values\n");
+    for (int i = 0; i < NUM_TIMES / 2; i++) {
+        K::assert(hash.get(i) == 0, "Got non-null value at index\n");
+    }
+
+    printf("Removing all values\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        hash.remove(i);
+    }
+
+    printf("Checking size is 0\n");
+    K::assert(hash.size == 0, "Got incorrect size\n");
+
+    printf("Checking values are null for all keys\n");
+    for (int i = 0; i < NUM_TIMES; i++) {
+        K::assert(hash.size == 0, "Got non-null value\n");
+    }
+
+    printf("Passed\n");
+}
+
+void ramfs_test_basic() {
+    // only passes if test1 file is included
+    int test1_index = get_ramfs_index("test1.txt");
+    K::assert(test1_index >= 0, "ramfs couldn't find test1.txt\n");
+    K::assert(ramfs_size(test1_index) == 51, "ramfs size method not working\n");
+    char buffer[100];
+    ramfs_read(buffer, 0, 51, test1_index);
+    K::assert(K::strncmp(buffer, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!", 51) == 0,
+              "reading from ramfs file not working");
+    printf("ramfs basic test passed\n");
+}
+
+void ramfs_big_file() {
+    int test2_index = get_ramfs_index("test2.txt");
+    char buffer[4096];
+    ramfs_read(buffer, 24, 4096, test2_index);
+    K::assert(
+        K::strncmp(buffer,
+                   "legendaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                   60) == 0,
+        "reading from ramfs big file not working");
+    printf("ramfs big file test passed\n");
+}
+
+void ramfs_tests() {
+    printf("start ramfs tests\n");
+    ramfs_test_basic();
+    ramfs_big_file();
+    printf("end ramfs tests\n");
+}
+
 void semaphore_tests() {
     Semaphore* sema = new Semaphore(1);
 
@@ -220,7 +345,7 @@ void semaphore_tests() {
         printf("getting semaphore from func1\n");
         sema->down([sema]() {
             printf("we have semaphore in func1\n");
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 10; i++) {
                 printf("we are looping in func1\n");
             }
             printf("we still have semaphore in func1\n");
@@ -236,7 +361,7 @@ void semaphore_tests() {
         printf("getting semaphore from func2\n");
         sema->down([sema]() {
             printf("we have semaphore in func2\n");
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 10; i++) {
                 printf("we are looping in func2\n");
             }
             printf("we still have semaphore in func2\n");
@@ -244,8 +369,8 @@ void semaphore_tests() {
         });
     };
 
-    create_event_core(func1, 1, 2);
-    create_event_core(func2, 1, 3);
+    create_event_core(func1, 1);
+    create_event_core(func2, 2);
 }
 
 void blocking_atomic_tests() {

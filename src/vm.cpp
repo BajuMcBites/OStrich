@@ -1,6 +1,5 @@
 #include "vm.h"
 
-#include "event_loop.h"
 #include "frame.h"
 #include "heap.h"
 #include "libk.h"

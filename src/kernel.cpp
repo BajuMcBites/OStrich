@@ -1,5 +1,5 @@
 #include "core.h"
-#include "event_loop.h"
+#include "event.h"
 #include "fork.h"
 #include "frame.h"
 #include "heap.h"
@@ -7,8 +7,10 @@
 #include "kernel_tests.h"
 #include "libk.h"
 #include "mm.h"
+#include "percpu.h"
 #include "printf.h"
 #include "queue.h"
+#include "ramfs.h"
 #include "sched.h"
 #include "stdint.h"
 #include "timer.h"
@@ -17,11 +19,11 @@
 #include "vm.h"
 
 struct Stack {
-    static constexpr int BYTES = 4096;
+    static constexpr int BYTES = 16384;
     uint64_t bytes[BYTES] __attribute__((aligned(16)));
 };
 
-PerCPU<Stack> stacks;
+PerCPU<Stack> stacks __attribute__((section(".stacks")));
 
 static bool smpInitDone = false;
 
@@ -64,12 +66,15 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
+    // queue_test();
+    printf("All tests passed\n");
     heapTests();
     event_loop_tests();
-    queue_test();
+    hash_test();
     frame_alloc_tests();
     user_paging_tests();
     blocking_atomic_tests();
+    ramfs_tests();
 }
 
 extern char __heap_start[];
@@ -79,6 +84,8 @@ extern char __heap_end[];
 #define HEAP_END ((uintptr_t)__heap_end)
 #define HEAP_SIZE (HEAP_END - HEAP_START)
 
+static Atomic<int> coresAwake(0);
+
 extern "C" void kernel_init() {
     if (getCoreID() == 0) {
         create_page_tables();
@@ -86,36 +93,36 @@ extern "C" void kernel_init() {
         patch_page_tables();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
-        timer_init();
-        enable_interrupt_controller();
-        enable_irq();
+        // timer_init();
+        // enable_interrupt_controller();
+        // enable_irq();
         printf("printf initialized!!!\n");
+        init_ramfs();
         create_frame_table(frame_table_start,
                            0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
         printf("frame table initialized! \n");
         breakpoint();
         print_ascii_art();
         uinit((void *)HEAP_START, HEAP_SIZE);
-
-        // event queues setup
-        for (int i = 0; i < 4; i++) {
-            for (int j = 0; j < MAX_PRIORITY; j++) {
-                cpu_queues.forCPU(i).queue_list[j] = new queue<event *>();
-            }
-        }
-
         smpInitDone = true;
+        threadsInit();
         wake_up_cores();
-        kernel_main();
+        //  kernel_main();
     } else {
         init_mmu();
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
+    auto number_awake = coresAwake.add_fetch(1);
+    printf("There are %d cores awake\n", number_awake);
+    K::check_stack();
 
-    // if (getCoreID() == 0) {
-        while (1) {
-            loop();
-        }
-    // }
+    if (number_awake == CORE_COUNT) {
+        create_event([] { kernel_main(); });
+
+        // user_thread([]
+        //             { printf("i do nothing2\n"); });
+    }
+    stop();
+    printf("PANIC I should not go here\n");
 }
