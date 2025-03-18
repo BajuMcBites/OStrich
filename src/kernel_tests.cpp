@@ -350,10 +350,13 @@ void semaphore_tests() {
         });
     };
 
-    Function<void()> check_func = [finish_sema, shared_value]() {
-        finish_sema->down([shared_value]() {
+    Function<void()> check_func = [sema, finish_sema, shared_value]() {
+        finish_sema->down([sema, finish_sema, shared_value]() {
             printf("sema test shared value is %d\n", *shared_value);
             K::assert(*shared_value == 300, "race condition in semaphore test\n");
+            delete sema;
+            delete finish_sema;
+            delete shared_value;
         });
     };
 
@@ -379,10 +382,13 @@ void lock_tests() {
         });
     };
 
-    Function<void()> check_func = [finish_sema, shared_value]() {
-        finish_sema->down([shared_value]() {
+    Function<void()> check_func = [lock, finish_sema, shared_value]() {
+        finish_sema->down([lock, finish_sema, shared_value]() {
             printf("lock test shared value is %d\n", *shared_value);
             K::assert(*shared_value == 400, "race condition in lock test\n");
+            delete lock;
+            delete finish_sema;
+            delete shared_value;
         });
     };
 
