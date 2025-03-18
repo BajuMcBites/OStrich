@@ -302,10 +302,10 @@ struct SemaphoreNode {
 class Semaphore {
     SpinLock spin_lock;
     Queue<SemaphoreNode> blocked_queue;
-    volatile uint32_t value;
+    volatile int value;
 
    public:
-    Semaphore(uint32_t initial_value) {
+    Semaphore(int initial_value) {
         value = initial_value;
     }
 
@@ -318,6 +318,24 @@ class Semaphore {
     void up();
 
     void down(Function<void()> w);
+};
+
+class Lock {
+    Semaphore sema;
+
+   public:
+    Lock() : sema(1) {
+    }
+
+    Lock(const Lock&) = delete;
+
+    void lock(Function<void()> w) {
+        sema.down(w);
+    }
+
+    void unlock() {
+        sema.up();
+    }
 };
 
 #endif

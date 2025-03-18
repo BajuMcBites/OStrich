@@ -335,44 +335,65 @@ void ramfs_tests() {
 }
 
 void semaphore_tests() {
+    Semaphore* finish_sema = new Semaphore(-2);
     Semaphore* sema = new Semaphore(1);
+    int* shared_value = (int*)kmalloc(sizeof(int));
+    *shared_value = 0;
 
-    Function<void()> func1 = [sema]() {
-        printf("in func1\n");
-        for (int i = 0; i < 5; i++) {
-            printf("func1 on core %d\n", getCoreID());
-        }
-        printf("getting semaphore from func1\n");
-        sema->down([sema]() {
-            printf("we have semaphore in func1\n");
-            for (int i = 0; i < 10; i++) {
-                printf("we are looping in func1\n");
+    Function<void()> func = [sema, finish_sema, shared_value]() {
+        sema->down([sema, shared_value, finish_sema]() {
+            for (int i = 0; i < 100; i++) {
+                *shared_value = *shared_value + 1;
             }
-            printf("we still have semaphore in func1\n");
             sema->up();
+            finish_sema->up();
         });
     };
 
-    Function<void()> func2 = [sema]() {
-        printf("in func2\n");
-        for (int i = 0; i < 5; i++) {
-            printf("func2 on core %d\n", getCoreID());
-        }
-        printf("getting semaphore from func2\n");
-        sema->down([sema]() {
-            printf("we have semaphore in func2\n");
-            for (int i = 0; i < 10; i++) {
-                printf("we are looping in func2\n");
-            }
-            printf("we still have semaphore in func2\n");
-            sema->up();
+    Function<void()> check_func = [finish_sema, shared_value]() {
+        finish_sema->down([shared_value]() {
+            printf("sema test shared value is %d\n", *shared_value);
+            K::assert(*shared_value == 300, "race condition in semaphore test\n");
         });
     };
 
-    create_event_core(func1, 1);
-    create_event_core(func2, 2);
+    create_event_core(func, 1);
+    create_event_core(func, 2);
+    create_event_core(func, 3);
+    create_event(check_func);
+}
+
+void lock_tests() {
+    Semaphore* finish_sema = new Semaphore(-3);
+    Lock* lock = new Lock();
+    int* shared_value = (int*)kmalloc(sizeof(int));
+    *shared_value = 0;
+
+    Function<void()> func = [lock, finish_sema, shared_value]() {
+        lock->lock([lock, shared_value, finish_sema]() {
+            for (int i = 0; i < 100; i++) {
+                *shared_value = *shared_value + 1;
+            }
+            lock->unlock();
+            finish_sema->up();
+        });
+    };
+
+    Function<void()> check_func = [finish_sema, shared_value]() {
+        finish_sema->down([shared_value]() {
+            printf("lock test shared value is %d\n", *shared_value);
+            K::assert(*shared_value == 400, "race condition in lock test\n");
+        });
+    };
+
+    create_event_core(func, 1);
+    create_event_core(func, 2);
+    create_event_core(func, 3);
+    create_event_core(func, 0);
+    create_event(check_func);
 }
 
 void blocking_atomic_tests() {
     semaphore_tests();
+    lock_tests();
 }

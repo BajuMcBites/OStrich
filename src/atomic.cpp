@@ -6,12 +6,12 @@
 
 void Semaphore::up() {
     LockGuard<SpinLock> guard(spin_lock);
-    if (blocked_queue.get_size() > 0) {
+    value++;
+    if (value > 0 && blocked_queue.get_size() > 0) {
+        value--;
         SemaphoreNode* node = blocked_queue.remove();
         create_event(node->work);
         delete node;
-    } else {
-        value++;
     }
 }
 
