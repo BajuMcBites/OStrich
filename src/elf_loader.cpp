@@ -209,8 +209,9 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 			case SHT_SHLIB: 
 				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
+			case SHT_STRTAB:
 			case SHT_DYNSYM: 
-				// do something
+				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
 				break;
 			case SHT_INIT_ARRAY: 
 				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
@@ -223,6 +224,22 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 				break;
 			case SHT_SYMTAB_SHNDX: 
 				// do something 
+				break;
+			case SHT_PREINIT_ARRAY:
+			case SHT_ARM_ATTRIBUTES:
+			case SHT_ARM_DEBUGOVERLAY:
+			case SHT_ARM_OVERLAYSECTION:
+			case SHT_SunwSignature:
+			case SHT_SunwAnnotate:
+			case SHT_SunwDebugstr:
+			case SHT_SunwDebug:
+			case SHT_SunwMove:
+			case SHT_SunwComdat:
+			case SHT_SunwSyminfo:
+			case SHT_SunwVerdef:
+			case SHT_SunwVerneed:
+			case SHT_SunwVersym:
+				// skipping - not sure if necessary
 				break;
 			default:
 				ERROR("undefined shtype: %d\n", section->sh_type);
