@@ -262,6 +262,44 @@ static inline Elf64_Phdr *elf_program(Elf64_Ehdr *hdr, int idx) {
 	return &elf_pheader(hdr)[idx];
 }
 
+typedef struct {
+    Elf64_Sxword  d_tag;   // Type of dynamic entry (e.g., DT_NEEDED)
+    union {
+        Elf64_Xword d_val; // Integer value (e.g., offset for DT_NEEDED)
+        Elf64_Addr  d_ptr; // Pointer value (e.g., address for DT_STRTAB)
+    } d_un;
+} Elf64_Dyn;
+
+
+// Dynamic entry types (d_tag values)
+#define DT_NULL       0    // Marks end of dynamic array
+#define DT_NEEDED     1    // Name offset of a required library (e.g., "libc.so")
+#define DT_PLTRELSZ   2    // Size of PLT relocation entries
+#define DT_PLTGOT     3    // Address of PLT/GOT
+#define DT_HASH       4    // Address of symbol hash table
+#define DT_STRTAB     5    // Address of string table (.dynstr)
+#define DT_SYMTAB     6    // Address of symbol table (.dynsym)
+#define DT_RELA       7    // Address of relocation table (.rela.dyn)
+#define DT_RELASZ     8    // Size of relocation table
+#define DT_RELAENT    9    // Size of one relocation entry
+#define DT_STRSZ      10   // Size of string table
+#define DT_SYMENT     11   // Size of one symbol table entry
+#define DT_INIT       12   // Address of initialization function
+#define DT_FINI       13   // Address of termination function
+#define DT_INIT_ARRAY 25   // Address of initialization function array
+#define DT_FINI_ARRAY 26   // Address of termination function array
+#define DT_INIT_ARRAYSZ 27 // Size of DT_INIT_ARRAY
+#define DT_FINI_ARRAYSZ 28 // Size of DT_FINI_ARRAY
+
+
+typedef struct LoadedLibrary {
+    Elf64_Ehdr *ehdr;       // header
+    const char *name;       // lib name
+    struct LoadedLibrary *next;
+} LoadedLibrary;
+
+extern LoadedLibrary *g_loaded_libs; 
+
 void* elf_load(void* ptr);
 
 #endif
