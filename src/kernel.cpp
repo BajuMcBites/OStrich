@@ -1,4 +1,5 @@
 #include "core.h"
+#include "dwc.h"
 #include "dcache.h"
 #include "event.h"
 #include "fork.h"
@@ -146,9 +147,6 @@ void mergeCores() {
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });
-
-        // user_thread([]
-        //             { printf("i do nothing2\n"); });
     }
     stop();
     printf("PANIC I should not go here\n");
