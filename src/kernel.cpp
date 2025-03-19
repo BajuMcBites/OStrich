@@ -1,4 +1,5 @@
 #include "core.h"
+#include "dwc.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
@@ -74,6 +75,7 @@ extern "C" void kernel_main() {
     frame_alloc_tests();
     user_paging_tests();
     ramfs_tests();
+    ip_tests();
 }
 
 extern char __heap_start[];
@@ -92,21 +94,23 @@ extern "C" void kernel_init() {
         patch_page_tables();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
+
+        usb_initialize();
+
         // timer_init();
         // enable_interrupt_controller();
         // enable_irq();
+
         printf("printf initialized!!!\n");
         init_ramfs();
         create_frame_table(frame_table_start,
                            0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
-        printf("frame table initialized! \n");
         breakpoint();
         print_ascii_art();
         uinit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         threadsInit();
         wake_up_cores();
-        //  kernel_main();
     } else {
         init_mmu();
     }
@@ -118,9 +122,6 @@ extern "C" void kernel_init() {
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });
-
-        // user_thread([]
-        //             { printf("i do nothing2\n"); });
     }
     stop();
     printf("PANIC I should not go here\n");
