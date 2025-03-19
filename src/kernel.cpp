@@ -84,6 +84,7 @@ extern "C" void kernel_main() {
     blocking_atomic_tests();
     ramfs_tests();
     elf_load_test();
+    ip_tests();
     sdioTests();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.

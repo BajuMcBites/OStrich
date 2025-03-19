@@ -14,5 +14,6 @@ void ramfs_tests();
 void elf_load_test();
 void blocking_atomic_tests();
 void hash_test();
+void ip_tests();
 
 #endif /*_KERNEL_TESTS_H */
