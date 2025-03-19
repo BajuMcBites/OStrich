@@ -27,6 +27,9 @@ PageTable::PageTable() {
  * recursively unpins and frees every page for the associated page table
  */
 PageTable::~PageTable() {
+    if (this->pgd == nullptr) {
+        return;
+    }
     uint64_t pgd_paddr = vaddr_to_paddr((uint64_t)this->pgd);
     free_pgd();
     unpin_frame(pgd_paddr);

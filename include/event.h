@@ -6,6 +6,7 @@
 #include "locked_queue.h"
 #include "percpu.h"
 #include "printf.h"
+#include "vm.h"
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
@@ -56,6 +57,8 @@ extern void clearZombies();  // delete threads that have called stop.
 // template <typename Work>
 struct UserTCB : public TCB {
     cpu_context context;
+    PageTable page_table;
+    SupplementalPageTable supp_page_table;
     Function<void()> w;
     alignas(16) uint64_t stack[2048];  // Ensure proper 16-byte alignment
     template <typename lambda>
@@ -83,6 +86,8 @@ struct UserTCB : public TCB {
 template <typename T>
 struct UserValue : public TCB {
     cpu_context context;
+    PageTable page_table;
+    SupplementalPageTable supp_page_table;
     Function<void(T)> w;
     T value;
     alignas(16) uint64_t stack[2048];  // Ensure proper 16-byte alignment

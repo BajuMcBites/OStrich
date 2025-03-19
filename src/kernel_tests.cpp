@@ -252,7 +252,7 @@ void user_paging_tests() {
 void hash_test() {
     Rand rand;
     int keys[NUM_TIMES];
-    Hashmap<int> hash(1);
+    HashMap<int> hash(1);
 
     printf("Inserting %d random numbers\n", NUM_TIMES);
     for (int i = 0; i < NUM_TIMES; i++) {

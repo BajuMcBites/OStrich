@@ -20,7 +20,7 @@ void pin_frame(uintptr_t frame_addr);
 void unpin_frame(uintptr_t frame_addr);
 
 typedef struct Frame {
-    // PageLocation* contents;
+    PageLocation* contents;
     int flags;
 } Frame;
 
