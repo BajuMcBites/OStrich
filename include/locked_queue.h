@@ -1,22 +1,22 @@
-#ifndef _QUEUE_H
-#define _QUEUE_H
+#ifndef _LOCKED_QUEUE_H
+#define _LOCKED_QUEUE_H
 
 #include "atomic.h"
 #include "heap.h"
 
-template <typename T>
-class Queue {
+template <typename T, typename LockType>
+class LockedQueue {
     T *volatile first = nullptr;
     T *volatile last = nullptr;
-    volatile unsigned int size = 0;
+    LockType lock;
 
    public:
-    Queue() : first(nullptr), last(nullptr) {
-        size = 0;
+    LockedQueue() : first(nullptr), last(nullptr), lock() {
     }
-    Queue(const Queue &) = delete;
+    LockedQueue(const LockedQueue &) = delete;
 
     void add(T *t) {
+        LockGuard g{lock};
         t->next = nullptr;
         if (first == nullptr) {
             first = t;
@@ -24,10 +24,10 @@ class Queue {
             last->next = t;
         }
         last = t;
-        size++;
     }
 
     T *remove() {
+        LockGuard g{lock};
         if (first == nullptr) {
             return nullptr;
         }
@@ -36,20 +36,15 @@ class Queue {
         if (first == nullptr) {
             last = nullptr;
         }
-        size--;
         return it;
     }
 
     T *remove_all() {
+        LockGuard g{lock};
         auto it = first;
         first = nullptr;
         last = nullptr;
-        size = 0;
         return it;
-    }
-
-    unsigned int get_size() {
-        return size;
     }
 };
 

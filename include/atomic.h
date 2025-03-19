@@ -1,6 +1,8 @@
 #ifndef _ATOMIC_H_
 #define _ATOMIC_H_
 
+#include "function.h"
+#include "queue.h"
 #include "stdint.h"
 
 #ifdef USE_MONITOR
@@ -288,5 +290,52 @@ public:
 };
 
 */
+
+struct SemaphoreNode {
+    SemaphoreNode(Function<void()> w) : work(w) {
+    }
+
+    Function<void()> work;
+    SemaphoreNode* next;
+};
+
+class Semaphore {
+    SpinLock spin_lock;
+    Queue<SemaphoreNode> blocked_queue;
+    volatile int value;
+
+   public:
+    Semaphore(int initial_value) {
+        value = initial_value;
+    }
+
+    Semaphore() {
+        value = 0;
+    }
+
+    Semaphore(const Semaphore&) = delete;
+
+    void up();
+
+    void down(Function<void()> w);
+};
+
+class Lock {
+    Semaphore sema;
+
+   public:
+    Lock() : sema(1) {
+    }
+
+    Lock(const Lock&) = delete;
+
+    void lock(Function<void()> w) {
+        sema.down(w);
+    }
+
+    void unlock() {
+        sema.up();
+    }
+};
 
 #endif
