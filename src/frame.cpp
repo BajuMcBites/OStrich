@@ -32,6 +32,11 @@ void create_frame_table(uintptr_t start, int size) {
     }
 }
 
+/**
+ * allocates a frame from physical memory
+ * 
+ * TODO: Should return a frame of all 0s
+ */
 void alloc_frame(int flags, Function<void(uint64_t)> w) {
     LockGuard<SpinLock>{lock};
     for (int i = 0; i < num_frames; i++) {

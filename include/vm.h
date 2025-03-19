@@ -69,6 +69,8 @@
 
 #include "function.h"
 #include "stdint.h"
+#include "atomic.h"
+#include "hash.h"
 
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
@@ -103,92 +105,117 @@ class PageTable {
    public:
     pgd_t* pgd;
 
-    PageTable(Function<void()> w);
+    PageTable();
+
+    ~PageTable();
 
     void map_vaddr(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
     void use_page_table();
-    uintptr_t unmap_vaddr(uint64_t vaddr);
+    bool unmap_vaddr(uint64_t vaddr);
 
    private:
+    void alloc_pgd(Function<void()> w);
+
     void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes,
                        Function<void()> w);
 
     void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes,
                        Function<void()> w);
 
-    void map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes,
+    void map_vaddr_pmd(pmd_t* pmd, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes,
                        Function<void()> w);
 
-    void map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes);
+    void map_vaddr_pte(pte_t* pte, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes);
+
+    void free_pgd();
+
+    void free_pud(pud_t* pud);
+
+    void free_pmd(pmd_t* pmd);
+
+    void free_pte(pte_t* pte);
 };
 
-enum LocationType {
-    FILESYSTEM,
-    SWAP
-};
+// enum LocationType {
+//     FILESYSTEM,
+//     SWAP
+// };
 
-enum PageSharingMode {
-    SHARED,
-    PRIVATE
-};
+// enum PageSharingMode {
+//     SHARED,
+//     PRIVATE,
+//     ANONYMOUS
+// };
 
-/**
- * These are local to a processes Supplemental Page Table, holds the specific 
- * qualities of that page for a given process, as well as the PageLocation.
- */
-struct LocalPageLocation {
-    //Lock lock; //lock so accessors from PageLocation and Supp Page Table dont intersect
-    bool read_only;
-    PageSharingMode sharing_mode;
-    // uint64_t tid; some way to know which process out of the PageLocation->users is the one we faulted on
-    //some way to get back to the page table in the case of an eviction
+// struct SwapLocation {
+//     uint64_t swap_id;
+//     // uint64_t hw_id;
+// };
 
-    PageLocation* location;
-    LocalPageLocation* next;
-};
+// struct FileLocation {
+//     char file_name[32];
+//     uint64_t offset;
+// };
 
-/**
- * holds the locations of pages, any changes to this struct must be reflected
- * in the pagecache, these are shared between different processes that share
- * pages in memory for any reason. (Have shared memory regions, share a common
- * file that is not edited, shared object files)
- */
-struct PageLocation {
-    // Lock lock;
-    LocationType location_type;
-    bool copy_on_write;
-    bool dirty;
-    bool present;
-    uint64_t paddr;
-    uint32_t ref_count;
-    LocalPageLocation* users;
-    union location {
-        SwapLocation swap;
-        FileLocation filesystem;
-    };
-};
+// /**
+//  * These are local to a processes Supplemental Page Table, holds the specific 
+//  * qualities of that page for a given process, as well as the PageLocation.
+//  */
+// struct LocalPageLocation {
+//     Lock lock; //lock so accessors from PageLocation and Supp Page Table dont intersect
+//     bool read_only;
+//     PageSharingMode sharing_mode;
+//     // uint64_t tid; some way to know which process out of the PageLocation->users is the one we faulted on
+//     //some way to get back to the page table in the case of an eviction
 
-struct SwapLocation {
-    uint64_t swap_id;
-    // uint64_t hw_id;
-};
+//     PageLocation* location;
+//     LocalPageLocation* next;
+// };
 
-struct FileLocation {
-    char file_name[32];
-    uint64_t offset;
-};
+// /**
+//  * holds the locations of pages, any changes to this struct must be reflected
+//  * in the pagecache, these are shared between different processes that share
+//  * pages in memory for any reason. (Have shared memory regions, share a common
+//  * file that is not edited, shared object files)
+//  */
+// struct PageLocation {
+//     Lock lock;
+//     LocationType location_type;
+//     bool copy_on_write;
+//     bool dirty;
+//     bool present;
+//     uint64_t paddr;
+//     uint32_t ref_count;
+//     LocalPageLocation* users;
+//     union location {
+//         SwapLocation swap;
+//         FileLocation filesystem;
+//     };
+// };
 
-class SupplementalPageTable {
-    // HashMap<LocalPageLocation> map;
-    // Lock map_lock; //only lock the map with this, Page location and LocalPageLocation are locked locally;
-    // correct use would be only locking the map operations.
+
+
+// class SupplementalPageTable {
+//     public:
+//     HashMap<LocalPageLocation> map;
+//     Lock map_lock; //only lock the map with this, Page location and LocalPageLocation are locked locally;
+
+//     SupplementalPageTable() : map(100), Lock() {
+//     }
+//     // correct use would be only locking the map operations.
+
+//     // bool map_vaddr_swap(uint64_t vaddr, PageSharingMode page_sharing_mode, Function<void() w>);
+//     // bool map_vaddr_file(uint64_t vaddr, uint16 flags, Function<void() w>);
+
+//     private:
+//     bool map_vaddr(uint64_t user_vaddr, LocalPageLocation* page_loc, Function<void()> w);
     
-    // void map_vaddr_swap(vaddr, file)
-    // void map
+//     // void map_vaddr_swap(vaddr, file)
+//     // void map
 
-    //vaddr mmap(mmap params) returns page mapped in kernel vm pinned (u must unpin) with all the location stuff set up for a process?
+//     //vaddr mmap(mmap params) returns page mapped in kernel vm pinned (u must unpin) with all the location stuff set up for a process?
 
-}
+// };
 
 /*
 Process for laoding in initial pages that are not backed by file system but have info:ALIGN
@@ -203,6 +230,6 @@ unpin
 
 */
 
-#endif
+#endif /*__ASSEMBLER__*/
 
 #endif /*_VM_H*/

@@ -213,18 +213,32 @@ void test_pin_frame() {
 }
 
 void basic_page_table_creation() {
-    page_table = new PageTable([]() {
-        printf("we have allocated a page table\n");
-        alloc_frame(0, [](uint64_t frame) {
-            uint64_t user_vaddr = 0x800000;
-            uint16_t lower_attributes = 0x404;
-            page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
-                page_table->use_page_table();
-                *((uint64_t*)user_vaddr) = 12345678;
-                K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
-                          "user virtual address not working");
-                printf("basic_page_table_creation passed\n");
-            });
+    // page_table = new PageTable([]() {
+    //     printf("we have allocated a page table\n");
+    //     alloc_frame(0, [](uint64_t frame) {
+    //         uint64_t user_vaddr = 0x800000;
+    //         uint16_t lower_attributes = 0x404;
+    //         page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
+    //             page_table->use_page_table();
+    //             *((uint64_t*)user_vaddr) = 12345678;
+    //             K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
+    //                       "user virtual address not working");
+    //             printf("basic_page_table_creation passed\n");
+    //         });
+    //     });
+    // });
+
+    page_table = new PageTable();
+
+    alloc_frame(0, [](uint64_t frame) {
+        uint64_t user_vaddr = 0x800000;
+        uint16_t lower_attributes = 0x404;
+        page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
+            page_table->use_page_table();
+            *((uint64_t*)user_vaddr) = 12345678;
+            K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
+                        "user virtual address not working");
+            printf("basic_page_table_creation passed\n");
         });
     });
 }

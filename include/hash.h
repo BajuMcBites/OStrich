@@ -1,3 +1,6 @@
+#ifndef _HASH_H
+#define _HASH_H
+
 #include "heap.h"
 
 template <typename T>
@@ -157,3 +160,5 @@ class Hashmap {
         kfree(prev);
     }
 };
+
+#endif /*_HASH_H*/
