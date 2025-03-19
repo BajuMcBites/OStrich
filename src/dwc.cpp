@@ -451,6 +451,10 @@ void usb_handle_hub_enumeration(usb_session *session) {
     }
 
     _debug_usb_print_hub_desc(&usb_hub_desc);
+<<<<<<< HEAD
+=======
+
+>>>>>>> 300ef82 (initial usb driver w/ device discovery/enumeration)
     for (int i = 0; i < usb_hub_desc.bNbrPorts; i++) {
         session->port = i;
         if (usb_hub_enable_port(session)) {
@@ -583,7 +587,6 @@ void usb_scan_ports() {
 }
 
 void usb_initialize() {
-
     usb_reset_controller();
 
     hubs.connected[0].num_ports = 1;
