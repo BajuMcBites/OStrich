@@ -18,7 +18,6 @@ extern uint64_t ramfs_num_files;
 extern ramfs_file* ramfs_dir_start;
 extern char* ramfs_files_start;
 
-
 /**
  * checks a valid ramfs was loaded and initializes ramfs specific values
  */
@@ -38,5 +37,5 @@ uint64_t ramfs_size(int file_index);
 /**
  * reads nbytes into buffer starting at offset
  */
-int ramfs_read(void *buffer, uint64_t offset, uint64_t nbytes, int file_index);
+int ramfs_read(void* buffer, uint64_t offset, uint64_t nbytes, int file_index);
 #endif

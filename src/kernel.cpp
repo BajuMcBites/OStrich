@@ -19,11 +19,11 @@
 #include "vm.h"
 
 struct Stack {
-    static constexpr int BYTES = 4096;
+    static constexpr int BYTES = 16384;
     uint64_t bytes[BYTES] __attribute__((aligned(16)));
 };
 
-PerCPU<Stack> stacks;
+PerCPU<Stack> stacks __attribute__((section(".stacks")));
 
 static bool smpInitDone = false;
 
@@ -66,11 +66,14 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
+    // queue_test();
+    printf("All tests passed\n");
     heapTests();
     event_loop_tests();
-    // queue_test();
+    hash_test();
     frame_alloc_tests();
     user_paging_tests();
+    blocking_atomic_tests();
     ramfs_tests();
 }
 
@@ -90,9 +93,9 @@ extern "C" void kernel_init() {
         patch_page_tables();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
-        timer_init();
-        enable_interrupt_controller();
-        enable_irq();
+        // timer_init();
+        // enable_interrupt_controller();
+        // enable_irq();
         printf("printf initialized!!!\n");
         init_ramfs();
         create_frame_table(frame_table_start,
@@ -112,6 +115,7 @@ extern "C" void kernel_init() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
+    K::check_stack();
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });
