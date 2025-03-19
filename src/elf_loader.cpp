@@ -3,6 +3,7 @@
 #include "mm.h"
 #include "heap.h"
 #include "libk.h"
+#include "ramfs.h"
 
 #define ERROR(msg...) printf(msg);
 
@@ -13,6 +14,9 @@
 #define PROT_READ 2
 #define PROT_WRITE 4
 #define PROT_NONE 0
+
+LoadedLibrary *g_loaded_libs = nullptr;
+
 void *mmap(void* addr, size_t length, int prot, int flags, int fd, int offset) {
 	printf("calling mmap at %x, with size %d, prot %x, flags %x, fd %d, and offset %d\n", addr, length, prot, flags, fd, offset);
 	return MAP_FAILED;
@@ -69,13 +73,13 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 
 # define ELF_RELOC_ERR -1
 
-Elf64_Shdr *find_section(Elf64_Ehdr* hdr, const char* name) {
+Elf64_Shdr *find_section(Elf64_Ehdr* hdr, char* name) {
 	Elf64_Shdr *shdr = elf_sheader(hdr);
 	for(int i = 0; i < hdr->e_shnum; i++) {
 		
 		Elf64_Shdr *section = &shdr[i];
 		Elf64_Shdr *shstrndx = elf_section(hdr, hdr->e_shstrndx);
-		const char *cname = (const char *)hdr + shstrndx->sh_offset + section->sh_name;
+		char *cname = (char *)hdr + shstrndx->sh_offset + section->sh_name;
 		if (K::strcmp(name, cname) == 0) {
 			return section;
 		}
@@ -83,7 +87,8 @@ Elf64_Shdr *find_section(Elf64_Ehdr* hdr, const char* name) {
 	return nullptr;
 }
 
-void* elf_lookup_symbol (Elf64_Ehdr* hdr, const char* name) { 
+
+void* elf_lookup_symbol_internal (Elf64_Ehdr* hdr, const char* name) { 
 	Elf64_Shdr *dynsym = find_section(hdr, ".dynsym");
 	Elf64_Shdr *dynstr = find_section(hdr, ".dynstr");
 
@@ -96,13 +101,26 @@ void* elf_lookup_symbol (Elf64_Ehdr* hdr, const char* name) {
 	uint64_t symaddr = (uint64_t)hdr + dynsym->sh_offset;
 	for (int i = 0; i < dynsym_entries; i++) {
 		Elf64_Sym *symbol = &((Elf64_Sym *)symaddr)[i];
-		const char *cname = (const char*)((uint64_t)hdr + dynstr->sh_offset + symbol->st_name);
+		char *cname = (char*)((uint64_t)hdr + dynstr->sh_offset + symbol->st_name);
 		if (K::strcmp(name, cname) == 0) {
 			printf("WE FOUND %s, returning %x\n", cname, symbol->st_value);
 			return (void*)symbol->st_value;
 		}
 	}
 	return nullptr;
+}
+
+void* elf_lookup_symbol(Elf64_Ehdr* hdr, const char* name) {
+    // 1. Search the current ELF's dynamic symbols
+    void *sym = elf_lookup_symbol_internal(hdr, name);
+    if (sym) return sym;
+
+    // 2. Search all loaded libraries
+    for (LoadedLibrary *lib = g_loaded_libs; lib; lib = lib->next) {
+        sym = elf_lookup_symbol_internal(lib->ehdr, name);
+        if (sym) return sym;
+    }
+    return nullptr;
 }
 
 static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
@@ -390,6 +408,10 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr) {
     return mapped_memory;
 }
 
+
+void* load_library(char *name);
+
+
 static int elf_load_stage3(Elf64_Ehdr *hdr) {
 	Elf64_Phdr *phdr = elf_pheader(hdr);
 	unsigned int i, idx;
@@ -402,9 +424,21 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 				// load this in
 				load_segment_mem((void*) hdr, prog);
 				break;
-			case PT_DYNAMIC:
-				// DYNAMIC LINKING GOES HERE
+			case PT_DYNAMIC: {
+				Elf64_Dyn *dyn = (Elf64_Dyn*)((uint64_t)hdr + prog->p_offset);
+				for (; dyn->d_tag != DT_NULL; dyn++) {
+					if (dyn->d_tag == DT_NEEDED) {
+						char *libname = (char*)((uint64_t)hdr + dyn->d_un.d_val);
+						printf("Loading dependency: %s\n", libname);
+						void *lib = load_library(libname);
+						if (!lib) {
+							ERROR("Failed to load %s\n", libname);
+							return ELF_RELOC_ERR;
+						}
+					}
+				}
 				break;
+			}
 			case PT_INTERP: 
 				// The array element specifies the location and size of a nullptr-terminated path name 
 				// to invoke as an interpreter. This segment type is meaningful only for executable 
@@ -451,6 +485,49 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr) {
 		return nullptr;
 	}
 	return (void *)hdr->e_entry;
+}
+
+void* load_library(char *name) {
+    // check if already loaded
+    for (LoadedLibrary *lib = g_loaded_libs; lib; lib = lib->next) {
+        if (K::strcmp(lib->name, name) == 0) {
+            return lib->ehdr;
+        }
+    }
+
+    // load
+    int file_index = get_ramfs_index(name);
+    if (file_index < 0) {
+        ERROR("Library %s not found\n", name);
+        return nullptr;
+    }
+
+    // read into memory
+    size_t size = ramfs_size(file_index);
+    char *buffer = (char*) kmalloc(size);
+    ramfs_read(buffer, 0, size, file_index);
+
+    // load  elf for lib
+    Elf64_Ehdr *lib_hdr = (Elf64_Ehdr*)buffer;
+    if (!elf_check_supported(lib_hdr)) {
+        ERROR("Invalid library: %s\n", name);
+        kfree(buffer);
+        return nullptr;
+    }
+
+    // add to global list
+    LoadedLibrary *new_lib = (LoadedLibrary *) kmalloc(sizeof(LoadedLibrary));
+    new_lib->ehdr = lib_hdr;
+    new_lib->name = name;
+    new_lib->next = g_loaded_libs;
+    g_loaded_libs = new_lib;
+
+    // relocate by stage
+    elf_load_stage1(lib_hdr);
+    elf_load_stage2(lib_hdr);
+    elf_load_stage3(lib_hdr);
+
+    return lib_hdr;
 }
 
 // load
