@@ -328,50 +328,134 @@ static uint64_t elf_do_reloc(Elf64_Ehdr *hdr, Elf64_Rela *rel, Elf64_Shdr *relta
 	return symval;
 }
 
+const char* elf_section_name(Elf64_Ehdr* hdr, Elf64_Shdr* shdr) {
+    Elf64_Shdr *shstrtab = elf_section(hdr, hdr->e_shstrndx);
+    if (!shstrtab) {
+        ERROR("No .shstrtab section found!\n");
+        return nullptr;
+    }
+    return (const char*)((uint64_t)hdr + shstrtab->sh_offset + shdr->sh_name);
+}
+
+static int elf_do_dynamic_reloc(Elf64_Ehdr *hdr, Elf64_Rela *rel, Elf64_Shdr *reltab) {
+	// get section and symbol
+	Elf64_Shdr *target = elf_section(hdr, reltab->sh_info);
+    uint64_t addr = (uint64_t)hdr + target->sh_offset;
+    uint64_t *ref = (uint64_t*)(addr + rel->r_offset);
+    const char *symbol_name = nullptr;
+    uint64_t symval = 0;
+
+	// try to look up the symbol
+    if (ELF64_R_SYM(rel->r_info) != SHN_UNDEF) {
+        // from .dynsym
+        Elf64_Shdr *dynsym = find_section(hdr, ".dynsym");
+        Elf64_Shdr *dynstr = find_section(hdr, ".dynstr");
+        if (!dynsym || !dynstr) {
+            ERROR("Missing .dynsym or .dynstr\n");
+            return ELF_RELOC_ERR;
+        }
+
+        Elf64_Sym *symbol = (Elf64_Sym*)((uint64_t)hdr + dynsym->sh_offset + 
+            ELF64_R_SYM(rel->r_info) * sizeof(Elf64_Sym));
+        symbol_name = (const char*)((uint64_t)hdr + dynstr->sh_offset + symbol->st_name);
+
+        // global
+        symval = (uint64_t)elf_lookup_symbol(hdr, symbol_name);
+        if (symval == 0) {
+            ERROR("Undefined symbol: %s\n", symbol_name);
+            return ELF_RELOC_ERR;
+        }
+    }
+
+    // Apply relocation
+    switch (ELF64_R_TYPE(rel->r_info)) {
+        case R_AARCH64_JUMP_SLOT: 
+        case R_AARCH64_GLOB_DAT:   
+            *ref = symval + rel->r_addend;
+            break;
+
+        case R_AARCH64_RELATIVE:\
+            *ref = (uint64_t)hdr + rel->r_addend;
+            break;
+
+        default:
+            ERROR("Unsupported dynamic relocation type: %d\n", ELF64_R_TYPE(rel->r_info));
+            return ELF_RELOC_ERR;
+    }
+
+    return 0;
+}
+
+
 # define ELF_PHDR_ERR -2
 
-static int elf_load_stage2(Elf64_Ehdr *hdr) {
-	Elf64_Shdr *shdr = elf_sheader(hdr);
 
-	unsigned int i, idx;
-	// Iterate over section headers
-	for(i = 0; i < hdr->e_shnum; i++) {
-		Elf64_Shdr *section = &shdr[i];
-		
-		// If this is a relocation section
-		if(section->sh_type == SHT_REL) {
-			// Process each entry in the table
-			/*for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
-				Elf64_Rel *reltab = &((Elf64_Rel *)((uint64_t)hdr + section->sh_offset))[idx];
-				int result = elf_do_reloc(hdr, reltab, section);
-				// On error, display a message and return
-				if(result == ELF_RELOC_ERR) {
-					ERROR("Failed to relocate symbol.\n");
-					return ELF_RELOC_ERR;
-				}
-			}*/
-			ERROR("ITS SHT_REL...");
-			continue;
-		}
-		
-		if(section->sh_type == SHT_RELA) {
-			printf("THIS IS A SHTRELA %d!\n", i);
-			// Process each entry in the table
-			for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
-				Elf64_Rela *reltab = &((Elf64_Rela *)((uint64_t)hdr + section->sh_offset))[idx];
-				printf("off: %x info: %x addend: %x\n", reltab->r_offset, reltab->r_info, reltab->r_addend);
-				int result = elf_do_reloc(hdr, reltab, section);
-				// On error, display a message and return
-				if(result == ELF_RELOC_ERR) {
-					ERROR("Failed to relocate symbol.\n");
-					//return ELF_RELOC_ERR;
-				}
-			}
-		}
-		// TODO: figure out what the hell other shtypes do
-	}
-	return 0;
+//
+static int elf_load_stage2(Elf64_Ehdr *hdr) {
+    Elf64_Shdr *shdr = elf_sheader(hdr);
+    for (unsigned int i = 0; i < hdr->e_shnum; i++) {
+        Elf64_Shdr *section = &shdr[i];
+        if (section->sh_type == SHT_RELA) {
+            const char *secname = elf_section_name(hdr, section);
+            if (K::strcmp(secname, ".rela.dyn") == 0 || 
+                K::strcmp(secname, ".rela.plt") == 0) {
+                printf("Processing dynamic relocations in %s\n", secname);
+                for (unsigned int idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
+                    Elf64_Rela *rel = (Elf64_Rela*)((uint64_t)hdr + section->sh_offset + idx * sizeof(Elf64_Rela));
+                    if (elf_do_dynamic_reloc(hdr, rel, section) == ELF_RELOC_ERR) {
+                        ERROR("Failed to apply dynamic relocation\n");
+                        return ELF_RELOC_ERR;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
 }
+
+// static int elf_load_stage2(Elf64_Ehdr *hdr) {
+// 	Elf64_Shdr *shdr = elf_sheader(hdr);
+
+// 	unsigned int i, idx;
+// 	// Iterate over section headers
+// 	for(i = 0; i < hdr->e_shnum; i++) {
+// 		Elf64_Shdr *section = &shdr[i];
+		
+// 		// If this is a relocation section
+// 		if(section->sh_type == SHT_REL) {
+// 			// Process each entry in the table
+// 			/*for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
+// 				Elf64_Rel *reltab = &((Elf64_Rel *)((uint64_t)hdr + section->sh_offset))[idx];
+// 				int result = elf_do_reloc(hdr, reltab, section);
+// 				// On error, display a message and return
+// 				if(result == ELF_RELOC_ERR) {
+// 					ERROR("Failed to relocate symbol.\n");
+// 					return ELF_RELOC_ERR;
+// 				}
+// 			}*/
+// 			ERROR("ITS SHT_REL...");
+// 			continue;
+// 		}
+		
+// 		if(section->sh_type == SHT_RELA) {
+// 			printf("THIS IS A SHTRELA %d!\n", i);
+			
+// 			// Process each entry in the table
+// 			for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
+// 				Elf64_Rela *reltab = &((Elf64_Rela *)((uint64_t)hdr + section->sh_offset))[idx];
+// 				printf("off: %x info: %x addend: %x\n", reltab->r_offset, reltab->r_info, reltab->r_addend);
+// 				int result = elf_do_reloc(hdr, reltab, section);
+// 				// On error, display a message and return
+// 				if(result == ELF_RELOC_ERR) {
+// 					ERROR("Failed to relocate symbol.\n");
+// 					//return ELF_RELOC_ERR;
+// 				}
+// 			}
+// 		}
+// 		// TODO: figure out what the hell other shtypes do
+// 	}
+// 	return 0;
+// }
 
 void *load_segment_mem(void* mem, Elf64_Phdr *phdr) {
     size_t mem_size = phdr->p_memsz;
