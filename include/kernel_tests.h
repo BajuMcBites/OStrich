@@ -12,5 +12,6 @@ void user_paging_tests();
 void hash_test();
 void ramfs_tests();
 void blocking_atomic_tests();
+void ip_tests();
 
 #endif /*_KERNEL_TESTS_H */
