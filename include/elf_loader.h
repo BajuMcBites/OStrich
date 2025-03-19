@@ -102,7 +102,25 @@ enum StT_Types {
 	SHT_FINI_ARRAY	= 13,   
 	SHT_PREINIT_ARRAY		= 14, 
 	SHT_GROUP		= 15, 
-	SHT_SYMTAB_SHNDX	= 16,   
+	SHT_SYMTAB_SHNDX	= 16,
+
+	// could be important
+	SHT_ARM_ATTRIBUTES = 0x70000003,
+	SHT_ARM_DEBUGOVERLAY = 0x7000000F,
+	SHT_ARM_OVERLAYSECTION = 0x7000000E,
+
+	// solaris specific elf - why do we have these?
+	SHT_SunwSignature = 1879048182,
+    SHT_SunwAnnotate = 1879048183,
+    SHT_SunwDebugstr = 1879048184,
+    SHT_SunwDebug = 1879048185,
+    SHT_SunwMove = 1879048186,
+    SHT_SunwComdat = 1879048187,
+    SHT_SunwSyminfo = 1879048188,
+    SHT_SunwVerdef = 1879048189,
+    SHT_SunwVerneed = 1879048190,
+    SHT_SunwVersym = 1879048191,
+
 };
 
 enum ShT_Attributes {
