@@ -75,6 +75,7 @@ extern "C" void kernel_main() {
     frame_alloc_tests();
     user_paging_tests();
     ramfs_tests();
+    ip_tests();
 }
 
 extern char __heap_start[];
