@@ -194,4 +194,7 @@ inline void create_event_core(
     auto tcb = new Event(work);
     readyQueue.forCPU(core).queues[1].add(tcb);
 }
+
+TCB* currentTCB(int core);
+
 #endif

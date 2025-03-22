@@ -113,3 +113,45 @@ bool K::check_stack() {
 
     return sp > stack_end;
 }
+
+/**
+ * NOTE: not the same as linux strntok, returns the start of the next token
+ *
+ * Tokenizes strings, but not the same as linux strntok, this is stateless,
+ * takes in a string, returns null if no instance of the char c in n characters
+ * or we encounter a '\0' first. returns the start of the next token if there
+ * is an occurance.
+ */
+char* K::strntok(char* str, char c, int n) {
+
+    char* cpy = str;
+    int count = 0;
+
+    while (*cpy != '\0' && *cpy != c && count < n) {
+        cpy++;
+        count++;
+    }
+
+    if (*cpy == c) {
+        *cpy = '\0';
+        cpy++;
+        return cpy;
+    }
+
+    return nullptr;
+}
+
+/**
+ * returns the min of length of the string not including the null terminator and n
+ */
+int K::strnlen(char* str, int n) {
+    char* cpy = str;
+    int len = 0;
+
+    while (*cpy != '\0' && len < n) {
+        cpy++;
+        len++;
+    }
+
+    return len;
+}

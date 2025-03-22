@@ -153,10 +153,23 @@ struct SwapLocation {
 };
 
 struct FileLocation {
-    char file_name[32];
+    char* file_name;
     uint64_t offset;
 };
 
+
+/**
+ * Lock Scheme:
+ * Local Page Location Lock only should lock the PageLocation variable so that doesnt change
+ * 
+ * Page Location Lock locks all of its variables and all of the LocalPageLocation children variables (except its PageLocation)
+ * 
+ * You should never change the PageLocation of any LocalPageLocation except if you got the locks in LocalPageLocation -> PageLocation order,
+ *       never PageLocation -> LocalPageLocation () this may make private pages read the most current changes until they write (which may or may not be intended)
+ * Always PageLocation -> LocalPageLocation
+ *                     -> FrameTable
+ * 
+ */
 struct LocalPageLocation;
 struct PageLocation;
 
@@ -193,14 +206,14 @@ struct PageLocation {
     union location {
         SwapLocation swap;
         FileLocation filesystem;
-    };
+    } location;
 };
 
 
 
 class SupplementalPageTable {
     public:
-    HashMap<LocalPageLocation> map;
+    HashMap<LocalPageLocation*> map;
     Lock map_lock; //only lock the map with this, Page location and LocalPageLocation are locked locally;
 
     SupplementalPageTable() : map(100) {
@@ -209,6 +222,9 @@ class SupplementalPageTable {
 
     // bool map_vaddr_swap(uint64_t vaddr, PageSharingMode page_sharing_mode, Function<void() w>);
     // bool map_vaddr_file(uint64_t vaddr, uint16 flags, Function<void() w>);
+
+    void vaddr_mapping(uint64_t vaddr, Function<void(LocalPageLocation*)> w);
+
 
     private:
     bool map_vaddr(uint64_t user_vaddr, LocalPageLocation* page_loc, Function<void()> w);
@@ -221,6 +237,32 @@ class SupplementalPageTable {
 };
 
 /*
+    Allocation:
+        - mmap on user thread,
+        - page alloc
+        - malloc page location
+        - malloc local page location
+        - insert into frame table
+        - set up everything to user
+    
+    File system
+        - read/write to dev/swap syscall handler
+        - read to dev/ramfs/{file_name}
+
+    MMAP
+        - mmap to dev/ramfs/{file_name}
+        - mmap to blankswappage (we make the swap id and stuff)
+    
+    Eviction
+        - update all supp page tables, update all page tables
+        - write back to location
+    
+    PageCahce
+        - Lookup by filename + offset -> Locaiton Struct
+        - swap_id -> location struct
+*/
+
+/*
 Process for laoding in initial pages that are not backed by file system but have info:ALIGN
 
 page alloc pinned
@@ -230,7 +272,6 @@ make page location struct mark it as swap, make present
 map that in supp page table with correct properties
 put loc in the frame
 unpin
-
 */
 
 #endif /*__ASSEMBLER__*/

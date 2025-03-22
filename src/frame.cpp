@@ -45,7 +45,7 @@ void alloc_frame(int flags, Function<void(uint64_t)> w) {
             frame_table[index].flags |= USED_PAGE_FLAG;
             create_event<uint64_t>(w, index * PAGE_SIZE, 1);
             index += 1;
-
+            index %= num_frames;
             return;
         }
         index += 1;

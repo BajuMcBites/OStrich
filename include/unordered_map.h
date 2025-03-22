@@ -1,6 +1,9 @@
 #ifndef _UNORDERED_MAP_H
 #define _UNORDERED_MAP_H
 
+/**
+ * Dont use as of now, we dont have a std::hash function
+ */
 template <typename K, typename V>
 class HashTable {
    private:

@@ -280,3 +280,12 @@ PageTableLevel* descriptor_to_vaddr(uint64_t descriptor) {
     }
     return (PageTableLevel*)paddr_to_vaddr(paddr);
 }
+
+void SupplementalPageTable::vaddr_mapping(uint64_t vaddr, Function<void(LocalPageLocation*)> w) {
+    this->map_lock.lock([this, vaddr, w]() {
+        LocalPageLocation* page_location = this->map.get(vaddr);
+        this->map_lock.unlock();
+        create_event<LocalPageLocation*>(w, page_location);
+    });
+}
+
