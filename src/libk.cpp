@@ -70,6 +70,12 @@ void* K::memcpy(void* dest, const void* src, int n) {
     return dest;
 }
 
+extern "C" {
+void memcpy(void* dest, const void* src, int n) {
+    K::memcpy(dest, src, n);
+}
+}
+
 void* K::memset(void* buf, unsigned char val, unsigned long n) {
     char* temp = (char*)buf;
     while (n > 0) {

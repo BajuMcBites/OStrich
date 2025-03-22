@@ -28,4 +28,8 @@ class K {
     static void assert(bool condition, const char* msg);
 };
 
+extern "C" {
+void memcpy(void* dest, const void* src, int n);
+}
+
 #endif

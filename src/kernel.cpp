@@ -4,6 +4,7 @@
 #include "fork.h"
 #include "frame.h"
 #include "heap.h"
+#include "hid.h"
 #include "irq.h"
 #include "kernel_tests.h"
 #include "libk.h"
@@ -69,13 +70,30 @@ extern char _frame_table_start[];
 extern "C" void kernel_main() {
     // queue_test();
     printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
-    user_paging_tests();
-    ramfs_tests();
-    ip_tests();
+
+    // Initialize mouse driver
+    // for (int i = 0; i < 1; i++) {
+    //     printf("interval: %d\n", USB_MOUSE.interval_ms);
+    //     usleep(USB_MOUSE.interval_ms);
+    //     mouse_process_input(&USB_MOUSE);
+    // }
+
+    // Initialize Keyboard Driver
+    for (int i = 0; i < 10; i++) {
+        usleep(USB_KEYBOARD.interval_ms);
+        printf("Polling keyboard\n");
+        keyboard_process_input(&USB_KEYBOARD);
+    }
+
+    printf("done\n");
+
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
+    // user_paging_tests();
+    // ramfs_tests();
+    // ip_tests();
 }
 
 extern char __heap_start[];
@@ -95,13 +113,16 @@ extern "C" void kernel_init() {
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
 
-        usb_initialize();
+        // Initialize USB.
+        // If we have a mouse, it will be initialized in the USB driver setup.
 
         // timer_init();
         // enable_interrupt_controller();
         // enable_irq();
 
         printf("printf initialized!!!\n");
+        usb_initialize();
+
         init_ramfs();
         create_frame_table(frame_table_start,
                            0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)

@@ -109,12 +109,20 @@ typedef struct {
 
 enum EndpointDirection { HostToDevice = 0, Out = 0, DeviceToHost = 1, In = 1 };
 
+enum EndpointType {
+    Control = 0,
+    Isochronous = 1,
+    Bulk = 2,
+    Interrupt = 3,
+};
+
 typedef struct {
     host_channel *channel;
     uint8_t device_address = 0;
     uint8_t port;
     uint8_t ep_num = 0;
     uint8_t low_speed : 1 = false;
+    uint16_t max_packet_size = 8;
 } __attribute__((aligned(4), packed)) usb_session;
 
 typedef struct {
@@ -128,9 +136,31 @@ typedef struct {
     uint8_t hub_count;
 } usb_connected_hubs;
 
+typedef struct {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint8_t bInterfaceNumber;
+    uint8_t bAlternateSetting;
+    uint8_t bNumEndpoints;
+    uint8_t bInterfaceClass;
+    uint8_t bInterfaceSubClass;
+    uint8_t bInterfaceProtocol;
+    uint8_t bInterfaceSetting;
+    uint8_t iInterface;
+} usb_device_interface_config_t;
+
 extern usb_connected_hubs hubs;
+
+#define USB_CONFIG_DESCRIPTOR_TYPE 0x02
+#define USB_INTERFACE_DESCRIPTOR_TYPE 0x04
+#define USB_ENDPOINT_DESCRIPTOR_TYPE 0x05
 
 void usb_initialize();
 void usb_interrupt_handler();
-
+int usb_handle_transfer(usb_session *session, usb_setup_packet_t *setup_packet, uint8_t *buffer,
+                        int buf_length, uint16_t max_packet_size);
+int handle_transaction(usb_session *session, uint8_t stage);
+int usb_get_device_config_descriptor(usb_session *session, uint8_t *buffer, uint16_t length = 18);
+int get_interval_ms_for_interface(usb_session *, uint16_t);
+void usleep(unsigned int microseconds);
 #endif
