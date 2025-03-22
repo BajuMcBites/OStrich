@@ -50,19 +50,25 @@ void uart_init(void) {
 }
 
 char uart_getc(void) {
-    // Wait until the UART has received data (RXFE - Receive FIFO Empty flag is clear)
+    // Wait until data is available
     while (get32(UART0_FR) & (1 << 4)) {
-        // Wait for data to be available
     }
-
-    // Read and return the character from the UART Data Register
-    return (char)(get32(UART0_DR) & 0xFF);
+    char c = (char)(get32(UART0_DR) & 0xFF);
+    // If the character is a carriage return, translate it to a newline.
+    if (c == '\r') {
+        c = '\n';
+    }
+    return c;
 }
+
 
 void uart_putc(char c) {
     // Wait until transmit FIFO has space
     while (get32(UART0_FR) & 0x20);
     put32(UART0_DR, c);
+    if(c == '\n'){
+        put32(UART0_DR, '\r');
+    }
 }
 
 void uart_puts(const char* str) {

@@ -44,7 +44,7 @@ static_assert((MAILBOX_BASE & 0xF) == 0, "Mailbox base must be 16-byte aligned")
 #define MBOX_TAG_GETPITCH       0x40008
 
 // Global mailbox buffer
-extern volatile unsigned int __attribute__((aligned(16))) mbox[36];
+extern volatile unsigned int mbox[35] __attribute__((aligned(16), section(".mailbox")));
 
 #ifdef __cplusplus
 extern "C" {

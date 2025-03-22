@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "printf.h"
 #include "uart.h"
 #include "atomic.h"
+#include "framebuffer.h"
 
 typedef void (*putcf) (void*,char);
 static putcf stdout_putf;
@@ -199,6 +200,7 @@ static void printi(void* putp, void (*putf)(void*, char), long long i, int base,
             *(--s) = '-';
         }
     }
+    
     prints(putp, putf, s, width, pad);
 }
 
@@ -303,20 +305,29 @@ void init_printf(void* putp,void (*putf) (void*,char))
     stdout_putp=putp;
     }
 
-void tfp_printf(const char *fmt, ...)
-    {
-    va_list va;
-    spinLock.lock();
-    va_start(va,fmt);
-    tfp_format(stdout_putp,stdout_putf,fmt,va);
-    va_end(va);
-    spinLock.unlock();
-    }
-
-static void putcp(void* p,char c)
+    static void putcp(void* p,char c)
     {
     *(*((char**)p))++ = c;
     }
+
+    static void vtfp_sprintf(char* s, const char* fmt, va_list va)
+{
+    tfp_format(&s, putcp, fmt, va);
+    putcp(&s, 0);
+}
+
+void tfp_printf(const char *fmt, ...)
+{
+    char buffer[256];
+    va_list va;
+    spinLock.lock();
+    va_start(va, fmt);
+    vtfp_sprintf(buffer, fmt, va);
+    va_end(va);
+    tfp_format(stdout_putp,stdout_putf,fmt,va);
+    fb_print(buffer, WHITE);
+    spinLock.unlock();
+}
 
 
 

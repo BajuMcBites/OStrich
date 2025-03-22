@@ -3,7 +3,7 @@
 #include "stdint.h"
 #include "dcache.h"
 
-volatile unsigned int __attribute__((aligned(16))) mbox[36];
+volatile unsigned int mbox[35] __attribute__((aligned(16), section(".mailbox")));
 
 void mailbox_write(unsigned char channel, unsigned int value) {
     printf("Writing to mailbox: channel=%d, value=0x%x\n", channel, value);

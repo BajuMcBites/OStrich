@@ -80,13 +80,22 @@ void mergeCores(){
     uint64_t sp_val;
     asm volatile("mov %0, sp" : "=r" (sp_val));
     printf("Core #%d stack pointer = 0x%llx\n", getCoreID(), sp_val);
-    init_animation(); 
-    while (1) {
-        update_animation();
-    }   
+
+    // uncomment this code to do the animation
+    // init_animation(); 
+    // while (1) {
+    //     update_animation();
+    // }  
+
     if(getCoreID() == 0){
         while (1) {
-            uart_putc(uart_getc()); // will allow you to type letters through UART
+            char ch = uart_getc();
+            // commneted out code below will allow you to update letters on screen based on uart input.
+            // char temp[1];
+            // temp[0] = ch;
+            // const char* str = temp;
+            // fb_print(str, WHITE);
+            uart_putc(ch); // will allow you to type letters through UART
         }
     }
 }
