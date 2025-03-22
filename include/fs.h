@@ -13,18 +13,11 @@
 
 #include "stdint.h"
 #include "function.h"
-#include "event.h"
 
 void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 
 void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 
 // void write_dev();
-
-
-
-
-
-
 
 #endif /* _FS_H */

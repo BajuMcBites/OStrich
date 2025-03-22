@@ -1,7 +1,7 @@
-#include "peripherals/base.h"
-
 #ifndef _VM_H
 #define _VM_H
+
+#include "peripherals/base.h"
 
 #define VA_START 0xFFFF000000000000
 
@@ -71,6 +71,9 @@
 #include "stdint.h"
 #include "atomic.h"
 #include "hash.h"
+#include "libk.h"
+#include "fs.h"
+
 
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
@@ -138,13 +141,13 @@ class PageTable {
 
 enum LocationType {
     FILESYSTEM,
-    SWAP
+    SWAP,
+    ANONYMOUS
 };
 
 enum PageSharingMode {
     SHARED,
-    PRIVATE,
-    ANONYMOUS
+    PRIVATE
 };
 
 struct SwapLocation {
@@ -155,11 +158,26 @@ struct SwapLocation {
 struct FileLocation {
     char* file_name;
     uint64_t offset;
+
+    FileLocation(char* name, uint64_t off) {
+        int path_length = K::strnlen(name, PATH_MAX - 1);
+        file_name = (char*) kmalloc(path_length + 1);
+        K::strncpy(file_name, name, PATH_MAX);
+
+        offset = off;
+    }
+
+    ~FileLocation() {
+        kfree(file_name);
+    }
 };
 
 
 /**
  * Lock Scheme:
+ * 
+ * SUPP table first then others (only if editing which ones they point to)
+ * 
  * Local Page Location Lock only should lock the PageLocation variable so that doesnt change
  * 
  * Page Location Lock locks all of its variables and all of the LocalPageLocation children variables (except its PageLocation)
@@ -178,7 +196,7 @@ struct PageLocation;
  * qualities of that page for a given process, as well as the PageLocation.
  */
 struct LocalPageLocation {
-    Lock lock; //lock so accessors from PageLocation and Supp Page Table dont intersect
+    Lock location_lock; 
     bool read_only;
     PageSharingMode sharing_mode;
     // uint64_t tid; some way to know which process out of the PageLocation->users is the one we faulted on
@@ -201,12 +219,20 @@ struct PageLocation {
     bool dirty;
     bool present;
     uint64_t paddr;
-    uint32_t ref_count;
+    int ref_count;
     LocalPageLocation* users;
     union location {
-        SwapLocation swap;
-        FileLocation filesystem;
+        SwapLocation* swap;
+        FileLocation* filesystem;
     } location;
+
+    ~PageLocation() {
+        if (location_type == FILESYSTEM) {
+            delete location.filesystem;
+        } else if (location_type == SWAP) {
+            delete location.swap;
+        }
+    }
 };
 
 
@@ -214,16 +240,17 @@ struct PageLocation {
 class SupplementalPageTable {
     public:
     HashMap<LocalPageLocation*> map;
-    Lock map_lock; //only lock the map with this, Page location and LocalPageLocation are locked locally;
+    Lock lock; //only lock the map with this, Page location and LocalPageLocation are locked locally;
 
     SupplementalPageTable() : map(100) {
     }
-    // correct use would be only locking the map operations.
 
-    // bool map_vaddr_swap(uint64_t vaddr, PageSharingMode page_sharing_mode, Function<void() w>);
-    // bool map_vaddr_file(uint64_t vaddr, uint16 flags, Function<void() w>);
+    ~SupplementalPageTable() {
+        //TODO: go through and clear all local pages + 0 ref page_locs
+    }
 
-    void vaddr_mapping(uint64_t vaddr, Function<void(LocalPageLocation*)> w);
+    LocalPageLocation* vaddr_mapping(uint64_t vaddr);
+    void map_vaddr(uint64_t vaddr, LocalPageLocation* local);
 
 
     private:
@@ -233,8 +260,14 @@ class SupplementalPageTable {
     // void map
 
     //vaddr mmap(mmap params) returns page mapped in kernel vm pinned (u must unpin) with all the location stuff set up for a process?
-
 };
+
+// void load_local_into_memory(uint64_t uvaddr, UserTCB* tcb, Function<void(void*)> w);
+
+// struct UserTCB;
+
+
+
 
 /*
     Allocation:

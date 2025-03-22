@@ -1,6 +1,8 @@
 #include "fs.h"
 #include "libk.h"
 #include "ramfs.h"
+#include "event.h"
+
 
 /**
  * kread should read a file into the specified buffer by routing a read call to the
@@ -8,10 +10,21 @@
  */
 void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
 
+    int path_length = K::strnlen(file_name, PATH_MAX - 1);
+    char* file_name_cpy = (char*) kmalloc(path_length + 1);
+    K::strncpy(file_name_cpy, file_name, PATH_MAX);
+
+    file_name = file_name_cpy;
+
     char* next;
 
+    auto work = [=](int ret) {
+        kfree(file_name_cpy);
+        create_event<int>(w, ret);
+    };
+
     if (file_name == nullptr) {
-        create_event<int>(w, INVALID_FILE);
+        create_event<int>(work, INVALID_FILE);
         return;
     }
 
@@ -21,15 +34,15 @@ void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void
         next = K::strntok(file_name, '\\', ENTRY_MAX + 1);
 
         if (next == nullptr)  {
-            create_event<int>(w, INVALID_FILE);
+            create_event<int>(work, INVALID_FILE);
             return;
         }
 
         if (K::strncmp(file_name, "dev", ENTRY_MAX) == 0) {
-            read_dev(next, offset, buf, n, w);
+            read_dev(next, offset, buf, n, work);
             return;
         } else {
-            create_event<int>(w, NOT_IMPLEMENTED_FS);
+            create_event<int>(work, NOT_IMPLEMENTED_FS);
             return;
         }
     } else { /* starting from somewhere else */

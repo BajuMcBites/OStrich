@@ -4,6 +4,8 @@
 #include "heap.h"
 #include "libk.h"
 #include "stdint.h"
+#include "fs.h"
+#include "event.h"
 
 uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
@@ -109,8 +111,8 @@ void PageTable::map_vaddr(uint64_t vaddr, uint64_t paddr, uint16_t lower_attribu
 void PageTable::alloc_pgd(Function<void()> w) {
     alloc_frame(PINNED_PAGE_FLAG, [this, w](uint64_t paddr) {
         this->pgd = (pgd_t*)paddr_to_vaddr(paddr);
+        K::memset((void*) this->pgd, 0, PAGE_SIZE);
         K::assert(this->pgd != nullptr, "palloc failed");
-        
         create_event(w, 1);
     });
 }
@@ -127,6 +129,7 @@ void PageTable::map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint16_t lower_att
             pgd->descriptors[pgd_index] =
                 paddr_to_table_descriptor(pud_paddr);        // put frame into table
             pud_t* pud = (pud_t*)paddr_to_vaddr(pud_paddr);  // get vaddr of frame
+            K::memset((void*) pud, 0, PAGE_SIZE);
             map_vaddr_pud(pud, vaddr, paddr, lower_attributes, w);
         });
     } else {
@@ -145,6 +148,7 @@ void PageTable::map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint16
             K::assert(pmd_paddr != nullptr, "palloc failed");
             pud->descriptors[pud_index] = paddr_to_table_descriptor(pmd_paddr);
             pmd_t* pmd = (pmd_t*)paddr_to_vaddr(pmd_paddr);
+            K::memset((void*) pmd, 0, PAGE_SIZE);
             map_vaddr_pmd(pmd, vaddr, paddr, lower_attributes, w);
         });
     } else {
@@ -163,6 +167,7 @@ void PageTable::map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint16
             K::assert(pte_paddr != nullptr, "palloc failed");
             pmd->descriptors[pmd_index] = paddr_to_table_descriptor(pte_paddr);
             pte_t* pte = (pte_t*)paddr_to_vaddr(pte_paddr);
+            K::memset((void*) pte, 0, PAGE_SIZE);
             map_vaddr_pte(pte, vaddr, paddr, lower_attributes);
             create_event(w, 1);
         });
@@ -281,11 +286,10 @@ PageTableLevel* descriptor_to_vaddr(uint64_t descriptor) {
     return (PageTableLevel*)paddr_to_vaddr(paddr);
 }
 
-void SupplementalPageTable::vaddr_mapping(uint64_t vaddr, Function<void(LocalPageLocation*)> w) {
-    this->map_lock.lock([this, vaddr, w]() {
-        LocalPageLocation* page_location = this->map.get(vaddr);
-        this->map_lock.unlock();
-        create_event<LocalPageLocation*>(w, page_location);
-    });
+LocalPageLocation* SupplementalPageTable::vaddr_mapping(uint64_t vaddr) {
+    return this->map.get(vaddr);
 }
 
+void SupplementalPageTable::map_vaddr(uint64_t vaddr, LocalPageLocation* local) {
+   this->map.put(vaddr, local);
+}
