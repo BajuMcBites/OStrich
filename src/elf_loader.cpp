@@ -342,8 +342,42 @@ static int elf_do_dynamic_reloc(Elf64_Ehdr *hdr, Elf64_Rela *rel, Elf64_Shdr *re
 	Elf64_Shdr *target = elf_section(hdr, reltab->sh_info);
     uint64_t addr = (uint64_t)hdr + target->sh_offset;
     uint64_t *ref = (uint64_t*)(addr + rel->r_offset);
-    const char *symbol_name = nullptr;
-    uint64_t symval = 0;
+
+	Elf64_Shdr *dynamic_sec = find_section(hdr, ".dynamic");
+    if (!dynamic_sec) {
+        ERROR("No .dynamic section!\n");
+        return ELF_RELOC_ERR;
+    }
+
+	// try to use dynamic lookup with string table
+	uint64_t dynstr_addr = 0;
+    uint64_t dynsym_addr = 0;
+    Elf64_Dyn *dyn = (Elf64_Dyn*)((uint64_t)hdr + dynamic_sec->sh_offset);
+    
+    for (; dyn->d_tag != DT_NULL; dyn++) {
+        if (dyn->d_tag == DT_STRTAB) {
+            dynstr_addr = dyn->d_un.d_ptr;
+        } else if (dyn->d_tag == DT_SYMTAB) {
+            dynsym_addr = dyn->d_un.d_ptr;
+        }
+    }
+
+    if (!dynstr_addr || !dynsym_addr) {
+        ERROR("Missing DT_STRTAB or DT_SYMTAB\n");
+        return ELF_RELOC_ERR;
+    }
+	
+
+	uint64_t sym_idx = ELF64_R_SYM(rel->r_info);
+    Elf64_Sym *symbol = (Elf64_Sym*)(dynsym_addr + sym_idx * sizeof(Elf64_Sym));
+    const char *symbol_name = (const char*)(dynstr_addr + symbol->st_name);
+
+    uint64_t symval = (uint64_t)elf_lookup_symbol(hdr, symbol_name);
+    if (!symval && !(ELF64_ST_BIND(symbol->st_info) & STB_WEAK)) {
+        ERROR("Undefined symbol: %s\n", symbol_name);
+        return ELF_RELOC_ERR;
+    }
+
 
 	// try to look up the symbol
     if (ELF64_R_SYM(rel->r_info) != SHN_UNDEF) {
@@ -374,9 +408,18 @@ static int elf_do_dynamic_reloc(Elf64_Ehdr *hdr, Elf64_Rela *rel, Elf64_Shdr *re
             *ref = symval + rel->r_addend;
             break;
 
-        case R_AARCH64_RELATIVE:\
+        case R_AARCH64_RELATIVE:
             *ref = (uint64_t)hdr + rel->r_addend;
             break;
+
+		case R_AARCH64_ABS64:
+            *ref = symval + rel->r_addend;
+            break;
+
+		// We got a tls offset?
+        // case R_AARCH64_TLS_TPREL64:
+        //     *ref = symval + rel->r_addend - TLS_OFFSET;
+        //     break;
 
         default:
             ERROR("Unsupported dynamic relocation type: %d\n", ELF64_R_TYPE(rel->r_info));
@@ -386,76 +429,76 @@ static int elf_do_dynamic_reloc(Elf64_Ehdr *hdr, Elf64_Rela *rel, Elf64_Shdr *re
     return 0;
 }
 
+static uint64_t elf_do_rel(Elf64_Ehdr *hdr, Elf64_Rel *rel, Elf64_Shdr *reltab) {
+    Elf64_Shdr *target = elf_section(hdr, reltab->sh_info);
+    uint64_t addr = (uint64_t)hdr + target->sh_offset;
+    uint64_t *ref = (uint64_t*)(addr + rel->r_offset);
+    uint64_t addend = *ref;
+
+    uint64_t symval = 0;
+    if (ELF64_R_SYM(rel->r_info) != SHN_UNDEF) {
+        symval = elf_get_symval(hdr, reltab->sh_link, ELF64_R_SYM(rel->r_info));
+        if (symval == ELF_RELOC_ERR) return ELF_RELOC_ERR;
+    }
+
+    switch (ELF64_R_TYPE(rel->r_info)) {
+        case R_AARCH64_ABS64:
+            *ref = symval + addend;
+            break;
+        case R_AARCH64_RELATIVE: 
+            *ref = (uint64_t)hdr + addend;
+            break;
+        case R_AARCH64_JUMP_SLOT:
+            *ref = symval; 
+            break;
+        default:
+            ERROR("Unsupported SHT_REL relocation type: %d\n", ELF64_R_TYPE(rel->r_info));
+            return ELF_RELOC_ERR;
+    }
+    return symval;
+}
 
 # define ELF_PHDR_ERR -2
 
 
-//
+
 static int elf_load_stage2(Elf64_Ehdr *hdr) {
     Elf64_Shdr *shdr = elf_sheader(hdr);
     for (unsigned int i = 0; i < hdr->e_shnum; i++) {
         Elf64_Shdr *section = &shdr[i];
-        if (section->sh_type == SHT_RELA) {
-            const char *secname = elf_section_name(hdr, section);
-            if (K::strcmp(secname, ".rela.dyn") == 0 || 
-                K::strcmp(secname, ".rela.plt") == 0) {
-                printf("Processing dynamic relocations in %s\n", secname);
-                for (unsigned int idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
-                    Elf64_Rela *rel = (Elf64_Rela*)((uint64_t)hdr + section->sh_offset + idx * sizeof(Elf64_Rela));
-                    if (elf_do_dynamic_reloc(hdr, rel, section) == ELF_RELOC_ERR) {
-                        ERROR("Failed to apply dynamic relocation\n");
-                        return ELF_RELOC_ERR;
-                    }
-                }
-            }
-        }
+		switch (section->sh_type) {
+			case SHT_RELA: {
+				printf("Processing SHT_RELA section %d\n", i);
+				const char *secname = elf_section_name(hdr, section);
+				if (K::strcmp(secname, ".rela.dyn") == 0 || 
+					K::strcmp(secname, ".rela.plt") == 0) {
+					printf("Processing dynamic relocations in %s\n", secname);
+					for (unsigned int idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
+						Elf64_Rela *rel = (Elf64_Rela*)((uint64_t)hdr + section->sh_offset + idx * sizeof(Elf64_Rela));
+						if (elf_do_dynamic_reloc(hdr, rel, section) == ELF_RELOC_ERR) {
+							ERROR("Failed to apply dynamic relocation\n");
+							return ELF_RELOC_ERR;
+						}
+					}
+				}
+			}
+			case SHT_REL: {
+				// printf("Processing SHT_REL section %d\n", i);
+				// for (unsigned int idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
+				// 	Elf64_Rel *rel = (Elf64_Rel*)((uint64_t)hdr + section->sh_offset + idx * sizeof(Elf64_Rel));
+				// 	int result = elf_do_rel(hdr, rel, section);
+				// 	if (result == ELF_RELOC_ERR) {
+				// 		ERROR("Failed to relocate symbol (SHT_REL)\n");
+				// 		return ELF_RELOC_ERR;
+				// 	}
+				// }
+				// continue;
+			}
+		}
+		// TODO: figure out what the hell other shtypes do
     }
     return 0;
 }
-
-// static int elf_load_stage2(Elf64_Ehdr *hdr) {
-// 	Elf64_Shdr *shdr = elf_sheader(hdr);
-
-// 	unsigned int i, idx;
-// 	// Iterate over section headers
-// 	for(i = 0; i < hdr->e_shnum; i++) {
-// 		Elf64_Shdr *section = &shdr[i];
-		
-// 		// If this is a relocation section
-// 		if(section->sh_type == SHT_REL) {
-// 			// Process each entry in the table
-// 			/*for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
-// 				Elf64_Rel *reltab = &((Elf64_Rel *)((uint64_t)hdr + section->sh_offset))[idx];
-// 				int result = elf_do_reloc(hdr, reltab, section);
-// 				// On error, display a message and return
-// 				if(result == ELF_RELOC_ERR) {
-// 					ERROR("Failed to relocate symbol.\n");
-// 					return ELF_RELOC_ERR;
-// 				}
-// 			}*/
-// 			ERROR("ITS SHT_REL...");
-// 			continue;
-// 		}
-		
-// 		if(section->sh_type == SHT_RELA) {
-// 			printf("THIS IS A SHTRELA %d!\n", i);
-			
-// 			// Process each entry in the table
-// 			for(idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
-// 				Elf64_Rela *reltab = &((Elf64_Rela *)((uint64_t)hdr + section->sh_offset))[idx];
-// 				printf("off: %x info: %x addend: %x\n", reltab->r_offset, reltab->r_info, reltab->r_addend);
-// 				int result = elf_do_reloc(hdr, reltab, section);
-// 				// On error, display a message and return
-// 				if(result == ELF_RELOC_ERR) {
-// 					ERROR("Failed to relocate symbol.\n");
-// 					//return ELF_RELOC_ERR;
-// 				}
-// 			}
-// 		}
-// 		// TODO: figure out what the hell other shtypes do
-// 	}
-// 	return 0;
-// }
 
 void *load_segment_mem(void* mem, Elf64_Phdr *phdr) {
     size_t mem_size = phdr->p_memsz;
@@ -510,7 +553,11 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 				break;
 			case PT_DYNAMIC: {
 				Elf64_Dyn *dyn = (Elf64_Dyn*)((uint64_t)hdr + prog->p_offset);
+				uint64_t dynstr_addr = 0;	
 				for (; dyn->d_tag != DT_NULL; dyn++) {
+					if (dyn->d_tag == DT_STRTAB) {
+						dynstr_addr = dyn->d_un.d_ptr;
+					}
 					if (dyn->d_tag == DT_NEEDED) {
 						char *libname = (char*)((uint64_t)hdr + dyn->d_un.d_val);
 						printf("Loading dependency: %s\n", libname);
