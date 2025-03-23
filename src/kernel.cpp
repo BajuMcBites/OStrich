@@ -146,7 +146,8 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
-        create_event([] { kernel_main(); });
+        // create_event([] { kernel_main(); });
+        // init_snake();
     }
     stop();
     printf("PANIC I should not go here\n");

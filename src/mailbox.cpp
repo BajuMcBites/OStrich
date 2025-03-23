@@ -16,7 +16,6 @@ void mailbox_write(unsigned char channel, unsigned int value) {
         printf("Converting VA 0x%x to PA 0x%x\n", value, phys_addr);
         value = phys_addr;
     }
-
     *MAILBOX_WRITE = (value & ~0xF) | (channel & 0xF);
 }
 
