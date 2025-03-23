@@ -144,7 +144,6 @@ init_mmu:
     //Memory Attribute Indirection Register
     ldr x0, =(MAIR_VALUE)
     msr mair_el1, x0
-    
 	// load into return register
 	ldr x4, =(VA_START)
 	add sp, sp, x4
