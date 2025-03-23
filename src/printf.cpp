@@ -319,15 +319,22 @@ void init_printf(void* putp,void (*putf) (void*,char))
 void tfp_printf(const char *fmt, ...)
 {
     char buffer[256];
-    va_list va;
+    va_list va, va_copy_list;
     spinLock.lock();
+    
     va_start(va, fmt);
+    va_copy(va_copy_list, va);
+    
     vtfp_sprintf(buffer, fmt, va);
+    tfp_format(stdout_putp, stdout_putf, fmt, va_copy_list);
+    
+    va_end(va_copy_list);
     va_end(va);
-    tfp_format(stdout_putp,stdout_putf,fmt,va);
+    
     fb_print(buffer, WHITE);
     spinLock.unlock();
 }
+
 
 
 

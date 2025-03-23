@@ -1,33 +1,42 @@
+#include "core.h"
+#include "event.h"
+#include "fork.h"
+#include "frame.h"
+#include "heap.h"
+#include "irq.h"
+#include "kernel_tests.h"
+#include "libk.h"
+#include "mm.h"
+#include "percpu.h"
+#include "printf.h"
+#include "queue.h"
+#include "ramfs.h"
+#include "sched.h"
+#include "stdint.h"
+#include "timer.h"
 #include "uart.h"
 #include "utils.h"
-#include "printf.h"
-#include "percpu.h"
-#include "stdint.h"
-#include "entry.h"
-#include "core.h"
-#include "mm.h"
-#include "framebuffer.h"
-#include "atomic.h"
-#include "dcache.h"
-#include "icache.h"
 #include "vm.h"
+#include "framebuffer.h"
+#include "dcache.h"
 
 void mergeCores();
 
 struct Stack {
-    static constexpr int BYTES = 4096;
-    uint64_t bytes[BYTES] __attribute__ ((aligned(16)));
+    static constexpr int BYTES = 16384;
+    uint64_t bytes[BYTES] __attribute__((aligned(16)));
 };
 
-SpinLock lock;
-PerCPU<Stack> stacks;
+PerCPU<Stack> stacks __attribute__((section(".stacks")));
+
 static bool smpInitDone = false;
 
 extern "C" uint64_t pickKernelStack(void) {
-    return (uint64_t) &stacks.forCPU(smpInitDone ? getCoreID() : 0).bytes[Stack::BYTES];
+    return (uint64_t)&stacks.forCPU(smpInitDone ? getCoreID() : 0).bytes[Stack::BYTES];
 }
 
 void print_ascii_art() {
+    // clang-format off
     printf("\n");
     printf("                                                                                     \n");
     printf("      # ###          #######                                                /       \n");
@@ -49,7 +58,36 @@ void print_ascii_art() {
     printf("                \\)                                                              /   \n");
     printf("                                                                               /    \n");
     printf("                                                                              /     \n");
+    // clang-format on
 }
+
+void breakpoint() {
+    return;
+}
+
+extern char _frame_table_start[];
+
+#define frame_table_start ((uintptr_t)_frame_table_start)
+
+extern "C" void kernel_main() {
+    // queue_test();
+    printf("All tests passed\n");
+    heapTests();
+    event_loop_tests();
+    hash_test();
+    frame_alloc_tests();
+    user_paging_tests();
+    ramfs_tests();
+}
+
+extern char __heap_start[];
+extern char __heap_end[];
+
+#define HEAP_START ((uintptr_t)__heap_start)
+#define HEAP_END ((uintptr_t)__heap_end)
+#define HEAP_SIZE (HEAP_END - HEAP_START)
+
+static Atomic<int> coresAwake(0);
 
 extern "C" void secondary_kernel_init() {
     init_mmu();
@@ -62,41 +100,71 @@ extern "C" void primary_kernel_init() {
         init_mmu();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
+        // timer_init();
+        // enable_interrupt_controller();
+        // enable_irq();
         printf("printf initialized!!!\n");
-        print_ascii_art();
         if (fb_init()) {
             printf("Framebuffer initialization successful!\n");
         } else {
             printf("Framebuffer initialization failed!\n");
         }
+        // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here. making that bit
+        // making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value of 0x96000021)
+        init_ramfs();
+        create_frame_table(frame_table_start,
+                           0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
+        printf("frame table initialized! \n");
+        uinit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         // with data cache on, we must write the boolean back to memory to allow other cores to see it.
         clean_dcache_line(&smpInitDone);
+        threadsInit();
         wake_up_cores();
         mergeCores();
 }
 
-void mergeCores(){
-    uint64_t sp_val;
-    asm volatile("mov %0, sp" : "=r" (sp_val));
-    printf("Core #%d stack pointer = 0x%llx\n", getCoreID(), sp_val);
-
-    // uncomment this code to do the animation
-    // init_animation(); 
-    // while (1) {
-    //     update_animation();
-    // }  
-
-    if(getCoreID() == 0){
-        while (1) {
-            char ch = uart_getc();
-            // commneted out code below will allow you to update letters on screen based on uart input.
-            // char temp[1];
-            // temp[0] = ch;
-            // const char* str = temp;
-            // fb_print(str, WHITE);
-            uart_putc(ch); // will allow you to type letters through UART
-        }
+extern "C" void kernel_init() {
+    if (getCoreID() == 0) {
+        create_page_tables();
+        init_mmu();
+        patch_page_tables();
+        uart_init();
+        init_printf(nullptr, uart_putc_wrapper);
+        // timer_init();
+        // enable_interrupt_controller();
+        // enable_irq();
+        printf("printf initialized!!!\n");
+        // the Alignment check enable bit in the SCTLR_EL! register will make this function (init_ramfs()) throw an error
+        // (will get ESR_EL1 value of 0x96000021)
+        init_ramfs();
+        create_frame_table(frame_table_start,
+                           0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
+        printf("frame table initialized! \n");
+        breakpoint();
+        print_ascii_art();
+        uinit((void *)HEAP_START, HEAP_SIZE);
+        smpInitDone = true;
+        threadsInit();
+        wake_up_cores();
+        //  kernel_main();
+    } else {
+        init_mmu();
     }
 }
 
+void mergeCores(){
+    printf("Hi, I'm core %d\n", getCoreID());
+    auto number_awake = coresAwake.add_fetch(1);
+    printf("There are %d cores awake\n", number_awake);
+    K::check_stack();
+
+    if (number_awake == CORE_COUNT) {
+        create_event([] { kernel_main(); });
+
+        // user_thread([]
+        //             { printf("i do nothing2\n"); });
+    }
+    stop();
+    printf("PANIC I should not go here\n");
+}

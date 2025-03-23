@@ -12,4 +12,4 @@ void wake_up_cores();
 }
 #endif
 
-#endif // CORE_H
+#endif  // CORE_H

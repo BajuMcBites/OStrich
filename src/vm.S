@@ -168,3 +168,10 @@ init_mmu:
     isb               // Instruction synchronization
     
 	ret
+
+.global switch_ttbr0
+switch_ttbr0:
+    msr ttbr0_el1, x0
+	ret
+
+	

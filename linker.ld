@@ -12,6 +12,12 @@ SECTIONS
         __paging_end = .;
     }
 
+    .stacks : ALIGN(16) {
+        __stacks_start = .;
+        *(.stacks)
+        __stacks_end = .;
+    }
+
     .bss (NOLOAD) : {
         . = ALIGN(16);
         __bss_start = .;
@@ -19,9 +25,21 @@ SECTIONS
         *(COMMON)
         __bss_end = .;
     }
-
+    
+    . = ALIGN(4096);
     _end = .;
 
+    /* Define heap start after BSS, aligned to 4KB */
+    . = ALIGN(4096);
+    PROVIDE(__heap_start = .);
+
+    /* Allocate heap size */
+    . = . + 2M; /* 2MB heap, adjustable */
+    
+    PROVIDE(__heap_end = .);
+    
+    PROVIDE(_frame_table_start = .);
+    
     /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }
 }
 
