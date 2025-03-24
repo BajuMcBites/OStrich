@@ -554,12 +554,19 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 			case PT_DYNAMIC: {
 				Elf64_Dyn *dyn = (Elf64_Dyn*)((uint64_t)hdr + prog->p_offset);
 				uint64_t dynstr_addr = 0;	
+				
+				printf("%x, is dynstr_addr\n", dynstr_addr);
 				for (; dyn->d_tag != DT_NULL; dyn++) {
 					if (dyn->d_tag == DT_STRTAB) {
 						dynstr_addr = dyn->d_un.d_ptr;
+						break;
 					}
+				}
+				printf("%x, is dynstr_addr\n", dynstr_addr);
+				dyn = (Elf64_Dyn*)((uint64_t)hdr + prog->p_offset);
+				for (; dyn->d_tag != DT_NULL; dyn++) {
 					if (dyn->d_tag == DT_NEEDED) {
-						char *libname = (char*)((uint64_t)hdr + dyn->d_un.d_val);
+						char *libname = (char*)((uint64_t)hdr + dynstr_addr + dyn->d_un.d_val);
 						printf("Loading dependency: %s\n", libname);
 						void *lib = load_library(libname);
 						if (!lib) {
