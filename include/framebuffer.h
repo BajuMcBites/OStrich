@@ -106,9 +106,9 @@ static const unsigned char font[96][8] = {
 
 #define BLACK   0xFF000000
 #define WHITE   0xFFFFFFFF
-#define RED     0xFFFF0000
+#define BLUE    0xFFFF0000
 #define GREEN   0xFF00FF00
-#define BLUE    0xFF0000FF
+#define RED     0xFF0000FF
 #define CYAN    0xFFFFFF00
 #define YELLOW  0xFF00FFFF
 #define PURPLE  0xFFFF00FF

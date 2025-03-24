@@ -2,102 +2,107 @@
 #include "printf.h"
 #include "stdint.h"
 #include "uart.h"
+#include "atomic.h"
 
 /**
  * common exception handler
  */
 
+SpinLock lockErr;
+
 extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long elr,
                             unsigned long spsr, unsigned long far) {
+    lockErr.lock();
     // print out interruption type
     switch (type) {
         case 0:
-            printf("Synchronous");
+            printf_err("Synchronous");
             break;
         case 1:
-            printf("IRQ");
+            printf_err("IRQ");
             break;
         case 2:
-            printf("FIQ");
+            printf_err("FIQ");
             break;
         case 3:
-            printf("SError");
+            printf_err("SError");
             break;
     }
-    printf(": ");
+    printf_err(": ");
     // decode exception type (some, not all. See ARM DDI0487B_b chapter D10.2.28)
     switch (esr >> 26) {
         case 0b000000:
-            printf("Unknown");
+            printf_err("Unknown");
             break;
         case 0b000001:
-            printf("Trapped WFI/WFE");
+            printf_err("Trapped WFI/WFE");
             break;
         case 0b001110:
-            printf("Illegal execution");
+            printf_err("Illegal execution");
             break;
         case 0b010101:
-            printf("System call");
+            printf_err("System call");
             break;
         case 0b100000:
-            printf("Instruction abort, lower EL");
+            printf_err("Instruction abort, lower EL");
             break;
         case 0b100001:
-            printf("Instruction abort, same EL");
+            printf_err("Instruction abort, same EL");
             break;
         case 0b100010:
-            printf("Instruction alignment fault");
+            printf_err("Instruction alignment fault");
             break;
         case 0b100100:
-            printf("Data abort, lower EL");
+            printf_err("Data abort, lower EL");
             break;
         case 0b100101:
-            printf("Data abort, same EL");
+            printf_err("Data abort, same EL");
             break;
         case 0b100110:
-            printf("Stack alignment fault");
+            printf_err("Stack alignment fault");
             break;
         case 0b101100:
-            printf("Floating point");
+            printf_err("Floating point");
             break;
         default:
-            printf("Unknown");
+            printf_err("Unknown");
             break;
     }
     // decode data abort cause
     if (esr >> 26 == 0b100100 || esr >> 26 == 0b100101) {
-        printf(", ");
+        printf_err(", ");
         switch ((esr >> 2) & 0x3) {
             case 0:
-                printf("Address size fault");
+                printf_err("Address size fault");
                 break;
             case 1:
-                printf("Translation fault");
+                printf_err("Translation fault");
                 break;
             case 2:
-                printf("Access flag fault");
+                printf_err("Access flag fault");
                 break;
             case 3:
-                printf("Permission fault");
+                printf_err("Permission fault");
                 break;
         }
         switch (esr & 0x3) {
             case 0:
-                printf(" at level 0");
+                printf_err(" at level 0");
                 break;
             case 1:
-                printf(" at level 1");
+                printf_err(" at level 1");
                 break;
             case 2:
-                printf(" at level 2");
+                printf_err(" at level 2");
                 break;
             case 3:
-                printf(" at level 3");
+                printf_err(" at level 3");
                 break;
         }
     }
     // dump registers
-    printf(":\n  ESR_EL1 0x%X ELR_EL1 0x%X\n SPSR_EL1 0%xX FAR_EL1 0x%X\n", esr, elr, spsr, far);
+    printf_err(":\n  ESR_EL1 0x%X ELR_EL1 0x%X\n SPSR_EL1 0%xX FAR_EL1 0x%X\n", esr, elr, spsr, far);
+    lockErr.unlock();
 
     // no return from exception for now
     while (1);
