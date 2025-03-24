@@ -34,7 +34,7 @@ struct keyboard {
     } keymap;
 };
 
-char get_input();
+char get_keyboard_input();
 int keyboard_attach(usb_session *session, usb_device_descriptor_t *device_descriptor,
                     usb_device_config_t *device_config);
 int keyboard_detach();

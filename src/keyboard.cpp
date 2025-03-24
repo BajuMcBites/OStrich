@@ -101,7 +101,7 @@ void init_usb_session(usb_session *session) {
     session->channel = USB_CHANNEL(2);
 }
 
-char get_input() {
+char get_keyboard_input() {
     if (!kbd.discovered || !kbd.connected) return '\0';
 
     uint8_t buffer[8];
