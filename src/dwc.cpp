@@ -211,32 +211,6 @@ int usb_handle_transfer(usb_session *session, usb_setup_packet_t *setup_packet, 
     return setup_status & data_status;
 }
 
-int usb_send_token_packet(usb_session *session, uint8_t pid) {
-    // Send token packet.
-    struct host_channel::characteristics_u::characteristics *chars =
-        &session->channel->characteristics.st;
-    struct host_channel::transfer_size_u::transfer_size *transfer =
-        &session->channel->transfer_size.st;
-
-    chars->device_address = session->device_address;
-    chars->ep_num = session->ep_num;
-    chars->ep_dir = DeviceToHost;
-    chars->ep_type = EndpointType::Control;
-    chars->mps = 8;
-    chars->low_speed = session->low_speed;
-
-    transfer->xfer_size = 0;
-    transfer->pid = pid;
-    transfer->pck_cnt = 1;
-    transfer->do_ping = true;
-
-    session->channel->dma_address = (uint64_t)buffer;
-
-    chars->enable = true;
-
-    return handle_transaction(session, USB_DATA_STAGE);
-}
-
 int usb_get_device_descriptor(usb_session *session, uint8_t *buffer) {
     usb_setup_packet_t setup_packet;
     setup_packet.bmRequestType = USB_DEVICE_TO_HOST;
