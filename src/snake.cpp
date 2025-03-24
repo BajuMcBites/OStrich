@@ -129,7 +129,7 @@ void init_snake() {
         if (tick(&state) || render(&state)) {
             break;
         }
-        char key = get_input();
+        char key = get_keyboard_input();
         uint8_t cur_dir = state.snake.direction;
         if ((key == 'W' || key == 'w') && cur_dir != DIRECTION_DOWN) {
             state.snake.direction = DIRECTION_UP;
