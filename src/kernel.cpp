@@ -2,6 +2,7 @@
 #include "dcache.h"
 #include "dwc.h"
 #include "event.h"
+#include "fcs.h"
 #include "fork.h"
 #include "frame.h"
 #include "framebuffer.h"

@@ -96,7 +96,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
-	qemu-system-aarch64 $(QEMU_ARGS)
+	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0,hostfwd=tcp::2222-:22 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
 
 debug:
 	qemu-system-aarch64 $(QEMU_ARGS) -S -gdb tcp::1234
