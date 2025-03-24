@@ -16,6 +16,7 @@
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "snake.h"
 #include "sdio.h"
 #include "sdio_tests.h"
 #include "stdint.h"
@@ -147,10 +148,9 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    if (number_awake == CORE_COUNT) {
-        // create_event([] { kernel_main(); });
-        // init_snake();
-    }
-    stop();
-    printf("PANIC I should not go here\n");
+    // if (number_awake == CORE_COUNT) {
+    //     // init_snake();
+    // }
+    // stop();
+    // printf("PANIC I should not go here\n");
 }

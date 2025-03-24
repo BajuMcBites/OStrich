@@ -1,25 +1,20 @@
 #include "snake.h"
 
+#include "dwc.h"
 #include "framebuffer.h"
+#include "keyboard.h"
 #include "libk.h"
+#include "peripherals/timer.h"
 #include "printf.h"
 #include "rand.h"
-
-#define SCALE 8
-#define SCALE_BITS 3
-
-#define DIRECTION_UP ((1 << 4) | (0 << 0))
-#define DIRECTION_DOWN ((1 << 4) | (2 << 0))
-#define DIRECTION_RIGHT ((2 << 4) | (1 << 0))
-#define DIRECTION_LEFT ((0 << 4) | (1 << 0))
-#define QUEUE_SIZE 680
+#include "timer.h"
 
 int fb_pitch;
 int fb_size;
 uint32_t *fb_buffer;
 Rand rand;
 
-uint8_t screen[680 / 8][480 / 8];
+uint8_t screen[WIDTH / SCALE][HEIGHT / SCALE];
 
 uint16_t enqueue_ptr = 0;
 uint16_t dequeue_ptr = 0;
@@ -44,8 +39,8 @@ int get_queue_size() {
 game_state init() {
     return {.snake = {.cur_length = 0,
                       .max_length = 3,
-                      .x = (680 >> 5),
-                      .y = (480 >> 5),
+                      .x = (WIDTH / (2 * SCALE)),
+                      .y = (HEIGHT / (2 * SCALE)),
                       .direction = DIRECTION_RIGHT},
             .food = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}}};
 }
@@ -53,12 +48,6 @@ game_state init() {
 int tick(game_state *state) {
     game_state::snake_t *snake = &state->snake;
     game_state::food_t *food = &state->food;
-
-    if (snake->x == food->x) {
-        snake->direction = snake->y > food->y ? DIRECTION_UP : DIRECTION_DOWN;
-    } else {
-        snake->direction = snake->x > food->x ? DIRECTION_LEFT : DIRECTION_RIGHT;
-    }
 
     snake->x += ((snake->direction >> 4) & 0xF) - 1;
     snake->y += (snake->direction & 0xF) - 1;
@@ -68,8 +57,8 @@ int tick(game_state *state) {
         food->flags.generate = true;
     }
     if (food->flags.generate) {
-        uint8_t x = (85 * (rand.random() + 1000)) / 2000;
-        uint8_t y = (60 * (rand.random() + 1000)) / 2000;
+        uint8_t x = ((WIDTH / SCALE) * (rand.random() + 1000)) / 2000;
+        uint8_t y = ((HEIGHT / SCALE) * (rand.random() + 1000)) / 2000;
         food->x = x;
         food->y = y;
         food->flags.generate = false;
@@ -90,7 +79,7 @@ void draw_rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uin
 }
 
 int check_bounds(uint8_t x, uint8_t y) {
-    return x >= (680 >> 3) || y >= (480 >> 3);
+    return x < 0 || y < 0 || x >= WIDTH / SCALE || y >= HEIGHT / SCALE;
 }
 
 void clear_undo(int n) {
@@ -116,11 +105,10 @@ int render(game_state *state) {
         clear_undo(get_queue_size() - snake->max_length);
     }
 
-    // draw updated head
-    draw_rectangle(x << SCALE_BITS, y << SCALE_BITS, SCALE, SCALE, 0xFF0000FF);
+    draw_rectangle(x * SCALE, y * SCALE, SCALE, SCALE, 0xFF0000FF);
 
     if (food->flags.draw) {
-        draw_rectangle(food->x << SCALE_BITS, food->y << SCALE_BITS, SCALE, SCALE, 0xFFF0000);
+        draw_rectangle(food->x * SCALE, food->y * SCALE, SCALE, SCALE, 0xFFF0000);
         food->flags.draw = false;
     }
 
@@ -130,15 +118,6 @@ int render(game_state *state) {
 
     return 0;
 }
-
-#define FPS 5
-
-void game_delay() {
-    for (int i = 0; i < 120000000 / FPS; i++) {
-    }
-}
-
-#define KEY_READY ((volatile unsigned int *)(0x3F000000 + 0x18))
 
 void init_snake() {
     game_state state = init();
@@ -150,8 +129,21 @@ void init_snake() {
         if (tick(&state) || render(&state)) {
             break;
         }
-        game_delay();
+        char key = get_input();
+        uint8_t cur_dir = state.snake.direction;
+        if ((key == 'W' || key == 'w') && cur_dir != DIRECTION_DOWN) {
+            state.snake.direction = DIRECTION_UP;
+        } else if ((key == 'D' || key == 'd') && cur_dir != DIRECTION_LEFT) {
+            state.snake.direction = DIRECTION_RIGHT;
+        } else if ((key == 'S' || key == 's') && cur_dir != DIRECTION_UP) {
+            state.snake.direction = DIRECTION_DOWN;
+        } else if ((key == 'A' || key == 'a') && cur_dir != DIRECTION_RIGHT) {
+            state.snake.direction = DIRECTION_LEFT;
+        }
+        usleep(100000 / FPS);
     }
+    fb_clear(0xFFFFFFFF);
+    init_snake();
 }
 
 int main() {

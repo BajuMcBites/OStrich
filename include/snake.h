@@ -3,6 +3,18 @@
 
 #include <stdint.h>
 
+#define SCALE 16
+#define WIDTH 680
+#define HEIGHT 480
+
+
+#define DIRECTION_UP ((1 << 4) | (0 << 0))
+#define DIRECTION_DOWN ((1 << 4) | (2 << 0))
+#define DIRECTION_RIGHT ((2 << 4) | (1 << 0))
+#define DIRECTION_LEFT ((0 << 4) | (1 << 0))
+#define QUEUE_SIZE 680
+#define FPS 10
+
 struct undo {
     union undo_u {
         uint64_t raw;

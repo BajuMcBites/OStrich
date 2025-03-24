@@ -5,7 +5,6 @@
 #include "frame.h"
 #include "hash.h"
 #include "heap.h"
-#include "ip.h"
 #include "libk.h"
 #include "locked_queue.h"
 #include "mmap.h"
@@ -16,6 +15,7 @@
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
+#include "ip.h"
 
 #define NUM_TIMES 1000
 

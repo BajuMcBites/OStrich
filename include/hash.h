@@ -1,6 +1,3 @@
-#ifndef _HASH_H
-#define _HASH_H
-
 #include "heap.h"
 
 template <typename T>
@@ -11,11 +8,11 @@ struct HashNode {
 };
 
 template <typename T>
-class HashMap {
+class Hashmap {
    public:
     unsigned long size;
 
-    HashMap(unsigned long size = 100) {
+    Hashmap(unsigned long size = 100) {
         if (size < 1) size = 1;
 
         this->size = 0;
@@ -23,7 +20,7 @@ class HashMap {
         container = (HashNode<T> **)kcalloc(0, sizeof(struct HashNode<T>) * true_size);
     }
 
-    ~HashMap() {
+    ~Hashmap() {
         for (unsigned long i = 0; i < true_size; i++) {
             struct HashNode<T> *cur = container[i];
             struct HashNode<T> *temp;

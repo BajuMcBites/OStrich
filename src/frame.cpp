@@ -32,13 +32,16 @@ void create_frame_table(uintptr_t start, int size) {
     }
 }
 
-int get_free_index_unlocked() {
+void alloc_frame(int flags, Function<void(uint64_t)> w) {
+    LockGuard<SpinLock>{lock};
     for (int i = 0; i < num_frames; i++) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)) {
-            int temp = index;
+            frame_table[index].flags = flags;
+            frame_table[index].flags |= USED_PAGE_FLAG;
+            create_event<uint64_t>(w, index * PAGE_SIZE, 1);
             index += 1;
-            index %= num_frames;
-            return temp;
+
+            return;
         }
         index += 1;
         index %= num_frames;

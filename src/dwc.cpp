@@ -1,8 +1,20 @@
 #include "peripherals/dwc.h"
 
+#include "keyboard.h"
 #include "libk.h"
 #include "peripherals/timer.h"
+#include "timer.h"
 #include "printf.h"
+
+
+void usb_finished_enumeration(usb_session *session, usb_device_descriptor_t *device_descriptor,
+                              usb_device_config_t *device_config) {
+    // TODO: create some structure to store devices
+    printf("Detected & assigned new device to address = %d.\n", session->device_address);
+    if (device_descriptor->product_id == 0x1 && device_descriptor->vendor_id == 0x627) {
+        keyboard_attach(session, device_descriptor, device_config);
+    }
+}
 
 void usb_reset_controller() {
     *USB_GRSTCTL = (1 << 0);
@@ -12,13 +24,6 @@ void usb_reset_controller() {
 
     *USB_GUSBCFG = USB_FORCE_HOST_MODE;
     *USB_HCFG |= (1 << 23);
-}
-
-void usleep(unsigned int microseconds) {
-    unsigned int cycles = (SYSTEM_CLOCK_FREQ / 1000000) * microseconds;
-    volatile unsigned int i;
-    for (i = 0; i < cycles; i++) {
-    }
 }
 
 void usb_reset_port(volatile uint32_t *port) {
@@ -82,28 +87,61 @@ int handle_transaction(usb_session *session, uint8_t stage) {
     return errors;
 }
 
+int usb_send_token_in(usb_session *session, uint8_t *buffer) {
+    struct host_channel::characteristics_u::characteristics *chars =
+        &session->channel->characteristics.st;
+    struct host_channel::transfer_size_u::transfer_size *transfer =
+        &session->channel->transfer_size.st;
+    struct host_channel::interrupts_u::interrupts *interrupts = &session->channel->interrupt.st;
+
+    session->channel->interrupt_mask |= 0x3ff;
+    session->channel->interrupt.raw = 0xFFFFFFFF;
+
+    chars->device_address = session->device_address;
+    chars->ep_num = session->in_ep_num & 0xF;
+    chars->ep_dir = 1;
+    chars->ep_type = 0x3;
+    chars->mps = session->mps;
+
+    transfer->xfer_size = 8;
+    transfer->pck_cnt = 1;
+    transfer->pid = 0;
+
+    session->channel->dma_address = (uint64_t)buffer;
+
+    chars->enable = true;
+    return handle_transaction(session, USB_SETUP_STAGE);
+}
+
+int usb_interrupt_in_transfer(usb_session *session, uint8_t *buffer, int length) {
+    return usb_send_token_in(session, buffer);
+}
+
 // if you are curious, read about the control register bits here:
 // channel characteristics:
 // https://www.intel.com/content/www/us/en/programmable/hps/stratix-10/hps.html#agi1505406227399.html
 // channel transfer_size:
 // https://www.intel.com/content/www/us/en/programmable/hps/stratix-10/hps.html#qcc1505406231527.html
 // etc
-int usb_send_setup_packet(usb_session *session, usb_setup_packet_t *setup, int len) {
+int usb_send_setup_packet(usb_session *session, usb_setup_packet_t *setup, int length) {
     struct host_channel::characteristics_u::characteristics *chars =
         &session->channel->characteristics.st;
     struct host_channel::transfer_size_u::transfer_size *transfer =
         &session->channel->transfer_size.st;
 
     chars->device_address = session->device_address;
-    chars->ep_num = session->ep_num;
+    chars->ep_num = session->out_ep_num;
     chars->ep_dir = (setup->bmRequestType & 0x80 ? DeviceToHost : HostToDevice);
     chars->ep_type = 0;
-    chars->mps = 8;
+    chars->mps = session->mps;
     chars->low_speed = session->low_speed;
 
-    transfer->xfer_size = len;
+    uint8_t pckt = ((length + (session->mps - 1)) / session->mps);
+    if (pckt == 0) pckt = 1;
+
+    transfer->xfer_size = length;
     transfer->pid = USB_MDATA_CONTROL;
-    transfer->pck_cnt = 1;
+    transfer->pck_cnt = pckt;
     transfer->do_ping = true;
 
     session->channel->dma_address = (uint64_t)setup;
@@ -120,13 +158,14 @@ int usb_receive_data(usb_session *session, uint8_t *buffer, uint16_t length) {
         &session->channel->transfer_size.st;
 
     chars->device_address = session->device_address;
-    chars->ep_num = session->ep_num;
+    chars->ep_num = session->in_ep_num;
     chars->ep_dir = DeviceToHost;
     chars->ep_type = 0;
     chars->mps = 8;
     chars->low_speed = session->low_speed;
 
-    uint8_t pckt = ((length + 7) / 8);
+    uint8_t pckt = ((length + session->mps - 1) / session->mps);
+    if (pckt == 0) pckt = 1;
 
     transfer->xfer_size = length;
     transfer->pid = USB_DATA1;
@@ -146,10 +185,10 @@ int usb_status_stage(usb_session *session, uint8_t direction) {
     struct host_channel::transfer_size_u::transfer_size *transfer =
         &session->channel->transfer_size.st;
     chars->device_address = session->device_address;
-    chars->ep_num = session->ep_num;
+    chars->ep_num = session->out_ep_num;
     chars->ep_dir = (direction ? HostToDevice : DeviceToHost);
     chars->ep_type = 0;
-    chars->mps = 8;
+    chars->mps = session->mps;
     chars->low_speed = session->low_speed;
 
     transfer->xfer_size = 0;
@@ -186,15 +225,15 @@ int usb_get_device_descriptor(usb_session *session, uint8_t *buffer) {
 
     return usb_handle_transfer(session, &setup_packet, buffer, 18);
 }
-int usb_get_device_config_descriptor(usb_session *session, uint8_t *buffer) {
+int usb_get_device_config_descriptor(usb_session *session, uint8_t *buffer, uint16_t length) {
     usb_setup_packet_t setup_packet;
     setup_packet.bmRequestType = 0x80;
     setup_packet.bRequest = 0x06;
     setup_packet.wValue = 0x0200;
     setup_packet.wIndex = 0x00;
-    setup_packet.wLength = 18;
+    setup_packet.wLength = length;
 
-    return usb_handle_transfer(session, &setup_packet, buffer, 18);
+    return usb_handle_transfer(session, &setup_packet, buffer, length);
 }
 
 int usb_assign_address(usb_session *session) {
@@ -402,11 +441,11 @@ void usb_handle_hub_enumeration(usb_session *session) {
             // which we can then enumerate and change it's address
             usb_hub_reset_port(session);
 
-            int saved_addr = session->device_address;
-            session->device_address = 0;
-            session->port = 0;
-            usb_device_enumeration(session);
-            session->device_address = saved_addr;
+            usb_session enum_session;
+            enum_session.channel = session->channel;
+            enum_session.device_address = 0;
+            enum_session.port = 0;
+            usb_device_enumeration(&enum_session);
         }
     }
 
@@ -415,11 +454,6 @@ void usb_handle_hub_enumeration(usb_session *session) {
     hubs.connected[hubs.hub_count].device_address = session->device_address;
     hubs.connected[hubs.hub_count].low_speed = session->low_speed;
     hubs.hub_count++;
-}
-
-void usb_finished_enumeration(usb_session *session) {
-    // TODO: create some structure to store devices
-    printf("Detected & assigned new device to address = %d.\n", session->device_address);
 }
 
 void usb_device_enumeration(usb_session *session) {
@@ -451,7 +485,7 @@ void usb_device_enumeration(usb_session *session) {
         usb_handle_hub_enumeration(session);
     }
 
-    usb_finished_enumeration(session);
+    usb_finished_enumeration(session, &device_descriptor, &device_config);
 }
 
 void usb_disable_device_port(host_channel *channel, volatile uint32_t *port) {
@@ -473,9 +507,11 @@ void usb_handle_hub_scan_port(usb_session *session, usb_hub *hub) {
     if (port_status.status & 0x1 && port_status.change & 0x1) {
         usb_hub_reset_port(session);
 
-        session->device_address = 0;
-        session->port = 0;
-        usb_device_enumeration(session);
+        usb_session enum_session;
+        enum_session.channel = session->channel;
+        enum_session.device_address = 0;
+        enum_session.port = 0;
+        usb_device_enumeration(&enum_session);
     }
 }
 void usb_handle_host_scan_port(usb_session *session, usb_hub *hub) {
@@ -484,7 +520,6 @@ void usb_handle_host_scan_port(usb_session *session, usb_hub *hub) {
 
         usb_session enum_sesion;
         enum_sesion.channel = session->channel;
-        enum_sesion.ep_num = session->ep_num;
         enum_sesion.device_address = 0;
         enum_sesion.port = 0;
         usb_device_enumeration(&enum_sesion);
@@ -504,7 +539,8 @@ void usb_scan_ports() {
 
             usb_session session;
             session.channel = channel;
-            session.ep_num = 0;
+            session.in_ep_num = 0;
+            session.out_ep_num = 0;
             session.low_speed = hub.low_speed;
 
             for (int port = 0; port < hub.num_ports; port++) {
@@ -527,6 +563,16 @@ void usb_initialize() {
     hubs.connected[0].num_ports = 1;
     hubs.connected[0].device_address = 0;
     hubs.hub_count = 1;
+
+    uint32_t mask = 0;
+
+    mask |= (1 << 25);
+    mask |= (1 << 18);
+    mask |= (1 << 3);
+    mask |= (1 << 13);
+
+    *USB_GINTMSK = mask;
+    *USB_GINTSTS = 0xFFFFFFFF;
 
     usb_scan_ports();
     return;
