@@ -363,28 +363,43 @@ void tfp_error_printf(const char *fmt, ...) {
     spinLock.unlock();
 }
 
+void tfp_printf_no_lock(const char *fmt, unsigned int color, ...)
+{
+    char buffer[256];
+    va_list va, va_copy_list;
+    
+    va_start(va, fmt);
+    va_copy(va_copy_list, va);
+    
+    vtfp_sprintf(buffer, fmt, va);
+    tfp_format(stdout_putp, stdout_putf, fmt, va_copy_list);
+    
+    va_end(va_copy_list);
+    va_end(va);
+    
+    fb_print(buffer, color);
+}
+
+
 
 __attribute__((noreturn)) void tfp_panic(const char *fmt, ...) {
     spinLock.lock();
-    char buffer[256];
-    va_list va, va_copy;
-    va_start(va, fmt);
-    va_copy(va_copy, va);
-    tfp_format(stdout_putp, stdout_putf, "\n***** KERNEL PANIC *****\n", va_copy);
-    vtfp_sprintf(buffer, fmt, va);
-    tfp_format(stdout_putp, stdout_putf, fmt, va_copy);
-    tfp_printf("\n");
 
-    va_end(va_copy);
+    char buffer[256];
+    va_list va;
+    va_start(va, fmt);
+    vtfp_sprintf(buffer, fmt, va);
     va_end(va);
-    fb_print("\n***** KERNEL PANIC *****\n", RED);
-    fb_print(buffer, RED);
+    tfp_printf_no_lock("\n***** KERNEL PANIC *****\n", RED);
+    tfp_printf_no_lock("%s\n", RED, buffer);
+
     spinLock.unlock();
 
-    // Hang forever in low power state
+    // Hang forever in low power state.
     while (1) {
         __asm__ volatile("wfi");
     }
 }
+
 
 

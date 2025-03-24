@@ -2,38 +2,22 @@
 
 #include "libk.h"
 #include "printf.h"
-#include "mm.h"
 
 uint64_t ramfs_num_files;
 ramfs_file* ramfs_dir_start;
 char* ramfs_files_start;
 
-static inline uint64_t get_unaligned_64(const char *ptr) {
-    uint64_t value = 0;
-    for (size_t i = 0; i < sizeof(uint64_t); i++) {
-        value |= ((uint64_t)(unsigned char)ptr[i]) << (8 * i);
-    }
-    return value;
-}
-
 void init_ramfs() {
-    char *ptr = (char*)ramfs_start;
+    char* ptr = (char*)ramfs_start;
+    uint64_t singature = *((uint64_t*)ptr);
+    K::assert(singature == ramfs_signature, "loaded ramfs does not match signautre");
 
-    // Use the helper function to safely load the 64-bit signature.
-    uint64_t signature = get_unaligned_64(ptr);
-    K::assert(signature == ramfs_signature, "loaded ramfs does not match signature");
+    ptr = ptr + 8;  // number of files
+    ramfs_num_files = *((uint64_t*)ptr);
 
-    ptr += 8;  // move past the signature
-
-    // Load the number of files.
-    ramfs_num_files = get_unaligned_64(ptr);
-
-    ptr += 8;  // move past the number of files field
-
-    // The directory entries start at this point.
+    ptr = ptr + 8;  // start of ramfs_file structs
     ramfs_dir_start = (ramfs_file*)ptr;
 
-    // The files start right after the directory entries.
     ramfs_files_start = ptr + (sizeof(ramfs_file) * ramfs_num_files);
 }
 
