@@ -438,6 +438,64 @@ void _debug_usb_print_port_status(usb_port_status_t *port_status) {
            port_status->change & PORT_STAT_C_RESET);
 }
 
+void usb_device_enumeration(usb_session *);
+
+void usb_handle_hub_enumeration(usb_session *session) {
+    K::assert(session->device_address != 0, "usb hub cannot be assigned have address=0");
+    if (session->device_address > 1) return;
+    usb_hub_descriptor_t usb_hub_desc;
+
+    if (usb_get_hub_descriptor(session, reinterpret_cast<uint8_t *>(&usb_hub_desc))) {
+        return;
+    }
+
+    _debug_usb_print_hub_desc(&usb_hub_desc);
+
+    for (int i = 0; i < usb_hub_desc.bNbrPorts; i++) {
+        session->port = i;
+        if (usb_hub_enable_port(session)) {
+            return;
+        }
+        usb_port_status_t p;
+        usb_hub_get_port_status(session, reinterpret_cast<uint8_t *>(&p));
+
+        if (p.status & (1 << 0) && p.change & (1 << 0)) {
+            usb_hub_clear_feature(session, USB_HUB_PORT_CONN_CLEAR_FEATURE);
+
+            // reset the device to set it's address to 0,
+            // which we can then enumerate and change it's address
+            usb_hub_reset_port(session);
+
+            int saved_addr = session->device_address;
+            session->device_address = 0;
+            session->port = 0;
+            usb_device_enumeration(session);
+            session->device_address = saved_addr;
+        }
+    }
+
+    session->port = 0;
+    hubs.connected[hubs.hub_count].num_ports = usb_hub_desc.bNbrPorts;
+    hubs.connected[hubs.hub_count].device_address = session->device_address;
+    hubs.connected[hubs.hub_count].low_speed = session->low_speed;
+    hubs.hub_count++;
+}
+
+void usb_finished_enumeration(usb_session *session, usb_device_descriptor_t *d,
+                              usb_device_config_t *config) {
+    // TODO: create some structure to store devices
+    printf("Detected & assigned new device to address = %d.\n", session->device_address);
+    if (d->device_class == 0x2) {
+        // CDC-based Network card initialized here.
+    } else if (d->device_class == 0x0 || d->device_class == USB_HID_INTERFACE_CLASS) {
+        // HID devices often have device_class 0 (with interfaces specifying the class)
+        // or directly specify HID class at device level
+        printf("\n\n ––––––––––– Detected HID device –––––––––––\n");
+        // mouse_detect(session, d, config);
+        keyboard_detect(session, d, config);
+    }
+}
+
 void usb_device_enumeration(usb_session *session) {
     K::assert(session->device_address == 0, "device must be at address = 0 to enumerate");
     usb_device_descriptor_t device_descriptor;
