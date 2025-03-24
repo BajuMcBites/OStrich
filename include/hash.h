@@ -2,6 +2,7 @@
 #define _HASH_H
 
 #include "heap.h"
+#include "function.h"
 
 template <typename T>
 struct HashNode {

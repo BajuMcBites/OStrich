@@ -1,10 +1,8 @@
 #include "core.h"
-<<<<<<< HEAD
 #include "dcache.h"
-=======
->>>>>>> 300ef82 (initial usb driver w/ device discovery/enumeration)
 #include "dwc.h"
 #include "event.h"
+#include "fcs.h"
 #include "fork.h"
 #include "frame.h"
 #include "framebuffer.h"
