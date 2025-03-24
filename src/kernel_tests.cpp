@@ -15,6 +15,7 @@
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
+#include "ip.h"
 
 #define NUM_TIMES 1000
 

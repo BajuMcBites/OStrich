@@ -1,5 +1,5 @@
-#ifndef _ATT_2_H
-#define _ATT_2_H
+#ifndef _DWC_H
+#define _DWC_H
 
 #include <stdint.h>
 
@@ -113,9 +113,11 @@ typedef struct {
     host_channel *channel;
     uint8_t device_address = 0;
     uint8_t port;
-    uint8_t ep_num = 0;
+    uint8_t in_ep_num = 0;
+    uint8_t out_ep_num = 0;
     uint8_t low_speed : 1 = false;
-} __attribute__((aligned(4), packed)) usb_session;
+    uint16_t mps : 10 = 8;
+} usb_session;
 
 typedef struct {
     uint8_t num_ports;
@@ -128,9 +130,27 @@ typedef struct {
     uint8_t hub_count;
 } usb_connected_hubs;
 
+typedef struct {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint8_t bInterfaceNumber;
+    uint8_t bAlternateSetting;
+    uint8_t bNumEndpoints;
+    uint8_t bInterfaceClass;
+    uint8_t bInterfaceSubClass;
+    uint8_t bInterfaceProtocol;
+    uint8_t bInterfaceSetting;
+    uint8_t iInterface;
+} usb_device_interface_config_t;
 extern usb_connected_hubs hubs;
 
 void usb_initialize();
 void usb_interrupt_handler();
+int get_interval_ms_for_interface(usb_session *, uint32_t);
+int usb_get_device_config_descriptor(usb_session *session, uint8_t *buffer, uint16_t length = 18);
+void usleep(unsigned int microseconds);
+int usb_handle_transfer(usb_session *, usb_setup_packet_t *, uint8_t *, int);
+int usb_interrupt_in_transfer(usb_session *session, uint8_t *buffer, int length);
+void usb_irq_handler();
 
 #endif

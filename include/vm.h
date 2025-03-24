@@ -1,3 +1,5 @@
+#include "peripherals/base.h"
+
 #ifndef _VM_H
 #define _VM_H
 
@@ -113,13 +115,13 @@ class PageTable {
    public:
     pgd_t* pgd;
 
-    PageTable();
+    PageTable(Function<void()> w);
 
     ~PageTable();
 
     void map_vaddr(uint64_t vaddr, uint64_t paddr, uint64_t page_attributes, Function<void()> w);
     void use_page_table();
-    bool unmap_vaddr(uint64_t vaddr);
+    uintptr_t unmap_vaddr(uint64_t vaddr);
 
    private:
     void alloc_pgd(Function<void()> w);

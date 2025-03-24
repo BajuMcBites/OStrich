@@ -153,9 +153,9 @@
 #define USB_DIEPEMPMSK ((volatile uint32_t *)(USB_BASE + 0x834))
 #define USB_DIEPEMPMSK_RESET() *USB_DIEPEMPMSK = 0x00000000;
 
-#define USB_IN_EP(num) ((endpoint *)(USB_BASE + 0x900 + (num * 0x20)))
+#define USB_IN_EP(num) ((volatile uint32_t *)(USB_BASE + 0x900 + (num * 0x20)))
 
-#define USB_OUT_EP(num) ((endpoint *)(USB_BASE + 0xB00 + (num * 0x20)))
+#define USB_OUT_EP(num) ((volatile uint32_t *)(USB_BASE + 0xB00 + (num * 0x20)))
 
 // Power and Clock Gating Control Register
 #define USB_PCGCCTL ((volatile uint32_t *)(USB_BASE + 0xE00))
@@ -198,5 +198,44 @@
 #define USB_DATA2 0x1
 #define USB_DATA1 0x2
 #define USB_MDATA_CONTROL 0x3
+
+
+// Request Types
+/*
+RECIPIENT: 5 bits
+TYPE: 2 bits
+XFER_DIRECTION: 1 bit
+*/
+#define SET_REQUEST_TYPE(XFER_DIRECTION, RECIPIENT, TYPE) \
+    ((XFER_DIRECTION) << 7 | (RECIPIENT) << 5 | TYPE)
+
+// Transfer Direction
+#define TRANSFER_DIRECTION_HOST_TO_DEVICE 0x0
+#define TRANSFER_DIRECTION_DEVICE_TO_HOST 0x1
+
+// Request Type
+#define REQUEST_TYPE_STANDARD 0x00
+#define REQUEST_TYPE_CLASS 0x01
+#define REQUEST_TYPE_VENDOR 0x02
+
+// Recipients
+#define RECIPIENT_DEVICE 0x00
+#define RECIPIENT_INTERFACE 0x01
+#define RECIPIENT_ENDPOINT 0x02
+#define RECIPIENT_OTHER 0x03
+
+#define USB_DEVICE_TO_HOST \
+    SET_REQUEST_TYPE(TRANSFER_DIRECTION_DEVICE_TO_HOST, RECIPIENT_DEVICE, REQUEST_TYPE_STANDARD)
+
+// Configuration Requests
+#define USB_SET_ADDRESS 0x05
+#define USB_GET_DESCRIPTOR 0x06
+#define USB_SET_CONFIGURATION 0x09
+#define USB_SET_INTERFACE 0x0B
+#define USB_SET_ENDPOINT_HALT 0x0C
+
+#define USB_CONFIG_DESCRIPTOR_TYPE 0x02
+#define USB_INTERFACE_DESCRIPTOR_TYPE 0x04
+#define USB_ENDPOINT_DESCRIPTOR_TYPE 0x05
 
 #endif
