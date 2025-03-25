@@ -2,6 +2,7 @@
 
 #include "peripherals/dwc.h"
 #include "printf.h"
+#include "usb_device.h"
 #include "utils.h"
 
 keyboard kbd;
@@ -58,92 +59,13 @@ char process_keyboard_report(uint8_t *report, int len) {
     return random;
 }
 
-void iterate_config(uint8_t *buffer, uint16_t length) {
-    if (kbd.discovered) return;
-
-    int index = 0;
-    kbd.interface_num = 255;
-    while (index < length) {
-        int bLength = buffer[index + 0];
-        int bDescriptorType = buffer[index + 1];
-
-        if (bDescriptorType == 0x4) {
-            int bInterfaceNumber = buffer[index + 2];
-            int bInterfaceClass = buffer[index + 5];
-            int bInterfaceSubClass = buffer[index + 6];
-            int bInterfaceProtocol = buffer[index + 7];
-            if (bInterfaceClass == 0x03 && bInterfaceSubClass == 0x01 &&
-                bInterfaceProtocol == 0x01) {
-                kbd.interface_num = bInterfaceNumber;
-            }
-
-        } else if (bDescriptorType == 0x5) {
-            int bEndpointAddress = buffer[index + 2];
-            int bmAttributes = buffer[index + 3];
-            int wMaxPacketSize = buffer[index + 4] | ((uint16_t)buffer[index + 5] << 8);
-            int bInterval = buffer[index + 6];
-            if (bmAttributes == 0x3 && kbd.interface_num != 255) {
-                kbd.bmAttributes = bmAttributes;
-                kbd.in_ep = bEndpointAddress & (~(1 << 7));
-                kbd.mps = wMaxPacketSize;
-                kbd.interval = bInterval;
-                kbd.discovered = true;
-            }
-        }
-        index += bLength;
-    }
-}
-
-void init_usb_session(usb_session *session) {
-    session->device_address = kbd.device_address;
-    session->mps = kbd.mps;
-    session->in_ep_num = kbd.in_ep;
-    session->channel = USB_CHANNEL(2);
-}
-
 char get_keyboard_input() {
-    if (!kbd.discovered || !kbd.connected) return '\0';
+    if (!kbd.device_state.discovered || !kbd.device_state.connected) return '\0';
 
     uint8_t buffer[8];
     usb_session session;
-    init_usb_session(&session);
+    init_usb_session(&session, &kbd.device_state);
 
     if (usb_interrupt_in_transfer(&session, buffer, 8)) return '\0';
     return process_keyboard_report(buffer, 8);
-}
-
-int keyboard_detach() {
-    kbd.connected = false;
-}
-
-int keyboard_attach(usb_session *session, usb_device_descriptor_t *device_descriptor,
-                    usb_device_config_t *device_config) {
-    uint8_t buffer[device_config->total_length];
-    usb_get_device_config_descriptor(session, buffer, device_config->total_length);
-
-    iterate_config(buffer, device_config->total_length);
-
-    if (!kbd.discovered) {
-        printf("failed to find correct device configurations.\n");
-        return 1;
-    }
-    kbd.connected = true;
-
-    usb_setup_packet_t setup;
-    setup.bmRequestType = 0x21;
-    setup.bRequest = HID_SET_PROTOCOL;
-    setup.wValue = HID_BOOT_PROTOCOL;
-    setup.wIndex = kbd.interface_num;
-    setup.wLength = 0;
-
-    kbd.device_address = session->device_address;
-
-    init_usb_session(session);
-
-    if (usb_handle_transfer(session, &setup, nullptr, 0)) {
-        printf("set boot protocol failed\n");
-        return 1;
-    }
-
-    return 0;
 }
