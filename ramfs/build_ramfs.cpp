@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <vector>
 
 #define ramfs_id 0xf99482ea8f5ecce2
