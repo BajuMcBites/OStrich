@@ -5,21 +5,18 @@
 #include "peripherals/dwc.h"
 #include "printf.h"
 
-int CHANNEL_NUM = 2;
+int CHANNEL_NUM = 1;
 
-void init_usb_session(usb_session *session, usb_device *device_state) {
+void init_usb_session(usb_session *session, usb_device *device_state, int mps) {
     session->device_address = device_state->device_address;
-    session->mps = device_state->mps;
+    session->mps = mps;
     session->in_ep_num = device_state->in_ep;
-    if (device_state->channel_num == UINT8_MAX) device_state->channel_num = CHANNEL_NUM++;
-    K::assert(device_state->channel_num < 8, "too many channels");  // uh oh.
+    if (device_state->channel_num == 0) device_state->channel_num = request_new_usb_channel_num();
     session->channel = USB_CHANNEL(device_state->channel_num);
 }
 
 void iterate_config_for_hid(uint8_t *buffer, uint16_t length, usb_device *device_state,
                             int dev_bInterfaceProtocol) {
-    if (device_state->discovered) return;
-
     int index = 0;
     device_state->interface_num = 255;
     while (index < length) {
@@ -43,12 +40,11 @@ void iterate_config_for_hid(uint8_t *buffer, uint16_t length, usb_device *device
             int wMaxPacketSize = buffer[index + 4] | ((uint16_t)buffer[index + 5] << 8);
             int bInterval = buffer[index + 6];
             if (bmAttributes == 0x3 /* interrupt */ && device_state->interface_num != 255) {
-                printf("found expected endpoint attributes.\n");
                 device_state->bmAttributes = bmAttributes;
                 device_state->in_ep =
                     bEndpointAddress & (~(1 << 7));  // Turn off bit 8 to make it an input endpoint.
                 device_state->mps = wMaxPacketSize;
-                device_state->interval = bInterval;
+                device_state->interval_ms = bInterval;
                 device_state->discovered = true;
             }
         }
@@ -58,6 +54,12 @@ void iterate_config_for_hid(uint8_t *buffer, uint16_t length, usb_device *device
 int hid_device_attach(usb_session *session, usb_device_descriptor_t *device_descriptor,
                       usb_device_config_t *device_config, usb_device *device_state,
                       int dev_bInterfaceProtocol) {
+    printf("Attaching device with interface protocol: %d\n", dev_bInterfaceProtocol);
+    if (device_state->connected || device_state->discovered) {
+        printf("Device already connected/discovered.\n");
+        return 0;
+    }
+
     uint8_t buffer[device_config->total_length];
     usb_get_device_config_descriptor(session, buffer, device_config->total_length);
 
@@ -72,17 +74,17 @@ int hid_device_attach(usb_session *session, usb_device_descriptor_t *device_desc
     device_state->connected = true;
 
     usb_setup_packet_t setup;
-    setup.bmRequestType = 0x21 /* Host to Device, something else? */;
+    setup.bmRequestType = 0x21 /* Class-specific request, Host to Device */;
     setup.bRequest = HID_SET_PROTOCOL;
     setup.wValue = HID_BOOT_PROTOCOL;
     setup.wIndex = device_state->interface_num;
-    setup.wLength = 0;
+    setup.wLength = 0 /* don't change this */;
 
     device_state->device_address = session->device_address;
 
-    init_usb_session(session, device_state);
+    init_usb_session(session, device_state, 8 /* don't change this */);
 
-    int ret = usb_handle_transfer(session, &setup, nullptr, 0);
+    int ret = usb_handle_transfer(session, &setup, nullptr, 0 /* don't change this */);
     if (ret) {
         printf("set boot protocol failed: %d\n", ret);
         return 1;

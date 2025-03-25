@@ -5,7 +5,7 @@
 #include "usb_device.h"
 #include "utils.h"
 
-keyboard kbd;
+keyboard usb_kbd;
 
 char keycode_to_ascii(uint8_t keycode, int shift) {
     if (keycode < 128) {
@@ -64,7 +64,7 @@ char get_keyboard_input() {
 
     uint8_t buffer[8];
     usb_session session;
-    init_usb_session(&session, &kbd.device_state);
+    init_usb_session(&session, &kbd.device_state, kbd.device_state.mps);
 
     if (usb_interrupt_in_transfer(&session, buffer, 8)) return '\0';
     return process_keyboard_report(buffer, 8);

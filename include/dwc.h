@@ -152,5 +152,6 @@ void usleep(unsigned int microseconds);
 int usb_handle_transfer(usb_session *, usb_setup_packet_t *, uint8_t *, int);
 int usb_interrupt_in_transfer(usb_session *session, uint8_t *buffer, int length);
 void usb_irq_handler();
+int request_new_usb_channel_num();
 
 #endif

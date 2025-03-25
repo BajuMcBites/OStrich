@@ -25,7 +25,7 @@ struct keyboard {
     } keymap;
 };
 
-extern struct keyboard kbd;
+extern struct keyboard usb_kbd;
 
 char get_keyboard_input();
 int keyboard_attach(usb_session *session, usb_device_descriptor_t *device_descriptor,

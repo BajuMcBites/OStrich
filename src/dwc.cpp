@@ -2,19 +2,32 @@
 
 #include "keyboard.h"
 #include "libk.h"
+#include "mouse.h"
 #include "peripherals/timer.h"
 #include "printf.h"
 #include "timer.h"
 #include "usb_device.h"
 
+int CHANNEL_NUM = 1;
+
+int request_new_usb_channel_num() {
+    if (CHANNEL_NUM == 8) {
+        printf("Too many channels given out\n");
+        return -1;
+    }
+    return CHANNEL_NUM++;
+}
+
 void usb_finished_enumeration(usb_session *session, usb_device_descriptor_t *device_descriptor,
                               usb_device_config_t *device_config) {
-    // TODO: create some structure to store devices
-    printf("Detected & assigned new device to address = %d.\n", session->device_address);
-    if (device_descriptor->product_id == 0x1 && device_descriptor->vendor_id == 0x627) {
-        printf("Setting up keyboard.");
-        hid_device_attach(session, device_descriptor, device_config, &kbd.device_state,
+    // HID devices have device class = 0x0 and device subclass = 0x0.
+    if (device_descriptor->device_class == 0x0 && device_descriptor->device_subclass == 0x0) {
+        printf("Detected & assigned new device to address = %d.\n", session->device_address);
+        printf("\n----------- Finished Enumeration -------- \n");
+        hid_device_attach(session, device_descriptor, device_config, &usb_kbd.device_state,
                           HID_PROTOCOL_KEYBOARD);
+        hid_device_attach(session, device_descriptor, device_config, &usb_mouse.device_state,
+                          HID_PROTOCOL_MOUSE);
     }
 }
 
@@ -131,6 +144,18 @@ int usb_send_setup_packet(usb_session *session, usb_setup_packet_t *setup, int l
     struct host_channel::transfer_size_u::transfer_size *transfer =
         &session->channel->transfer_size.st;
 
+    // print session stuff
+    // printf("--- in usb_send_setup_packet ---\n");
+    // printf("session->device_address: %d\n", session->device_address);
+    // printf("session->out_ep_num: %d\n", session->out_ep_num);
+    // printf("session->mps: %d\n", session->mps);
+    // printf("session->low_speed: %d\n", session->low_speed);
+    // printf("setup->bmRequestType: %d\n", setup->bmRequestType);
+    // printf("setup->bRequest: %d\n", setup->bRequest);
+    // printf("setup->wValue: %d\n", setup->wValue);
+    // printf("setup->wIndex: %d\n", setup->wIndex);
+    // printf("setup->wLength: %d\n", setup->wLength);
+
     chars->device_address = session->device_address;
     chars->ep_num = session->out_ep_num;
     chars->ep_dir = (setup->bmRequestType & 0x80 ? DeviceToHost : HostToDevice);
@@ -205,11 +230,10 @@ int usb_status_stage(usb_session *session, uint8_t direction) {
 
 int usb_handle_transfer(usb_session *session, usb_setup_packet_t *setup_packet, uint8_t *buffer,
                         int buf_length) {
-    int setup_status = usb_send_setup_packet(session, setup_packet, 8);
+    int setup_status = usb_send_setup_packet(session, setup_packet, 8 /* don't change this */);
     if (setup_status) return setup_status;
     int data_status =
         buffer != nullptr && buf_length > 0 ? usb_receive_data(session, buffer, buf_length) : 0;
-
     if (data_status) return data_status;
 
     usb_status_stage(session, (setup_packet->bmRequestType & 0x80) == 0x80);
@@ -427,7 +451,6 @@ void usb_handle_hub_enumeration(usb_session *session) {
     }
 
     _debug_usb_print_hub_desc(&usb_hub_desc);
-
     for (int i = 0; i < usb_hub_desc.bNbrPorts; i++) {
         session->port = i;
         if (usb_hub_enable_port(session)) {
