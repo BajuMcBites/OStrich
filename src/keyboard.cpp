@@ -6,7 +6,7 @@
 #include "usb_device.h"
 #include "utils.h"
 
-keyboard kbd;
+keyboard usb_kbd;
 
 uint64_t get_keyboard_input() {
     if (!usb_kbd.device_state.discovered || !usb_kbd.device_state.connected) {

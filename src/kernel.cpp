@@ -8,6 +8,7 @@
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
+#include "keyboard.h"
 #include "libk.h"
 #include "mm.h"
 #include "partition_tests.h"

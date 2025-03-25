@@ -31,7 +31,7 @@ struct keyboard {
     usb_device device_state;
 };
 
-extern struct keyboard kbd;
+extern struct keyboard usb_kbd;
 
 uint64_t get_keyboard_input();
 void keyboard_loop();

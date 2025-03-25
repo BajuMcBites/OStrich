@@ -27,7 +27,7 @@ typedef struct {
     uint8_t bmAttributes;
     uint8_t in_ep;
     uint8_t out_ep;
-    uint8_t interval;
+    uint8_t interval_ms;
     uint8_t mps;
     uint8_t channel_num = UINT8_MAX;
 
@@ -38,7 +38,7 @@ typedef struct {
 
 extern EventHandler *event_handler;
 
-void init_usb_session(usb_session *session, usb_device *device_state);
+void init_usb_session(usb_session *session, usb_device *device_state, int mps);
 void iterate_config_for_hid(uint8_t *buffer, uint16_t length, usb_device *state,
                             int dev_bInterfaceProtocol);
 int hid_device_attach(usb_session *session, usb_device_descriptor_t *device_descriptor,
