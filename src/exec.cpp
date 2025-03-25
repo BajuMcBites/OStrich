@@ -1,8 +1,8 @@
+#include "atomic.h"
 #include "irq.h"
 #include "printf.h"
 #include "stdint.h"
 #include "uart.h"
-#include "atomic.h"
 
 /**
  * common exception handler
@@ -101,7 +101,8 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
         }
     }
     // dump registers
-    printf_err(":\n  ESR_EL1 0x%X ELR_EL1 0x%X\n SPSR_EL1 0%xX FAR_EL1 0x%X\n", esr, elr, spsr, far);
+    printf_err(":\n  ESR_EL1 0x%X ELR_EL1 0x%X\n SPSR_EL1 0%xX FAR_EL1 0x%X\n", esr, elr, spsr,
+               far);
     lockErr.unlock();
 
     // no return from exception for now

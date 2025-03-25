@@ -12,7 +12,8 @@ extern "C" {
  *
  * Ensures that any modifications to code in memory are visible to the CPU.
  *
- * @param start Starting virtual address (should be aligned to the cache line size, typically 64 bytes)
+ * @param start Starting virtual address (should be aligned to the cache line size, typically 64
+ * bytes)
  * @param size  Size of the memory range in bytes.
  */
 void invalidate_icache_range(void* start, unsigned long size);

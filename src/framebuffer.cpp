@@ -1,7 +1,8 @@
 #include "framebuffer.h"
+
+#include "dcache.h"
 #include "printf.h"
 #include "utils.h"
-#include "dcache.h"
 // #include "core.h"
 
 static Framebuffer fb __attribute__((aligned(16)));
@@ -9,7 +10,6 @@ static Framebuffer fb __attribute__((aligned(16)));
 Framebuffer* fb_get(void) {
     return &fb;
 }
-
 
 static constexpr int x_start = 0;
 static constexpr int y_start = 0;
@@ -22,47 +22,47 @@ static bool fb_init_done = false;
 int fb_init(void) {
     printf("Starting framebuffer initialization...\n");
 
-    mbox[0] = 35 * 4; // buffer size in bytes
+    mbox[0] = 35 * 4;  // buffer size in bytes
     mbox[1] = MBOX_REQUEST;
 
     // set physical width/height (actual size of display)
     mbox[2] = MBOX_TAG_SETPHYSIZE;
     mbox[3] = 8;
     mbox[4] = 8;
-    mbox[5] = 640;     // physical width
-    mbox[6] = 480;     // physical height
+    mbox[5] = 640;  // physical width
+    mbox[6] = 480;  // physical height
 
     // set virtual width/height (where youcan draw)
     mbox[7] = MBOX_TAG_SETVIRSIZE;
     mbox[8] = 8;
     mbox[9] = 8;
-    mbox[10] = 640;    // virtual width 
-    mbox[11] = 480;    // virtual height
+    mbox[10] = 640;  // virtual width
+    mbox[11] = 480;  // virtual height
 
     // set bit depth
     mbox[12] = MBOX_TAG_SETDEPTH;
     mbox[13] = 4;
     mbox[14] = 4;
-    mbox[15] = 32;     // 32 bits per pixel
+    mbox[15] = 32;  // 32 bits per pixel
 
     // set pixel order
-    mbox[16] = MBOX_TAG_SETPIXELORDER; 
+    mbox[16] = MBOX_TAG_SETPIXELORDER;
     mbox[17] = 4;
     mbox[18] = 4;
-    mbox[19] = 1;      // RGB
+    mbox[19] = 1;  // RGB
 
     // set framebuffer
     mbox[20] = MBOX_TAG_GETFB;
     mbox[21] = 8;
     mbox[22] = 8;
-    mbox[23] = 4096;   // framebuffer size
-    mbox[24] = 0;      
+    mbox[23] = 4096;  // framebuffer size
+    mbox[24] = 0;
 
     // set pitch
     mbox[25] = MBOX_TAG_GETPITCH;
     mbox[26] = 4;
     mbox[27] = 4;
-    mbox[28] = 0;      // pitch
+    mbox[28] = 0;  // pitch
 
     mbox[29] = MBOX_TAG_LAST;
 
@@ -71,13 +71,13 @@ int fb_init(void) {
         printf("Mailbox call successful\n");
         if (mbox[23]) {
             printf("Got framebuffer address: %x\n", mbox[23]);
-            mbox[23] &= 0x3FFFFFFF;                  
-            fb.width  = mbox[10];                    
-            fb.height = mbox[11];                    
-            fb.pitch  = mbox[28];                    
-            fb.isrgb  = mbox[19];                    
+            mbox[23] &= 0x3FFFFFFF;
+            fb.width = mbox[10];
+            fb.height = mbox[11];
+            fb.pitch = mbox[28];
+            fb.isrgb = mbox[19];
             fb.buffer = (void*)((unsigned long)mbox[23]);
-            fb.size   = mbox[24];   
+            fb.size = mbox[24];
             fb_init_done = true;
             clean_dcache_line(&fb_init_done);
             printf("Framebuffer initialized:\n");
@@ -145,7 +145,7 @@ void fb_scroll(int scroll_pixels) {
             buf[row * row_pixels + col] = buf[(row + scroll_pixels) * row_pixels + col];
         }
     }
-    
+
     // Clear the bottom scroll_pixels rows (fill with BLACK)
     for (int row = rows_to_move; row < fb->height; row++) {
         for (int col = 0; col < row_pixels; col++) {
@@ -153,7 +153,6 @@ void fb_scroll(int scroll_pixels) {
         }
     }
 }
-
 
 void fb_print(const char* str, unsigned int color) {
     if (!fb_init_done) {
@@ -174,7 +173,7 @@ void fb_print(const char* str, unsigned int color) {
             x = x_start;
         } else {
             draw_char(x, y, c, color);
-            x += 8; 
+            x += 8;
             if (x >= fb->width) {
                 if (y + 10 >= fb->height) {
                     fb_scroll(10);
@@ -188,11 +187,10 @@ void fb_print(const char* str, unsigned int color) {
     }
 }
 
-
 void fb_clear(unsigned int color) {
     Framebuffer* fb = fb_get();
     unsigned int* fb_ptr = (unsigned int*)fb->buffer;
-    
+
     for (unsigned int y = 0; y < fb->height; y++) {
         for (unsigned int x = 0; x < fb->width; x++) {
             fb_ptr[y * (fb->pitch / 4) + x] = color;
@@ -203,13 +201,12 @@ void fb_clear(unsigned int color) {
 void fb_draw_image(int x, int y, const unsigned int* image_data, int width, int height) {
     Framebuffer* fb = fb_get();
     unsigned int* fb_ptr = (unsigned int*)fb->buffer;
-    
+
     for (int img_y = 0; img_y < height; img_y++) {
         for (int img_x = 0; img_x < width; img_x++) {
             int fb_x = x + img_x;
             int fb_y = y + img_y;
-            if (fb_x >= 0 && fb_x < (int)fb->width &&
-                fb_y >= 0 && fb_y < (int)fb->height) {
+            if (fb_x >= 0 && fb_x < (int)fb->width && fb_y >= 0 && fb_y < (int)fb->height) {
                 unsigned int fb_pos = fb_y * (fb->pitch / 4) + fb_x;
                 unsigned int img_pos = img_y * width + img_x;
                 fb_ptr[fb_pos] = image_data[img_pos];
@@ -218,11 +215,11 @@ void fb_draw_image(int x, int y, const unsigned int* image_data, int width, int 
     }
 }
 
-void fb_draw_scaled_image(int x, int y, const unsigned int* image_data, 
-                          int width, int height, int scale) {
+void fb_draw_scaled_image(int x, int y, const unsigned int* image_data, int width, int height,
+                          int scale) {
     Framebuffer* fb = fb_get();
     unsigned int* fb_ptr = (unsigned int*)fb->buffer;
-    
+
     for (int img_y = 0; img_y < height; img_y++) {
         for (int img_x = 0; img_x < width; img_x++) {
             unsigned int pixel = image_data[img_y * width + img_x];
@@ -230,8 +227,7 @@ void fb_draw_scaled_image(int x, int y, const unsigned int* image_data,
                 for (int sx = 0; sx < scale; sx++) {
                     int fb_x = x + (img_x * scale) + sx;
                     int fb_y = y + (img_y * scale) + sy;
-                    if (fb_x >= 0 && fb_x < (int)fb->width &&
-                        fb_y >= 0 && fb_y < (int)fb->height) {
+                    if (fb_x >= 0 && fb_x < (int)fb->width && fb_y >= 0 && fb_y < (int)fb->height) {
                         fb_ptr[fb_y * (fb->pitch / 4) + fb_x] = pixel;
                     }
                 }
@@ -258,8 +254,7 @@ const unsigned int smiley_face[16 * 16] = {
     0x00000000, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF,
     0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0x00000000,
     0x00000000, 0x00000000, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF,
-    0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0x00000000, 0x00000000
-};
+    0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0xFFFF00FF, 0x00000000, 0x00000000};
 
 // =======================
 // Multicore Animation Code
@@ -281,16 +276,15 @@ struct AnimationState {
 
 unsigned int tint_color(unsigned int original, unsigned int tint) {
     if ((original & 0xFF000000) == 0) return 0;
-    
+
     unsigned char r = (tint >> 16) & 0xFF;
-    unsigned char g = (tint >> 8)  & 0xFF;
+    unsigned char g = (tint >> 8) & 0xFF;
     unsigned char b = tint & 0xFF;
-    
+
     return (original & 0xFF000000) | (r << 16) | (g << 8) | b;
 }
 
 void init_animation(void) {
-
     printf("Setting white background...\n");
     unsigned int* ptr = (unsigned int*)fb.buffer;
     for (unsigned int y = 0; y < fb.height; y++) {
@@ -300,7 +294,7 @@ void init_animation(void) {
     }
     int core_id = getCoreID();
     if (core_id >= MAX_CORES) return;
-    
+
     // define starting positions and tint colors for each core
     static const struct {
         int x, y;
@@ -311,7 +305,7 @@ void init_animation(void) {
         {100, 300, 0xFF0000FF},  // Core 2: Blue
         {300, 300, 0xFFFF00FF}   // Core 3: Purple
     };
-    
+
     animation[core_id].x = core_configs[core_id].x;
     animation[core_id].y = core_configs[core_id].y;
     animation[core_id].dx = 5;
@@ -326,14 +320,14 @@ void init_animation(void) {
 void update_animation(void) {
     int core_id = getCoreID();
     if (core_id >= MAX_CORES) return;
-    
+
     Framebuffer* fb = fb_get();
     struct AnimationState* anim = &animation[core_id];
-    
+
     // Update position based on speed
     anim->x += anim->dx;
     anim->y += anim->dy;
-    
+
     // Bounce off the screen edges
     if (anim->x <= 0 || anim->x >= (int)fb->width - anim->width * anim->size) {
         anim->dx = -anim->dx;
@@ -341,20 +335,19 @@ void update_animation(void) {
     if (anim->y <= 0 || anim->y >= (int)fb->height - anim->height * anim->size) {
         anim->dy = -anim->dy;
     }
-    
+
     // Draw the image with core-specific tinting at the new position
     for (int img_y = 0; img_y < anim->height; img_y++) {
         for (int img_x = 0; img_x < anim->width; img_x++) {
             unsigned int pixel = anim->image[img_y * anim->width + img_x];
             pixel = tint_color(pixel, anim->color);
-            
+
             for (int sy = 0; sy < anim->size; sy++) {
                 for (int sx = 0; sx < anim->size; sx++) {
                     int fb_x = anim->x + (img_x * anim->size) + sx;
                     int fb_y = anim->y + (img_y * anim->size) + sy;
-                    
-                    if (fb_x >= 0 && fb_x < (int)fb->width &&
-                        fb_y >= 0 && fb_y < (int)fb->height) {
+
+                    if (fb_x >= 0 && fb_x < (int)fb->width && fb_y >= 0 && fb_y < (int)fb->height) {
                         unsigned int* fb_ptr = (unsigned int*)fb->buffer;
                         fb_ptr[fb_y * (fb->pitch / 4) + fb_x] = pixel;
                     }

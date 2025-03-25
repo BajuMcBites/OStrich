@@ -3,16 +3,16 @@
 #ifndef _VM_H
 #define _VM_H
 
-#define VA_START 			0xffff000000000000
+#define VA_START 0xffff000000000000
 
-#define PAGE_SHIFT	 		12
-#define TABLE_SHIFT 			9
-#define SECTION_SHIFT			(PAGE_SHIFT + TABLE_SHIFT)
+#define PAGE_SHIFT 12
+#define TABLE_SHIFT 9
+#define SECTION_SHIFT (PAGE_SHIFT + TABLE_SHIFT)
 
-#define PAGE_SIZE   			(1 << PAGE_SHIFT)	
-#define SECTION_SIZE			(1 << SECTION_SHIFT)	
+#define PAGE_SIZE (1 << PAGE_SHIFT)
+#define SECTION_SIZE (1 << SECTION_SHIFT)
 
-#define LOW_MEMORY              	(2 * SECTION_SIZE)
+#define LOW_MEMORY (2 * SECTION_SIZE)
 #define HIGH_MEMORY PBASE
 #define PAGING_MEMORY (HIGH_MEMORY - LOW_MEMORY)
 #define PAGING_PAGES (PAGING_MEMORY / PAGE_SIZE)
@@ -62,20 +62,20 @@
     )
 
 // Memory attribute indices
-#define MT_DEVICE_nGnRnE     0   // Device memory: non-Gathering, non-Reordering, non-Early write ack
-#define MT_DEVICE_nGnRE      1   // Device memory: non-Gathering, non-Reordering, Early write ack
-#define MT_DEVICE_GRE        2   // Device memory: Gathering, Reordering, Early write ack
-#define MT_NORMAL_NC         3   // Normal memory: Non-cacheable
-#define MT_NORMAL            4   // Normal memory: Cacheable
+#define MT_DEVICE_nGnRnE 0  // Device memory: non-Gathering, non-Reordering, non-Early write ack
+#define MT_DEVICE_nGnRE 1   // Device memory: non-Gathering, non-Reordering, Early write ack
+#define MT_DEVICE_GRE 2     // Device memory: Gathering, Reordering, Early write ack
+#define MT_NORMAL_NC 3      // Normal memory: Non-cacheable
+#define MT_NORMAL 4         // Normal memory: Cacheable
 
 // Memory Attribute Indirection Register (MAIR) settings
-#define MAIR_VALUE ( \
-    (0x00ul << (MT_DEVICE_nGnRnE * 8)) | /* [0] Device-nGnRnE */ \
-    (0x04ul << (MT_DEVICE_nGnRE * 8)) |  /* [1] Device-nGnRE */ \
-    (0x0Cul << (MT_DEVICE_GRE * 8)) |    /* [2] Device-GRE */ \
-    (0x44ul << (MT_NORMAL_NC * 8)) |     /* [3] Normal Non-cacheable */ \
-    (0xFFul << (MT_NORMAL * 8))          /* [4] Normal memory with write-back */ \
-)
+#define MAIR_VALUE                                                                \
+    ((0x00ul << (MT_DEVICE_nGnRnE * 8)) | /* [0] Device-nGnRnE */                 \
+     (0x04ul << (MT_DEVICE_nGnRE * 8)) |  /* [1] Device-nGnRE */                  \
+     (0x0Cul << (MT_DEVICE_GRE * 8)) |    /* [2] Device-GRE */                    \
+     (0x44ul << (MT_NORMAL_NC * 8)) |     /* [3] Normal Non-cacheable */          \
+     (0xFFul << (MT_NORMAL * 8))          /* [4] Normal memory with write-back */ \
+    )
 
 #define DEVICE_LOWER_ATTRIBUTES 0x1 | (0x0 << 2) | (0x1 << 10) | (0x0 << 6) | (0x0 << 8)
 

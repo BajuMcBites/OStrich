@@ -16,15 +16,11 @@ proc_hang:
 
 master:
     // Set up stack pointer for EL1
-    mrs x0, mpidr_el1
-    and x0, x0, #0xFF
-    mov x1, #SECTION_SIZE
-    mul x1, x1, x0
-    add x1, x1, #LOW_MEMORY
-    mov sp, x1
+    mrs x0, CurrentEL
+    mov sp, #LOW_MEMORY
     bl pickKernelStack
-    mov sp, x0
     msr sp_el1, x0
+
 
     // Enable virtual and physical counter timers for EL1
     mrs     x0, cnthctl_el2
@@ -48,7 +44,7 @@ master:
     msr     vbar_el1, x0
 
     // Set up SPSR_EL2 to transition to EL1h
-    mov x0, #0x3c4
+    ldr x0, =SPSR_VALUE
     msr spsr_el2, x0
 
     // Set ELR_EL2 to point to el1_entry
@@ -65,15 +61,54 @@ el1_entry:
     sub    x1, x1, x0
     bl     memzero
 
-    // Set up the stack pointer (SP) for EL1
-    mov    sp, #LOW_MEMORY
-    bl pickKernelStack
-    mov    sp, x0
-
-    //bl    wake_up_cores
-
     bl    primary_kernel_init
     b     proc_hang        // should never come here
+
+secondary:
+    mrs x0, mpidr_el1
+    and x0, x0, #0xFF
+    mov x1, #SECTION_SIZE
+    mul x1, x1, x0
+    add x1, x1, #LOW_MEMORY
+    mov sp, x1
+
+    // Set up stack pointer for EL1 for secondary cores
+    bl pickKernelStack
+    msr sp_el1, x0
+
+setup_el1_for_secondary:
+
+    // Enable virtual and physical counter timers for EL1
+    mrs     x0, cnthctl_el2
+    orr     x0, x0, #3
+    msr     cnthctl_el2, x0
+    msr     cntvoff_el2, xzr
+
+    // Disable coprocessor in EL2
+    mov     x0, #0x33FF
+    msr     cptr_el2, x0
+    msr     hstr_el2, xzr
+    mov     x0, #(3 << 20)
+    msr     cpacr_el1, x0
+
+
+    // Configure EL2 (Hypervisor)
+    ldr x0, =HCR_VALUE
+    msr hcr_el2, x0
+
+    // Set up SPSR_EL2 to transition to EL1h
+    ldr x0, =SPSR_VALUE
+    msr spsr_el2, x0
+
+    // Set ELR_EL2 to point to secondary_kernel_main
+    adr x0, secondary_kernel_main
+    msr elr_el2, x0
+
+    ldr     x0, =_vectors
+    msr     vbar_el1, x0
+
+    // Transition to EL1
+    eret
 
 .macro	kernel_entry
 	sub	sp, sp, #S_FRAME_SIZE
@@ -116,55 +151,7 @@ el1_entry:
 	eret
 	.endm
 
-secondary:
-    // Set up stack pointer for EL1 for secondary cores
-    mrs x0, mpidr_el1
-    and x0, x0, #0xFF
-    mov x1, #SECTION_SIZE
-    mul x1, x1, x0
-    add x1, x1, #LOW_MEMORY
-    mov sp, x1
-    msr sp_el1, x1
-    mov x0, x0
-    bl pickKernelStack
-    mov sp, x0
-    msr sp_el1, x0
-
-    // Enable virtual and physical counter timers for EL1
-    mrs     x0, cnthctl_el2
-    orr     x0, x0, #3
-    msr     cnthctl_el2, x0
-    msr     cntvoff_el2, xzr
-
-    // Disable coprocessor in EL2
-    mov     x0, #0x33FF
-    msr     cptr_el2, x0
-    msr     hstr_el2, xzr
-    mov     x0, #(3 << 20)
-    msr     cpacr_el1, x0
-
-
-    // Configure EL2 (Hypervisor)
-    ldr x0, =HCR_VALUE
-    msr hcr_el2, x0
-
-    ldr     x0, =_vectors
-    msr     vbar_el1, x0
-
-    // Set up SPSR_EL2 to transition to EL1h
-    ldr x0, =SPSR_VALUE
-    msr spsr_el2, x0
-
-    // Set ELR_EL2 to point to secondary_kernel_main
-    adr x0, secondary_kernel_main
-    msr elr_el2, x0
-
-    // Transition to EL1
-    eret
-
 secondary_kernel_main:
-    dsb sy
-    isb
     bl secondary_kernel_init
     b proc_hang
 

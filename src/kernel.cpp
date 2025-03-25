@@ -1,7 +1,9 @@
 #include "core.h"
+#include "dcache.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
+#include "framebuffer.h"
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
@@ -17,8 +19,6 @@
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
-#include "framebuffer.h"
-#include "dcache.h"
 
 void mergeCores();
 
@@ -95,36 +95,37 @@ extern "C" void secondary_kernel_init() {
 }
 
 extern "C" void primary_kernel_init() {
-        create_page_tables();
-        patch_page_tables();
-        init_mmu();
-        uart_init();
-        init_printf(nullptr, uart_putc_wrapper);
-        // timer_init();
-        // enable_interrupt_controller();
-        // enable_irq();
-        printf("printf initialized!!!\n");
-        if (fb_init()) {
-            printf("Framebuffer initialization successful!\n");
-        } else {
-            printf("Framebuffer initialization failed!\n");
-        }
-        // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here. making that bit
-        // making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value of 0x96000021)
-        init_ramfs();
-        create_frame_table(frame_table_start,
-                           0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
-        printf("frame table initialized! \n");
-        uinit((void *)HEAP_START, HEAP_SIZE);
-        smpInitDone = true;
-        // with data cache on, we must write the boolean back to memory to allow other cores to see it.
-        clean_dcache_line(&smpInitDone);
-        threadsInit();
-        wake_up_cores();
-        mergeCores();
+    create_page_tables();
+    patch_page_tables();
+    init_mmu();
+    uart_init();
+    init_printf(nullptr, uart_putc_wrapper);
+    // timer_init();
+    // enable_interrupt_controller();
+    // enable_irq();
+    printf("printf initialized!!!\n");
+    if (fb_init()) {
+        printf("Framebuffer initialization successful!\n");
+    } else {
+        printf("Framebuffer initialization failed!\n");
+    }
+    // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
+    // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
+    // of 0x96000021)
+    init_ramfs();
+    create_frame_table(frame_table_start,
+                       0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
+    printf("frame table initialized! \n");
+    uinit((void *)HEAP_START, HEAP_SIZE);
+    smpInitDone = true;
+    // with data cache on, we must write the boolean back to memory to allow other cores to see it.
+    clean_dcache_line(&smpInitDone);
+    threadsInit();
+    wake_up_cores();
+    mergeCores();
 }
 
-void mergeCores(){
+void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
