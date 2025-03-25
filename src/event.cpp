@@ -218,3 +218,7 @@ void clearZombies()  // function to delete completed events
         killMe = zombieQ.remove();
     }
 }
+
+TCB *currentTCB(int core) {
+    return runningThreads[core];
+}

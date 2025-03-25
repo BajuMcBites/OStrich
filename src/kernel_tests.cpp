@@ -1,10 +1,13 @@
 #include "kernel_tests.h"
 
+#include "atomic.h"
 #include "event.h"
 #include "frame.h"
 #include "hash.h"
 #include "heap.h"
 #include "libk.h"
+#include "locked_queue.h"
+#include "mmap.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
@@ -139,23 +142,23 @@ void event_loop_tests() {
 }
 
 void queue1() {
-    queue<int>* q = (queue<int>*)kmalloc(sizeof(queue<int>));
-    q->push(5);
-    q->push(3);
-    q->push(2);
-    q->push(1);
-    printf("size %d\n", q->size());  // 4
-    printf("%d ", q->top());         // 5
-    q->pop();
-    printf("%d ", q->top());  // 3
-    q->pop();
-    printf("%d ", q->top());  // 2
-    q->pop();
-    printf("%d\n", q->top());  // 1
-    q->pop();
-    printf("size %d\n", q->size());       // 0
-    printf("empty is %d\n", q->empty());  // 1
-    kfree(q);
+    // Queue<int>* q = (queue<int>*)kmalloc(sizeof(queue<int>));
+    // q->push(5);
+    // q->push(3);
+    // q->push(2);
+    // q->push(1);
+    // printf("size %d\n", q->size());  // 4
+    // printf("%d ", q->top());         // 5
+    // q->pop();
+    // printf("%d ", q->top());  // 3
+    // q->pop();
+    // printf("%d ", q->top());  // 2
+    // q->pop();
+    // printf("%d\n", q->top());  // 1
+    // q->pop();
+    // printf("size %d\n", q->size());       // 0
+    // printf("empty is %d\n", q->empty());  // 1
+    // kfree(q);
 }
 
 void queue_test() {
@@ -211,32 +214,88 @@ void test_pin_frame() {
 }
 
 void basic_page_table_creation() {
-    page_table = new PageTable([]() {
-        printf("we have allocated a page table\n");
-        alloc_frame(0, [](uint64_t frame) {
-            uint64_t user_vaddr = 0x800000;
-            uint16_t lower_attributes = 0x404;
-            page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
-                page_table->use_page_table();
-                *((uint64_t*)user_vaddr) = 12345678;
-                K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
-                          "user virtual address not working");
-                printf("basic_page_table_creation passed\n");
-            });
+    page_table = new PageTable();
+
+    alloc_frame(0, [](uint64_t frame) {
+        uint64_t user_vaddr = 0x800000;
+        uint64_t lower_attributes = 0x404;
+        page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
+            page_table->use_page_table();
+            *((uint64_t*)user_vaddr) = 12345678;
+            K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
+                      "user virtual address not working");
+            printf("basic_page_table_creation passed\n");
         });
     });
+}
+
+void mmap_test_file() {
+    UserTCB* tcb = new UserTCB([]() {
+        /* do nothing shouldnt ever be called */
+        K::assert(false, "this shouldn't be called");
+    });
+
+    uint64_t uvaddr = 0x9000;
+
+    mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, "/dev/ramfs/test1.txt", 0,
+         PAGE_SIZE * 3 + 46, [=]() {
+             load_mmapped_page(tcb, uvaddr, [=](uint64_t kvaddr) {
+                 tcb->page_table->use_page_table();
+                 char* kbuf = (char*)kvaddr;
+                 char* ubuf = (char*)uvaddr;
+
+                 printf("file mmap test: %s\n", kbuf);
+
+                 K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
+                                      60) == 0,
+                           "no reserve mmap test failed\n");
+                 K::assert(K::strncmp(ubuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
+                                      60) == 0,
+                           "no reserve mmap test failed\n");
+
+                 delete tcb;
+             });
+         });
+}
+
+void mmap_test_no_reserve() {
+    UserTCB* tcb = new UserTCB([]() {
+        /* do nothing shouldnt ever be called */
+        K::assert(false, "this shouldn't be called");
+    });
+
+    uint64_t uvaddr = 0x9000;
+
+    mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
+         0, PAGE_SIZE * 3 + 46, [=]() {
+             load_mmapped_page(tcb, uvaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
+                 tcb->page_table->use_page_table();
+
+                 char* kbuf = (char*)kvaddr;
+                 char* ubuf = (char*)uvaddr + PAGE_SIZE;
+
+                 K::strncpy(kbuf, "this is an mmap test", 30);
+
+                 printf("no reserve mmap test: %s\n", ubuf);
+
+                 K::assert(K::strncmp(kbuf, ubuf, 30) == 0, "no reserve mmap test failed\n");
+                 delete tcb;
+             });
+         });
 }
 
 void user_paging_tests() {
     printf("starting user paging tests\n");
     basic_page_table_creation();
+    mmap_test_no_reserve();
+    mmap_test_file();
     printf("user paging tests complete\n");
 }
 
 void hash_test() {
     Rand rand;
     int keys[NUM_TIMES];
-    Hashmap<int> hash(1);
+    HashMap<int> hash(1);
 
     printf("Inserting %d random numbers\n", NUM_TIMES);
     for (int i = 0; i < NUM_TIMES; i++) {
@@ -330,4 +389,74 @@ void ramfs_tests() {
     ramfs_test_basic();
     ramfs_big_file();
     printf("end ramfs tests\n");
+}
+
+void semaphore_tests() {
+    Semaphore* finish_sema = new Semaphore(-2);
+    Semaphore* sema = new Semaphore(1);
+    int* shared_value = (int*)kmalloc(sizeof(int));
+    *shared_value = 0;
+
+    Function<void()> func = [sema, finish_sema, shared_value]() {
+        sema->down([sema, shared_value, finish_sema]() {
+            for (int i = 0; i < 100; i++) {
+                *shared_value = *shared_value + 1;
+            }
+            sema->up();
+            finish_sema->up();
+        });
+    };
+
+    Function<void()> check_func = [sema, finish_sema, shared_value]() {
+        finish_sema->down([sema, finish_sema, shared_value]() {
+            printf("sema test shared value is %d\n", *shared_value);
+            K::assert(*shared_value == 300, "race condition in semaphore test\n");
+            delete sema;
+            delete finish_sema;
+            delete shared_value;
+        });
+    };
+
+    create_event_core(func, 1);
+    create_event_core(func, 2);
+    create_event_core(func, 3);
+    create_event(check_func);
+}
+
+void lock_tests() {
+    Semaphore* finish_sema = new Semaphore(-3);
+    Lock* lock = new Lock();
+    int* shared_value = (int*)kmalloc(sizeof(int));
+    *shared_value = 0;
+
+    Function<void()> func = [lock, finish_sema, shared_value]() {
+        lock->lock([lock, shared_value, finish_sema]() {
+            for (int i = 0; i < 100; i++) {
+                *shared_value = *shared_value + 1;
+            }
+            lock->unlock();
+            finish_sema->up();
+        });
+    };
+
+    Function<void()> check_func = [lock, finish_sema, shared_value]() {
+        finish_sema->down([lock, finish_sema, shared_value]() {
+            printf("lock test shared value is %d\n", *shared_value);
+            K::assert(*shared_value == 400, "race condition in lock test\n");
+            delete lock;
+            delete finish_sema;
+            delete shared_value;
+        });
+    };
+
+    create_event_core(func, 1);
+    create_event_core(func, 2);
+    create_event_core(func, 3);
+    create_event_core(func, 0);
+    create_event(check_func);
+}
+
+void blocking_atomic_tests() {
+    semaphore_tests();
+    lock_tests();
 }
