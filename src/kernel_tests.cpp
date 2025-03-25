@@ -16,6 +16,8 @@
 #include "vm.h"
 #include "elf_loader.h"
 
+#define NUM_TIMES 1000
+
 PageTable* page_table;
 
 void test_new_delete_basic() {
