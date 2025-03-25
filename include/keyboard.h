@@ -4,6 +4,7 @@
 #include "atomic.h"
 #include "dwc.h"
 #include "usb_device.h"
+#include "usb_device.h"
 
 #define HID_SET_PROTOCOL 0x0B
 #define HID_BOOT_PROTOCOL 0x00

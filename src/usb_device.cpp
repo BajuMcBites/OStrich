@@ -90,8 +90,6 @@ int hid_device_attach(usb_session *session, usb_device_descriptor_t *device_desc
         return 1;
     }
 
-    printf("detected HID device!\n");
-
     return 0;
 }
 
