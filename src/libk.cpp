@@ -3,6 +3,7 @@
 #include "heap.h"
 #include "printf.h"
 #include "stdint.h"
+#include "utils.h"
 
 long K::strlen(const char* str) {
     long n = 0;
@@ -79,6 +80,15 @@ void* K::memcpy(void* dest, const void* src, int n) {
     return dest;
 }
 
+void* K::memset(void* buf, unsigned char val, unsigned long n) {
+    char* temp = (char*)buf;
+    while (n > 0) {
+        *temp++ = val;
+        n--;
+    }
+    return buf;
+}
+
 // Helper function for basic assertions
 void K::assert(bool condition, const char* msg) {
     if (!condition) {
@@ -88,4 +98,28 @@ void K::assert(bool condition, const char* msg) {
         while (1) {
         }  // Halt on failure
     }
+}
+extern char __stacks_start[];
+extern char __stacks_end[];
+
+/**
+ * returns true if the current within its range, fails assert otherwise
+ */
+bool K::check_stack() {
+    uint64_t sp = get_sp();
+    uint64_t stack_size = 16384;
+
+    uint64_t stack_end = (uint64_t)__stacks_start;
+
+    stack_end += stack_size * 8 * (getCoreID());
+
+    uint64_t stack_start = stack_end + stack_size * 8;
+
+    if (sp <= stack_end || sp > stack_start) {
+        printf("Stack (%d) has overflowed. end (%X), sp (%X), start (%X)\n", getCoreID(), stack_end,
+               sp, stack_start);
+        K::assert(false, "we have failed stack check");
+    }
+
+    return sp > stack_end;
 }

@@ -1,15 +1,15 @@
 #include "frame.h"
 
+#include "atomic.h"
 #include "event.h"
 #include "printf.h"
 #include "stdint.h"
 #include "vm.h"
-#include "atomic.h"
 
 int index = 0;
 int num_frames = 0;
 Frame* frame_table = 0;
-SpinLock lock; //switch to blocking lock
+SpinLock lock;  // switch to blocking lock
 
 void create_frame_table(uintptr_t start, int size) {
     frame_table = (Frame*)start;
@@ -33,50 +33,45 @@ void create_frame_table(uintptr_t start, int size) {
 }
 
 void alloc_frame(int flags, Function<void(uint64_t)> w) {
-    lock.lock();
+    LockGuard<SpinLock>{lock};
     for (int i = 0; i < num_frames; i++) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)) {
             frame_table[index].flags = flags;
             frame_table[index].flags |= USED_PAGE_FLAG;
             create_event<uint64_t>(w, index * PAGE_SIZE, 1);
             index += 1;
+
             return;
         }
         index += 1;
         index %= num_frames;
     }
-    lock.unlock();
-
     // Need to evict
     return;
 }
 
 bool free_frame(uintptr_t frame_addr) {
-    lock.lock();
+    LockGuard<SpinLock>{lock};
     int index = frame_addr / PAGE_SIZE;
     if (index >= 0 && index < num_frames && !(frame_table[index].flags & PINNED_PAGE_FLAG)) {
         frame_table[index].flags &= ~USED_PAGE_FLAG;
-        lock.unlock();
         return true;
     }
-    lock.unlock();
     return false;
 }
 
 void pin_frame(uintptr_t frame_addr) {
-    lock.lock();
+    LockGuard<SpinLock>{lock};
     int index = frame_addr / PAGE_SIZE;
     if (index >= 0 && index < num_frames) {
         frame_table[index].flags |= PINNED_PAGE_FLAG;
     }
-    lock.unlock();
 }
 
 void unpin_frame(uintptr_t frame_addr) {
-    lock.lock();
+    LockGuard<SpinLock>{lock};
     int index = frame_addr / PAGE_SIZE;
     if (index >= 0 && index < num_frames) {
         frame_table[index].flags &= ~PINNED_PAGE_FLAG;
     }
-    lock.unlock();
 }
