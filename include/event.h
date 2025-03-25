@@ -37,7 +37,7 @@ struct cpu_context {
 };
 
 struct TCB {
-    TCB *next;
+    TCB* next;
     bool wasDisabled = false;  // previous interrupt state
     bool kernel_event = true;
     virtual void run() = 0;  // Abstract/virtual function that must be overridden
@@ -49,7 +49,7 @@ struct CPU_Queues {
 
 extern PerCPU<CPU_Queues> readyQueue;
 
-extern void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl);  // generalized yield
+extern void event_loop(LockedQueue<TCB, SpinLock>* q, /*ISL*/ SpinLock* isl);  // generalized yield
 extern void entry();         // have a thread start work
 extern void restoreState();  // restore state post context switch
 extern void clearZombies();  // delete threads that have called stop.

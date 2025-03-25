@@ -123,7 +123,6 @@ bool K::check_stack() {
  * is an occurance.
  */
 char* K::strntok(char* str, char c, int n) {
-
     char* cpy = str;
     int count = 0;
 

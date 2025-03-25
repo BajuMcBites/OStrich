@@ -67,13 +67,12 @@
 
 #ifndef __ASSEMBLER__
 
-#include "function.h"
-#include "stdint.h"
 #include "atomic.h"
+#include "fs.h"
+#include "function.h"
 #include "hash.h"
 #include "libk.h"
-#include "fs.h"
-
+#include "stdint.h"
 
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
@@ -128,23 +127,11 @@ class PageTable {
     void free_pte(pte_t* pte);
 };
 
-enum LocationType {
-    FILESYSTEM,
-    SWAP,
-    UNBACKED
-};
+enum LocationType { FILESYSTEM, SWAP, UNBACKED };
 
-enum PagePermissions {
-    READ_PERM,
-    WRITE_PERM,
-    EXEC_PERM,
-    NONE_PERM
-};
+enum PagePermissions { READ_PERM, WRITE_PERM, EXEC_PERM, NONE_PERM };
 
-enum PageSharingMode {
-    SHARED,
-    PRIVATE
-};
+enum PageSharingMode { SHARED, PRIVATE };
 
 struct SwapLocation {
     uint64_t swap_id;
@@ -157,7 +144,7 @@ struct FileLocation {
 
     FileLocation(char* name, uint64_t off) {
         int path_length = K::strnlen(name, PATH_MAX - 1);
-        file_name = (char*) kmalloc(path_length + 1);
+        file_name = (char*)kmalloc(path_length + 1);
         K::strncpy(file_name, name, PATH_MAX);
 
         offset = off;
@@ -168,30 +155,30 @@ struct FileLocation {
     }
 };
 
-
 /**
  * Lock Ordering:
- * 
- * (1) Supplemental Page Table Lock - protects all child LocalPageLocation and 
+ *
+ * (1) Supplemental Page Table Lock - protects all child LocalPageLocation and
  *                  ONLY the pointers to the PageLocation
- * 
- * (2) Page Location Lock - protects all PageLocation data structures and all 
- *                          child LocalPageLocation data structures, except 
+ *
+ * (2) Page Location Lock - protects all PageLocation data structures and all
+ *                          child LocalPageLocation data structures, except
  *                          child's pointer to the page location.
- * 
+ *
  * Never change the PageLocation* of a LocalPageLocation unless you have its
  *  parent Supplemental Page Table Lock
  */
 
 /**
- * These are local to a processes Supplemental Page Table, holds the specific 
+ * These are local to a processes Supplemental Page Table, holds the specific
  * qualities of that page for a given process, as well as the PageLocation.
  */
 struct LocalPageLocation {
     // Lock location_lock; not needed?
     PagePermissions perm;
     PageSharingMode sharing_mode;
-    // uint64_t tid; some way to know which process out of the PageLocation->users is the one we faulted on
+    // uint64_t tid; some way to know which process out of the PageLocation->users is the one we
+    // faulted on
     PageLocation* location;
     LocalPageLocation* next;
 };
@@ -225,22 +212,21 @@ struct PageLocation {
     }
 };
 
-
 class SupplementalPageTable {
-    public:
+   public:
     HashMap<LocalPageLocation*> map;
-    Lock lock; //only lock the map with this, Page location and LocalPageLocation are locked locally;
+    Lock lock;  // only lock the map with this, Page location and LocalPageLocation are locked
+                // locally;
 
     SupplementalPageTable() : map(100) {
     }
 
     ~SupplementalPageTable() {
-        //TODO: go through and clear all local pages + 0 ref page_locs
+        // TODO: go through and clear all local pages + 0 ref page_locs
     }
 
     LocalPageLocation* vaddr_mapping(uint64_t vaddr);
     void map_vaddr(uint64_t vaddr, LocalPageLocation* local);
-    
 };
 
 PageTableLevel* descriptor_to_vaddr(uint64_t descriptor);

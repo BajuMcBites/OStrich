@@ -1,18 +1,16 @@
 #include "fs.h"
+
+#include "event.h"
 #include "libk.h"
 #include "ramfs.h"
-#include "event.h"
-
 
 /**
  * kread should read a file into the specified buffer by routing a read call to the
  * correct filesystem handler, ie userspace main fs, device read
  */
 void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-
-
     int path_length = K::strnlen(file_name, PATH_MAX - 1);
-    char* file_name_cpy = (char*) kmalloc(path_length + 1);
+    char* file_name_cpy = (char*)kmalloc(path_length + 1);
     K::strncpy(file_name_cpy, file_name, PATH_MAX);
 
     file_name = file_name_cpy;
@@ -33,7 +31,7 @@ void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void
         file_name++;
         next = K::strntok(file_name, '/', ENTRY_MAX + 1);
 
-        if (next == nullptr)  {
+        if (next == nullptr) {
             create_event<int>(work, INVALID_FILE);
             return;
         }
@@ -49,15 +47,13 @@ void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void
         /* TODO */
         K::assert(false, "non root fs not implemented");
     }
-
 }
 
 /**
- * should take in the name of the file without /dev/, so "/dev/ramfs/temp.txt" would be 
+ * should take in the name of the file without /dev/, so "/dev/ramfs/temp.txt" would be
  * passed in as "ramfs/temp.txt"
  */
 void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-
     int err;
     char* next = K::strntok(file_name, '/', ENTRY_MAX);
 
@@ -79,7 +75,7 @@ void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<
         err = ramfs_read(buf, offset, read_n, ramfs_index);
         if (err != 0) {
             create_event<int>(w, OTHER_FAIL);
-            return; 
+            return;
         }
 
         create_event<int>(w, SUCCESSFUL_READ);
@@ -89,5 +85,4 @@ void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<
         create_event<int>(w, NOT_IMPLEMENTED_FS);
         return;
     }
-
 }

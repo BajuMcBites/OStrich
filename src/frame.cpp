@@ -78,7 +78,6 @@ void alloc_frame(int flags, PageLocation* location, Function<void(uint64_t)> w) 
     }
 }
 
-
 bool free_frame(uintptr_t frame_addr) {
     LockGuard<SpinLock>{lock};
     int index = frame_addr / PAGE_SIZE;
@@ -88,8 +87,6 @@ bool free_frame(uintptr_t frame_addr) {
     }
     return false;
 }
-
-
 
 void pin_frame(uintptr_t frame_addr) {
     LockGuard<SpinLock>{lock};

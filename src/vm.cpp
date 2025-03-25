@@ -1,11 +1,11 @@
 #include "vm.h"
 
+#include "event.h"
 #include "frame.h"
+#include "fs.h"
 #include "heap.h"
 #include "libk.h"
 #include "stdint.h"
-#include "fs.h"
-#include "event.h"
 
 uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
@@ -47,7 +47,7 @@ void PageTable::free_pgd() {
         pud = descriptor_to_vaddr(descriptor);
         if (pud != nullptr) {
             free_pud(pud);
-            pud_paddr = vaddr_to_paddr((uint64_t) pud);
+            pud_paddr = vaddr_to_paddr((uint64_t)pud);
             unpin_frame(pud_paddr);
             free_frame(pud_paddr);
         }
@@ -63,7 +63,7 @@ void PageTable::free_pud(pud_t* pud) {
         pmd = descriptor_to_vaddr(descriptor);
         if (pmd != nullptr) {
             free_pmd(pmd);
-            pmd_paddr = vaddr_to_paddr((uint64_t) pmd);
+            pmd_paddr = vaddr_to_paddr((uint64_t)pmd);
             unpin_frame(pmd_paddr);
             free_frame(pmd_paddr);
         }
@@ -79,7 +79,7 @@ void PageTable::free_pmd(pmd_t* pmd) {
         pte = descriptor_to_vaddr(descriptor);
         if (pte != nullptr) {
             free_pte(pte);
-            pte_paddr = vaddr_to_paddr((uint64_t) pte);
+            pte_paddr = vaddr_to_paddr((uint64_t)pte);
             unpin_frame(pte_paddr);
             free_frame(pte_paddr);
         }
@@ -101,17 +101,17 @@ void PageTable::map_vaddr(uint64_t vaddr, uint64_t paddr, uint64_t page_attribut
     K::assert((vaddr & 0xFFF) == 0, "non-aligned vaddr for va to pa mappin");
     if (this->pgd == nullptr) {
         alloc_pgd([this, vaddr, paddr, page_attributes, w]() {
-            map_vaddr_pgd(vaddr, paddr, page_attributes, w); 
+            map_vaddr_pgd(vaddr, paddr, page_attributes, w);
         });
     } else {
-        map_vaddr_pgd(vaddr, paddr, page_attributes, w); 
+        map_vaddr_pgd(vaddr, paddr, page_attributes, w);
     }
 }
 
 void PageTable::alloc_pgd(Function<void()> w) {
     alloc_frame(PINNED_PAGE_FLAG, [this, w](uint64_t paddr) {
         this->pgd = (pgd_t*)paddr_to_vaddr(paddr);
-        K::memset((void*) this->pgd, 0, PAGE_SIZE);
+        K::memset((void*)this->pgd, 0, PAGE_SIZE);
         K::assert(this->pgd != nullptr, "palloc failed");
         create_event(w, 1);
     });
@@ -129,7 +129,7 @@ void PageTable::map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint64_t page_attr
             pgd->descriptors[pgd_index] =
                 paddr_to_table_descriptor(pud_paddr);        // put frame into table
             pud_t* pud = (pud_t*)paddr_to_vaddr(pud_paddr);  // get vaddr of frame
-            K::memset((void*) pud, 0, PAGE_SIZE);
+            K::memset((void*)pud, 0, PAGE_SIZE);
             map_vaddr_pud(pud, vaddr, paddr, page_attributes, w);
         });
     } else {
@@ -148,7 +148,7 @@ void PageTable::map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint64
             K::assert(pmd_paddr != nullptr, "palloc failed");
             pud->descriptors[pud_index] = paddr_to_table_descriptor(pmd_paddr);
             pmd_t* pmd = (pmd_t*)paddr_to_vaddr(pmd_paddr);
-            K::memset((void*) pmd, 0, PAGE_SIZE);
+            K::memset((void*)pmd, 0, PAGE_SIZE);
             map_vaddr_pmd(pmd, vaddr, paddr, page_attributes, w);
         });
     } else {
@@ -167,7 +167,7 @@ void PageTable::map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint64
             K::assert(pte_paddr != nullptr, "palloc failed");
             pmd->descriptors[pmd_index] = paddr_to_table_descriptor(pte_paddr);
             pte_t* pte = (pte_t*)paddr_to_vaddr(pte_paddr);
-            K::memset((void*) pte, 0, PAGE_SIZE);
+            K::memset((void*)pte, 0, PAGE_SIZE);
             map_vaddr_pte(pte, vaddr, paddr, page_attributes);
             create_event(w, 1);
         });
@@ -185,7 +185,7 @@ void PageTable::map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr,
 
 /**
  * returns false if the vaddr was not mapped in the first place
- * returns true if the vaddr was mapped and is now unmapped 
+ * returns true if the vaddr was mapped and is now unmapped
  */
 bool PageTable::unmap_vaddr(uint64_t vaddr) {
     uint64_t pgd_index = get_pgd_index(vaddr);
@@ -291,37 +291,34 @@ LocalPageLocation* SupplementalPageTable::vaddr_mapping(uint64_t vaddr) {
 }
 
 void SupplementalPageTable::map_vaddr(uint64_t vaddr, LocalPageLocation* local) {
-   this->map.put(vaddr, local);
+    this->map.put(vaddr, local);
 }
 
-
 /**
- * Assume all locks are appropriately held to call this. Returns bits [11:2] and 
- * [63:52] of a 4096 block descriptor for a user page. Bits [51:12] must be 
+ * Assume all locks are appropriately held to call this. Returns bits [11:2] and
+ * [63:52] of a 4096 block descriptor for a user page. Bits [51:12] must be
  * returned 0.
  */
 uint64_t build_page_attributes(LocalPageLocation* local) {
     uint64_t attribute = 0;
 
-    
     if (local->perm != EXEC_PERM) {
-        attribute |= (0x1L << 53); //set XN (execute never) to true
+        attribute |= (0x1L << 53);  // set XN (execute never) to true
     }
 
     if (local->perm == READ_PERM) { /* check these */
-        attribute |= (0x1L << 5); //set access permisions [7:6] to r only el0 r/w el1
+        attribute |= (0x1L << 5);   // set access permisions [7:6] to r only el0 r/w el1
     } else if (local->perm == WRITE_PERM) {
-        attribute |= (0x0L << 5); //set access permisions [7:6] to r/w all el 
+        attribute |= (0x0L << 5);  // set access permisions [7:6] to r/w all el
     } else if (local->perm == EXEC_PERM) {
-        attribute |= (0x1L << 5); //set access permisions [7:6] to r only el0 r/w el1
+        attribute |= (0x1L << 5);  // set access permisions [7:6] to r only el0 r/w el1
     }
-    
-    attribute |= (0x2L << 2); //2nd index in mair
-    attribute |= (0x1L << 10); //set nG (non global) [11] bit to true
-    attribute |= (0x1L << 9); //set AF (access flag) [10] bit to true so we dont fault on access
-    attribute |= (0x3L << 7); //set sharability [9:8] to inner sharable across cores
 
-    attribute &= (~0xFFFFFFFFFF000L); //zero out middle bits as sanity check
+    attribute |= (0x2L << 2);   // 2nd index in mair
+    attribute |= (0x1L << 10);  // set nG (non global) [11] bit to true
+    attribute |= (0x1L << 9);   // set AF (access flag) [10] bit to true so we dont fault on access
+    attribute |= (0x3L << 7);   // set sharability [9:8] to inner sharable across cores
+
+    attribute &= (~0xFFFFFFFFFF000L);  // zero out middle bits as sanity check
     return attribute;
 }
-

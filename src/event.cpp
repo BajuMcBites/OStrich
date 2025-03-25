@@ -219,6 +219,6 @@ void clearZombies()  // function to delete completed events
     }
 }
 
-TCB* currentTCB(int core) {
+TCB *currentTCB(int core) {
     return runningThreads[core];
 }

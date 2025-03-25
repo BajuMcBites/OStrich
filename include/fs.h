@@ -10,9 +10,8 @@
 #define OTHER_FAIL -100
 #define NOT_IMPLEMENTED_FS -99
 
-
-#include "stdint.h"
 #include "function.h"
+#include "stdint.h"
 
 void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 
