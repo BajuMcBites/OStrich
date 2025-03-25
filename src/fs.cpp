@@ -10,6 +10,7 @@
  */
 void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
 
+
     int path_length = K::strnlen(file_name, PATH_MAX - 1);
     char* file_name_cpy = (char*) kmalloc(path_length + 1);
     K::strncpy(file_name_cpy, file_name, PATH_MAX);
@@ -28,10 +29,9 @@ void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void
         return;
     }
 
-    
-    if (*file_name == '\\') { /* starting from root */
+    if (*file_name == '/') { /* starting from root */
         file_name++;
-        next = K::strntok(file_name, '\\', ENTRY_MAX + 1);
+        next = K::strntok(file_name, '/', ENTRY_MAX + 1);
 
         if (next == nullptr)  {
             create_event<int>(work, INVALID_FILE);
@@ -47,6 +47,7 @@ void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void
         }
     } else { /* starting from somewhere else */
         /* TODO */
+        K::assert(false, "non root fs not implemented");
     }
 
 }
@@ -58,7 +59,7 @@ void read(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void
 void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
 
     int err;
-    char* next = K::strntok(file_name, '\\', ENTRY_MAX);
+    char* next = K::strntok(file_name, '/', ENTRY_MAX);
 
     if (K::strncmp(file_name, "ramfs", ENTRY_MAX) == 0) { /* ramfs file */
         int ramfs_index = get_ramfs_index(next);

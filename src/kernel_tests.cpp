@@ -14,6 +14,7 @@
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
+#include "mmap.h"
 
 #define NUM_TIMES 1000
 
@@ -213,26 +214,11 @@ void test_pin_frame() {
 }
 
 void basic_page_table_creation() {
-    // page_table = new PageTable([]() {
-    //     printf("we have allocated a page table\n");
-    //     alloc_frame(0, [](uint64_t frame) {
-    //         uint64_t user_vaddr = 0x800000;
-    //         uint16_t lower_attributes = 0x404;
-    //         page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
-    //             page_table->use_page_table();
-    //             *((uint64_t*)user_vaddr) = 12345678;
-    //             K::assert(*((uint64_t*)user_vaddr) == *((uint64_t*)paddr_to_vaddr(frame)),
-    //                       "user virtual address not working");
-    //             printf("basic_page_table_creation passed\n");
-    //         });
-    //     });
-    // });
-
     page_table = new PageTable();
 
     alloc_frame(0, [](uint64_t frame) {
         uint64_t user_vaddr = 0x800000;
-        uint16_t lower_attributes = 0x404;
+        uint64_t lower_attributes = 0x404;
         page_table->map_vaddr(user_vaddr, frame, lower_attributes, [user_vaddr, frame]() {
             page_table->use_page_table();
             *((uint64_t*)user_vaddr) = 12345678;
@@ -243,9 +229,64 @@ void basic_page_table_creation() {
     });
 }
 
+void mmap_test_file() {
+
+    UserTCB* tcb = new UserTCB([]() {
+        /* do nothing shouldnt ever be called */
+        K::assert(false, "this shouldn't be called");
+    });
+
+    uint64_t uvaddr = 0x9000;
+
+    mmap(tcb, 0x9000, PROT_WRITE, MAP_PRIVATE, "/dev/ramfs/test1.txt", 0, PAGE_SIZE * 3 + 46, [=]() {
+        load_mmapped_page(tcb, uvaddr, [=](uint64_t kvaddr) {
+            tcb->page_table->use_page_table();
+            char* kbuf = (char*) kvaddr;
+            char* ubuf = (char*) uvaddr;
+
+            printf("file mmap test: %s\n", kbuf);
+
+
+            K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!", 60) == 0, "no reserve mmap test failed\n");
+            K::assert(K::strncmp(ubuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!", 60) == 0, "no reserve mmap test failed\n");
+
+            delete tcb;
+        });
+    });
+
+}
+
+void mmap_test_no_reserve() {
+
+    UserTCB* tcb = new UserTCB([]() {
+        /* do nothing shouldnt ever be called */
+        K::assert(false, "this shouldn't be called");
+    });
+
+    uint64_t uvaddr = 0x9000;
+
+    mmap(tcb, 0x9000, PROT_WRITE, MAP_NORESERVE, nullptr, 0, PAGE_SIZE * 3 + 46, [=]() {
+        load_mmapped_page(tcb, uvaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
+            tcb->page_table->use_page_table();
+
+            char* kbuf = (char*) kvaddr;
+            char* ubuf = (char*) uvaddr + PAGE_SIZE;
+
+            K::strncpy(kbuf, "this is an mmap test", 30);
+
+            printf("no reserve mmap test: %s\n", ubuf);
+
+            K::assert(K::strncmp(kbuf, ubuf, 30) == 0, "no reserve mmap test failed\n");
+            delete tcb;
+        });
+    });
+}
+
 void user_paging_tests() {
     printf("starting user paging tests\n");
     basic_page_table_creation();
+    mmap_test_no_reserve();
+    mmap_test_file();
     printf("user paging tests complete\n");
 }
 
@@ -412,6 +453,8 @@ void lock_tests() {
     create_event_core(func, 0);
     create_event(check_func);
 }
+
+
 
 void blocking_atomic_tests() {
     semaphore_tests();

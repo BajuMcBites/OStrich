@@ -61,7 +61,7 @@
      (16LL << 0)      /* [5:0]   T0SZ: VA Size (TTBR0) - 16 = 256TB (Same options as T1SZ) */      \
     )
 
-#define MAIR_VALUE 0x0000000000004400
+#define MAIR_VALUE 0x0000000000BB4400
 
 #define DEVICE_LOWER_ATTRIBUTES 0x1 | (0x0 << 2) | (0x1 << 10) | (0x0 << 6) | (0x0 << 8)
 
@@ -81,6 +81,9 @@ extern "C" void switch_ttbr0(uint64_t pgd_paddr);
 
 void patch_page_tables();
 
+struct LocalPageLocation;
+struct PageLocation;
+
 struct PageTableLevel {
     uint64_t descriptors[TABLE_ENTRIES];
 };
@@ -90,20 +93,6 @@ typedef PageTableLevel pud_t;
 typedef PageTableLevel pmd_t;
 typedef PageTableLevel pte_t;
 
-PageTableLevel* descriptor_to_vaddr(uint64_t descriptor);
-uint64_t descriptor_to_paddr(uint64_t descriptor);
-
-uint64_t get_pgd_index(uint64_t vaddr);
-uint64_t get_pud_index(uint64_t vaddr);
-uint64_t get_pmd_index(uint64_t vaddr);
-uint64_t get_pte_index(uint64_t vaddr);
-
-uint64_t paddr_to_table_descriptor(uint64_t paddr);
-uint64_t paddr_to_block_descriptor(uint64_t paddr, uint16_t lower_attributes);
-
-uint64_t paddr_to_vaddr(uint64_t paddr);
-uint64_t vaddr_to_paddr(uint64_t vaddr);
-
 class PageTable {
    public:
     pgd_t* pgd;
@@ -112,23 +101,23 @@ class PageTable {
 
     ~PageTable();
 
-    void map_vaddr(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes, Function<void()> w);
+    void map_vaddr(uint64_t vaddr, uint64_t paddr, uint64_t page_attributes, Function<void()> w);
     void use_page_table();
     bool unmap_vaddr(uint64_t vaddr);
 
    private:
     void alloc_pgd(Function<void()> w);
 
-    void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes,
+    void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint64_t page_attributes,
                        Function<void()> w);
 
-    void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes,
+    void map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint64_t page_attributes,
                        Function<void()> w);
 
-    void map_vaddr_pmd(pmd_t* pmd, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes,
+    void map_vaddr_pmd(pmd_t* pmd, uint64_t vaddr, uint64_t paddr, uint64_t page_attributes,
                        Function<void()> w);
 
-    void map_vaddr_pte(pte_t* pte, uint64_t vaddr, uint64_t paddr, uint16_t lower_attributes);
+    void map_vaddr_pte(pte_t* pte, uint64_t vaddr, uint64_t paddr, uint64_t page_attributes);
 
     void free_pgd();
 
@@ -142,7 +131,14 @@ class PageTable {
 enum LocationType {
     FILESYSTEM,
     SWAP,
-    ANONYMOUS
+    UNBACKED
+};
+
+enum PagePermissions {
+    READ_PERM,
+    WRITE_PERM,
+    EXEC_PERM,
+    NONE_PERM
 };
 
 enum PageSharingMode {
@@ -174,34 +170,28 @@ struct FileLocation {
 
 
 /**
- * Lock Scheme:
+ * Lock Ordering:
  * 
- * SUPP table first then others (only if editing which ones they point to)
+ * (1) Supplemental Page Table Lock - protects all child LocalPageLocation and 
+ *                  ONLY the pointers to the PageLocation
  * 
- * Local Page Location Lock only should lock the PageLocation variable so that doesnt change
+ * (2) Page Location Lock - protects all PageLocation data structures and all 
+ *                          child LocalPageLocation data structures, except 
+ *                          child's pointer to the page location.
  * 
- * Page Location Lock locks all of its variables and all of the LocalPageLocation children variables (except its PageLocation)
- * 
- * You should never change the PageLocation of any LocalPageLocation except if you got the locks in LocalPageLocation -> PageLocation order,
- *       never PageLocation -> LocalPageLocation () this may make private pages read the most current changes until they write (which may or may not be intended)
- * Always PageLocation -> LocalPageLocation
- *                     -> FrameTable
- * 
+ * Never change the PageLocation* of a LocalPageLocation unless you have its
+ *  parent Supplemental Page Table Lock
  */
-struct LocalPageLocation;
-struct PageLocation;
 
 /**
  * These are local to a processes Supplemental Page Table, holds the specific 
  * qualities of that page for a given process, as well as the PageLocation.
  */
 struct LocalPageLocation {
-    Lock location_lock; 
-    bool read_only;
+    // Lock location_lock; not needed?
+    PagePermissions perm;
     PageSharingMode sharing_mode;
     // uint64_t tid; some way to know which process out of the PageLocation->users is the one we faulted on
-    //some way to get back to the page table in the case of an eviction
-
     PageLocation* location;
     LocalPageLocation* next;
 };
@@ -215,8 +205,8 @@ struct LocalPageLocation {
 struct PageLocation {
     Lock lock;
     LocationType location_type;
-    bool copy_on_write;
-    bool dirty;
+    bool owned; /* not used right now, but will indicate if this machine ownes the page */
+    // bool dirty;
     bool present;
     uint64_t paddr;
     int ref_count;
@@ -236,7 +226,6 @@ struct PageLocation {
 };
 
 
-
 class SupplementalPageTable {
     public:
     HashMap<LocalPageLocation*> map;
@@ -251,61 +240,24 @@ class SupplementalPageTable {
 
     LocalPageLocation* vaddr_mapping(uint64_t vaddr);
     void map_vaddr(uint64_t vaddr, LocalPageLocation* local);
-
-
-    private:
-    bool map_vaddr(uint64_t user_vaddr, LocalPageLocation* page_loc, Function<void()> w);
     
-    // void map_vaddr_swap(vaddr, file)
-    // void map
-
-    //vaddr mmap(mmap params) returns page mapped in kernel vm pinned (u must unpin) with all the location stuff set up for a process?
 };
 
-// void load_local_into_memory(uint64_t uvaddr, UserTCB* tcb, Function<void(void*)> w);
+PageTableLevel* descriptor_to_vaddr(uint64_t descriptor);
+uint64_t descriptor_to_paddr(uint64_t descriptor);
 
-// struct UserTCB;
+uint64_t get_pgd_index(uint64_t vaddr);
+uint64_t get_pud_index(uint64_t vaddr);
+uint64_t get_pmd_index(uint64_t vaddr);
+uint64_t get_pte_index(uint64_t vaddr);
 
+uint64_t paddr_to_table_descriptor(uint64_t paddr);
+uint64_t paddr_to_block_descriptor(uint64_t paddr, uint64_t page_attributes);
 
+uint64_t paddr_to_vaddr(uint64_t paddr);
+uint64_t vaddr_to_paddr(uint64_t vaddr);
 
-
-/*
-    Allocation:
-        - mmap on user thread,
-        - page alloc
-        - malloc page location
-        - malloc local page location
-        - insert into frame table
-        - set up everything to user
-    
-    File system
-        - read/write to dev/swap syscall handler
-        - read to dev/ramfs/{file_name}
-
-    MMAP
-        - mmap to dev/ramfs/{file_name}
-        - mmap to blankswappage (we make the swap id and stuff)
-    
-    Eviction
-        - update all supp page tables, update all page tables
-        - write back to location
-    
-    PageCahce
-        - Lookup by filename + offset -> Locaiton Struct
-        - swap_id -> location struct
-*/
-
-/*
-Process for laoding in initial pages that are not backed by file system but have info:ALIGN
-
-page alloc pinned
-write stuff to it
-map_vaddr in page table
-make page location struct mark it as swap, make present
-map that in supp page table with correct properties
-put loc in the frame
-unpin
-*/
+uint64_t build_page_attributes(LocalPageLocation* local);
 
 #endif /*__ASSEMBLER__*/
 
