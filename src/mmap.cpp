@@ -54,9 +54,10 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
  * runs the continuation function. This does not load the page into memory, which
  * can be done by load_mmapped_page.
  */
-void mmap_page(UserTCB* tcb, uint64_t uvaddr, MMAPProt prot, MMAPFlag flags, char* file_name,
-               uint64_t offset, Function<void(void)> w) {
-    bool file_mmap = file_name != nullptr;
+void mmap_page(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, char* file_name, uint64_t offset,
+               Function<void(void)> w) {
+    bool file_mmap = (flags & MAP_ANONYMOUS) == 0;
+    bool no_reserve = (flags & MAP_NORESERVE) != 0;
 
     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr passed to mmap");
 
@@ -65,20 +66,14 @@ void mmap_page(UserTCB* tcb, uint64_t uvaddr, MMAPProt prot, MMAPFlag flags, cha
         K::assert(local == nullptr, "remapping an already mapped address");
 
         local = new LocalPageLocation;
-
-        if (prot == PROT_READ) {
-            local->perm = READ_PERM;
-        } else if (prot == PROT_WRITE) {
-            local->perm = WRITE_PERM;
-        } else if (prot == PROT_EXEC) {
-            local->perm = EXEC_PERM;
-        } else if (prot == PROT_NONE) {
-            local->perm = NONE_PERM;
-        } else {
-            K::assert(false, "invalid prot passed to mmap");
-        }
-
+        local->perm = prot;
         local->next = nullptr;
+
+        if ((flags & 0x3) == MAP_SHARED) {
+            local->sharing_mode = SHARED;
+        } else if ((flags & 0x3) == MAP_PRIVATE) {
+            local->sharing_mode = PRIVATE;
+        }
 
         PageLocation* location = nullptr;
 
@@ -97,32 +92,19 @@ void mmap_page(UserTCB* tcb, uint64_t uvaddr, MMAPProt prot, MMAPFlag flags, cha
 
                 if (file_mmap) {
                     K::assert(file_name != nullptr, "mmapping nullptr file");
-                    K::assert(flags == MAP_SHARED || MAP_PRIVATE,
-                              "invalid flag for file backed mmap");
-
-                    if (flags == MAP_SHARED) {
-                        local->sharing_mode = SHARED;
-                    } else if (flags == MAP_PRIVATE) {
-                        local->sharing_mode = PRIVATE;
-                    }
 
                     location->location_type = FILESYSTEM;
                     location->location.filesystem = new FileLocation(file_name, offset);
                     tcb->supp_page_table->map_vaddr(uvaddr, local);
-
                     location->lock.unlock();
                     tcb->supp_page_table->lock.unlock();
                     create_event(w);
                     return;
                 } else if (!file_mmap) {
-                    K::assert(flags == MAP_ANONYMOUS || flags == MAP_NORESERVE,
-                              "invalid flag passed to non file backed mmap");
-
-                    if (flags == MAP_ANONYMOUS) {
+                    if (!no_reserve) {
                         K::assert(false, "swap mmap not implemented yet");
 
-                    } else if (flags == MAP_NORESERVE) {
-                        local->sharing_mode = PRIVATE;
+                    } else {
                         location->location_type = UNBACKED;
                         tcb->supp_page_table->map_vaddr(uvaddr, local);
                         location->lock.unlock();
@@ -130,9 +112,6 @@ void mmap_page(UserTCB* tcb, uint64_t uvaddr, MMAPProt prot, MMAPFlag flags, cha
                         create_event(w);
                         return;
                     }
-                    return;
-                } else {
-                    K::assert(false, "invalid mmap flag passed");
                     return;
                 }
                 K::assert(false, "mmap: we should not get here");
@@ -204,8 +183,8 @@ void load_mmapped_page(UserTCB* tcb, uint64_t uvaddr, Function<void(uint64_t)> w
  * runs the continuation function. This does not load the region into memory, which
  * can be done by load_mmapped_region.
  */
-void mmap(UserTCB* tcb, uint64_t uvaddr, MMAPProt prot, MMAPFlag flags, char* file_name,
-          uint64_t offset, int length, Function<void(void)> w) {
+void mmap(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, char* file_name, uint64_t offset,
+          int length, Function<void(void)> w) {
     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr being mmapped");
     K::assert(length > 0, "invalid length input into mmap");
 

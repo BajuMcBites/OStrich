@@ -237,8 +237,8 @@ void mmap_test_file() {
 
     uint64_t uvaddr = 0x9000;
 
-    mmap(tcb, 0x9000, PROT_WRITE, MAP_PRIVATE, "/dev/ramfs/test1.txt", 0, PAGE_SIZE * 3 + 46,
-         [=]() {
+    mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, "/dev/ramfs/test1.txt", 0,
+         PAGE_SIZE * 3 + 46, [=]() {
              load_mmapped_page(tcb, uvaddr, [=](uint64_t kvaddr) {
                  tcb->page_table->use_page_table();
                  char* kbuf = (char*)kvaddr;
@@ -266,21 +266,22 @@ void mmap_test_no_reserve() {
 
     uint64_t uvaddr = 0x9000;
 
-    mmap(tcb, 0x9000, PROT_WRITE, MAP_NORESERVE, nullptr, 0, PAGE_SIZE * 3 + 46, [=]() {
-        load_mmapped_page(tcb, uvaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
-            tcb->page_table->use_page_table();
+    mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
+         0, PAGE_SIZE * 3 + 46, [=]() {
+             load_mmapped_page(tcb, uvaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
+                 tcb->page_table->use_page_table();
 
-            char* kbuf = (char*)kvaddr;
-            char* ubuf = (char*)uvaddr + PAGE_SIZE;
+                 char* kbuf = (char*)kvaddr;
+                 char* ubuf = (char*)uvaddr + PAGE_SIZE;
 
-            K::strncpy(kbuf, "this is an mmap test", 30);
+                 K::strncpy(kbuf, "this is an mmap test", 30);
 
-            printf("no reserve mmap test: %s\n", ubuf);
+                 printf("no reserve mmap test: %s\n", ubuf);
 
-            K::assert(K::strncmp(kbuf, ubuf, 30) == 0, "no reserve mmap test failed\n");
-            delete tcb;
-        });
-    });
+                 K::assert(K::strncmp(kbuf, ubuf, 30) == 0, "no reserve mmap test failed\n");
+                 delete tcb;
+             });
+         });
 }
 
 void user_paging_tests() {

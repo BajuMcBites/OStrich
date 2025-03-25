@@ -23,6 +23,10 @@
 #define TABLE_ENTRY 0x2
 #define PAGE_ENTRY 0x2
 
+#define READ_PERM 0x1
+#define WRITE_PERM 0x2
+#define EXEC_PERM 0x4
+
 #define TCR_VALUE                                                                                  \
     ((0b0LL << 40) | /* [40]    HD: HW Dirty Bit Management - 0 = Disabled (0 = SW-managed, 1 =    \
                         HW-managed) */                                                             \
@@ -129,8 +133,6 @@ class PageTable {
 
 enum LocationType { FILESYSTEM, SWAP, UNBACKED };
 
-enum PagePermissions { READ_PERM, WRITE_PERM, EXEC_PERM, NONE_PERM };
-
 enum PageSharingMode { SHARED, PRIVATE };
 
 struct SwapLocation {
@@ -175,7 +177,7 @@ struct FileLocation {
  */
 struct LocalPageLocation {
     // Lock location_lock; not needed?
-    PagePermissions perm;
+    int perm;
     PageSharingMode sharing_mode;
     // uint64_t tid; some way to know which process out of the PageLocation->users is the one we
     // faulted on

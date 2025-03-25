@@ -302,16 +302,16 @@ void SupplementalPageTable::map_vaddr(uint64_t vaddr, LocalPageLocation* local) 
 uint64_t build_page_attributes(LocalPageLocation* local) {
     uint64_t attribute = 0;
 
-    if (local->perm != EXEC_PERM) {
+    if ((local->perm & EXEC_PERM) == 0) {
         attribute |= (0x1L << 53);  // set XN (execute never) to true
     }
 
-    if (local->perm == READ_PERM) { /* check these */
-        attribute |= (0x1L << 5);   // set access permisions [7:6] to r only el0 r/w el1
-    } else if (local->perm == WRITE_PERM) {
-        attribute |= (0x0L << 5);  // set access permisions [7:6] to r/w all el
-    } else if (local->perm == EXEC_PERM) {
-        attribute |= (0x1L << 5);  // set access permisions [7:6] to r only el0 r/w el1
+    if (local->perm & READ_PERM != 0) {
+        attribute |= (0x1L << 5);
+    }
+
+    if (local->perm & WRITE_PERM != 0) {
+        attribute |= (0x0L << 5);
     }
 
     attribute |= (0x2L << 2);   // 2nd index in mair
