@@ -3,6 +3,7 @@
 
 #include "atomic.h"
 #include "dwc.h"
+#include "usb_device.h"
 
 #define HID_SET_PROTOCOL 0x0B
 #define HID_BOOT_PROTOCOL 0x00
@@ -17,22 +18,14 @@
 #define RIGHT_GUI 7
 
 struct keyboard {
-    // state
-
-    uint8_t device_address;
-    uint8_t interface_num;
-    uint8_t bmAttributes;
-    uint8_t in_ep;
-    uint8_t interval;
-    uint8_t mps;
-    bool discovered;
-    bool connected;
-
+    usb_device device_state;
     struct key_map {
         SpinLock lock;
         uint8_t bitmap[32];
     } keymap;
 };
+
+extern struct keyboard kbd;
 
 char get_keyboard_input();
 int keyboard_attach(usb_session *session, usb_device_descriptor_t *device_descriptor,

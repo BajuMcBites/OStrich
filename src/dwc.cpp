@@ -3,16 +3,18 @@
 #include "keyboard.h"
 #include "libk.h"
 #include "peripherals/timer.h"
-#include "timer.h"
 #include "printf.h"
-
+#include "timer.h"
+#include "usb_device.h"
 
 void usb_finished_enumeration(usb_session *session, usb_device_descriptor_t *device_descriptor,
                               usb_device_config_t *device_config) {
     // TODO: create some structure to store devices
     printf("Detected & assigned new device to address = %d.\n", session->device_address);
     if (device_descriptor->product_id == 0x1 && device_descriptor->vendor_id == 0x627) {
-        keyboard_attach(session, device_descriptor, device_config);
+        printf("Setting up keyboard.");
+        hid_device_attach(session, device_descriptor, device_config, &kbd.device_state,
+                          HID_PROTOCOL_KEYBOARD);
     }
 }
 
