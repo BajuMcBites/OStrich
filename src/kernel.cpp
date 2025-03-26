@@ -116,6 +116,12 @@ extern "C" void primary_kernel_init() {
     } else {
         printf("Framebuffer initialization failed!\n");
     }
+
+    if (sd_init() == 0) {
+        printf("SD card initialized successfully!\n");
+    } else {
+        printf("SD card initialization failed!\n");
+    }
     // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
     // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
     // of 0x96000021)

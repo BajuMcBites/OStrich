@@ -544,7 +544,7 @@ int sd_write_block(unsigned char *buffer, unsigned int block_addr, unsigned int 
                      status, SD_ERROR);
     }
 
-    // Get blocks back.
+    // Write blocks.
     for (unsigned int blk_cnt = 0; blk_cnt < num_blocks; blk_cnt++) {
         // If we don't support CCS, request one block at a time.
         if (!supports_ccs) {
