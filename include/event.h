@@ -6,6 +6,7 @@
 #include "locked_queue.h"
 #include "percpu.h"
 #include "printf.h"
+#include "vm.h"
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
@@ -36,7 +37,7 @@ struct cpu_context {
 };
 
 struct TCB {
-    TCB *next;
+    TCB* next;
     bool wasDisabled = false;  // previous interrupt state
     bool kernel_event = true;
     virtual void run() = 0;  // Abstract/virtual function that must be overridden
@@ -48,7 +49,7 @@ struct CPU_Queues {
 
 extern PerCPU<CPU_Queues> readyQueue;
 
-extern void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl);  // generalized yield
+extern void event_loop(LockedQueue<TCB, SpinLock>* q, /*ISL*/ SpinLock* isl);  // generalized yield
 extern void entry();         // have a thread start work
 extern void restoreState();  // restore state post context switch
 extern void clearZombies();  // delete threads that have called stop.
@@ -56,10 +57,15 @@ extern void clearZombies();  // delete threads that have called stop.
 // template <typename Work>
 struct UserTCB : public TCB {
     cpu_context context;
+    PageTable* page_table;
+    SupplementalPageTable* supp_page_table;
     Function<void()> w;
     alignas(16) uint64_t stack[2048];  // Ensure proper 16-byte alignment
     template <typename lambda>
     UserTCB(lambda w) : w(w) {
+        page_table = new PageTable;
+        supp_page_table = new SupplementalPageTable;
+
         context.x19 = 0;
         context.x20 = 0;
         context.x21 = 0;
@@ -73,6 +79,11 @@ struct UserTCB : public TCB {
         context.sp = (uint64_t)&stack[2048];  // Stack grows downward
         context.pc = (uint64_t)&entry;        // Function to execute when the thread starts
         kernel_event = false;
+    }
+
+    ~UserTCB() {
+        delete page_table;
+        delete supp_page_table;
     }
 
     void run() override {
@@ -83,11 +94,16 @@ struct UserTCB : public TCB {
 template <typename T>
 struct UserValue : public TCB {
     cpu_context context;
+    PageTable* page_table;
+    SupplementalPageTable* supp_page_table;
     Function<void(T)> w;
     T value;
     alignas(16) uint64_t stack[2048];  // Ensure proper 16-byte alignment
     template <typename lambda>
     UserValue(lambda w, T value) : w(w), value(value) {
+        page_table = new PageTable;
+        supp_page_table = new SupplementalPageTable;
+
         context.x19 = 0;
         context.x20 = 0;
         context.x21 = 0;
@@ -101,6 +117,11 @@ struct UserValue : public TCB {
         context.sp = (uint64_t)&stack[2048];  // Stack grows downward
         context.pc = (uint64_t)&entry;        // Function to execute when the thread starts
         kernel_event = false;
+    }
+
+    ~UserValue() {
+        delete page_table;
+        delete supp_page_table;
     }
 
     void run() override {
@@ -189,4 +210,7 @@ inline void create_event_core(
     auto tcb = new Event(work);
     readyQueue.forCPU(core).queues[1].add(tcb);
 }
+
+TCB* currentTCB(int core);
+
 #endif
