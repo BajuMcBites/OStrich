@@ -29,7 +29,9 @@ typedef void (*putcf)(void*, char);
 static putcf stdout_putf;
 static void* stdout_putp;
 
-SpinLock spinLock;
+SpinLock printf_err_lock;
+SpinLock printf_lock;
+SpinLock panic_lock;
 
 #ifdef PRINTF_LONG_SUPPORT
 
@@ -299,7 +301,7 @@ static void vtfp_sprintf(char* s, const char* fmt, va_list va) {
 }
 
 void tfp_printf(const char* fmt, ...) {
-    spinLock.lock();
+    printf_lock.lock();
     char buffer[256];
     va_list va, va_copy_list;
 
@@ -313,7 +315,7 @@ void tfp_printf(const char* fmt, ...) {
     va_end(va);
 
     fb_print(buffer, WHITE);
-    spinLock.unlock();
+    printf_lock.unlock();
 }
 
 void tfp_sprintf(char* s, char* fmt, ...) {
@@ -325,7 +327,7 @@ void tfp_sprintf(char* s, char* fmt, ...) {
 }
 
 void tfp_error_printf(const char* fmt, ...) {
-    spinLock.lock();
+    printf_err_lock.lock();
     char buffer[256];
     va_list va, va_copy;
     va_start(va, fmt);
@@ -337,7 +339,7 @@ void tfp_error_printf(const char* fmt, ...) {
 
     // print the buffer to the framebuffer in red
     fb_print(buffer, RED);
-    spinLock.unlock();
+    printf_err_lock.unlock();
 }
 
 void tfp_printf_no_lock(const char* fmt, unsigned int color, ...) {
@@ -357,7 +359,7 @@ void tfp_printf_no_lock(const char* fmt, unsigned int color, ...) {
 }
 
 __attribute__((noreturn)) void tfp_panic(const char* fmt, ...) {
-    spinLock.lock();
+    panic_lock.lock();
 
     char buffer[256];
     va_list va;
@@ -367,7 +369,7 @@ __attribute__((noreturn)) void tfp_panic(const char* fmt, ...) {
     tfp_printf_no_lock("\n***** KERNEL PANIC *****\n", RED);
     tfp_printf_no_lock("%s\n", RED, buffer);
 
-    spinLock.unlock();
+    panic_lock.unlock();
 
     // Hang forever in low power state.
     while (1) {

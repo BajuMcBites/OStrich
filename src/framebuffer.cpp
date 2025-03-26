@@ -7,6 +7,8 @@
 
 static Framebuffer fb __attribute__((aligned(16)));
 
+static SpinLock fb_lock;
+
 Framebuffer* fb_get(void) {
     return &fb;
 }
@@ -155,7 +157,9 @@ void fb_scroll(int scroll_pixels) {
 }
 
 void fb_print(const char* str, unsigned int color) {
+    fb_lock.lock();
     if (!fb_init_done) {
+        fb_lock.unlock();
         return;
     }
     Framebuffer* fb = fb_get();
@@ -185,6 +189,7 @@ void fb_print(const char* str, unsigned int color) {
             }
         }
     }
+    fb_lock.unlock();
 }
 
 void fb_clear(unsigned int color) {
