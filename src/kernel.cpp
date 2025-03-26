@@ -9,11 +9,14 @@
 #include "kernel_tests.h"
 #include "libk.h"
 #include "mm.h"
+#include "partition_tests.h"
 #include "percpu.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "sdio.h"
+#include "sdio_tests.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
@@ -79,6 +82,9 @@ extern "C" void kernel_main() {
     user_paging_tests();
     blocking_atomic_tests();
     ramfs_tests();
+    sdioTests();
+    // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
+    // it out.
 }
 
 extern char __heap_start[];
@@ -109,6 +115,12 @@ extern "C" void primary_kernel_init() {
         printf("Framebuffer initialization successful!\n");
     } else {
         printf("Framebuffer initialization failed!\n");
+    }
+
+    if (sd_init() == 0) {
+        printf("SD card initialized successfully!\n");
+    } else {
+        printf("SD card initialization failed!\n");
     }
     // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
     // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
