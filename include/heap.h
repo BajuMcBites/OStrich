@@ -23,7 +23,7 @@ typedef struct memory_block_struct {
 
 void uinit(void *start, size_t bytes);
 void *kmalloc(size_t size);
-void *kcalloc(unsigned char val, size_t size);
+void* kcalloc(size_t count, size_t size);
 
 void kfree(void *ptr);
 

@@ -274,7 +274,7 @@ void mmap_test_no_reserve() {
                  char* kbuf = (char*)kvaddr;
                  char* ubuf = (char*)uvaddr + PAGE_SIZE;
 
-                 K::strncpy(kbuf, "this is an mmap test", 30);
+                 K::strncpy(ubuf, "this is an mmap test", 30);
 
                  printf("no reserve mmap test: %s\n", ubuf);
 
@@ -292,10 +292,19 @@ void user_paging_tests() {
     printf("user paging tests complete\n");
 }
 
+uint64_t hash_func(int elem) {
+    return (uint64_t) elem;
+}
+
+bool equals_func(int elem1, int elem2) {
+    return elem1 == elem2;
+}
+
 void hash_test() {
     Rand rand;
     int keys[NUM_TIMES];
-    HashMap<int> hash(1);
+
+    HashMap<int, int> hash(hash_func, equals_func, 1);
 
     printf("Inserting %d random numbers\n", NUM_TIMES);
     for (int i = 0; i < NUM_TIMES; i++) {

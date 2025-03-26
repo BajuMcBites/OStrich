@@ -249,9 +249,9 @@ void* kmalloc(size_t size) {
  * kcalloc -  allocates size bytes and returns a pointer to the allocated
  * memory, fills in bytes with val.
  */
-void* kcalloc(unsigned char val, size_t size) {
-    void* block = kmalloc(size);
-    K::memset(block, val, size);
+void* kcalloc(size_t count, size_t size) {
+    void* block = kmalloc(count * size);
+    K::memset(block, 0, count * size);
     return block;
 }
 

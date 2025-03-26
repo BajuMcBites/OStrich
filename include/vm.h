@@ -214,13 +214,24 @@ struct PageLocation {
     }
 };
 
+static uint64_t supplemental_page_table_hash(uint64_t elem) {
+    elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
+    elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
+    elem = (elem >> 16) ^ elem;
+    return elem;
+}
+
+static bool supplemental_page_table_equals(uint64_t elem1, uint64_t elem2) {
+    return elem1 == elem2;
+}
+
 class SupplementalPageTable {
    public:
-    HashMap<LocalPageLocation*> map;
+    HashMap<uint64_t, LocalPageLocation*> map;
     Lock lock;  // only lock the map with this, Page location and LocalPageLocation are locked
                 // locally;
 
-    SupplementalPageTable() : map(100) {
+    SupplementalPageTable() : map(supplemental_page_table_hash, supplemental_page_table_equals, 100) {
     }
 
     ~SupplementalPageTable() {
@@ -239,7 +250,7 @@ uint64_t get_pud_index(uint64_t vaddr);
 uint64_t get_pmd_index(uint64_t vaddr);
 uint64_t get_pte_index(uint64_t vaddr);
 
-uint64_t paddr_to_table_descriptor(uint64_t paddr);
+uint64_t paddr_to_table_descriptor(uint64_t paddr, uint64_t page_attributes);
 uint64_t paddr_to_block_descriptor(uint64_t paddr, uint64_t page_attributes);
 
 uint64_t paddr_to_vaddr(uint64_t paddr);
