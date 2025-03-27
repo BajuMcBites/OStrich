@@ -14,8 +14,4 @@
 #define memset(buf, val, n) K::memcpy(buf, val, n)
 #define strcmp(lhs, rhs) K::strcmp(lhs, rhs)
 
-// So compiler can use memcpy to create c strings.
-// Defined in libk.
-extern "C" void* memcpy(void* dest, const void* src, int n);
-
 #endif // __STRING_H
