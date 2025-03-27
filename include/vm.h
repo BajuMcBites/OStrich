@@ -3,7 +3,7 @@
 
 #include "peripherals/base.h"
 
-#define VA_START 0xFFFF000000000000
+#define VA_START 0xffff000000000000
 
 #define PAGE_SHIFT 12
 #define TABLE_SHIFT 9
@@ -64,8 +64,21 @@
      (0b0LL << 6) |   /* [6]     Reserved - Must be 0 */                                           \
      (16LL << 0)      /* [5:0]   T0SZ: VA Size (TTBR0) - 16 = 256TB (Same options as T1SZ) */      \
     )
+// Memory attribute indices
+#define MT_DEVICE_nGnRnE 0  // Device memory: non-Gathering, non-Reordering, non-Early write ack
+#define MT_DEVICE_nGnRE 1   // Device memory: non-Gathering, non-Reordering, Early write ack
+#define MT_DEVICE_GRE 2     // Device memory: Gathering, Reordering, Early write ack
+#define MT_NORMAL_NC 3      // Normal memory: Non-cacheable
+#define MT_NORMAL 4         // Normal memory: Cacheable
 
-#define MAIR_VALUE 0x0000000000BB4400
+// Memory Attribute Indirection Register (MAIR) settings
+#define MAIR_VALUE                                                                \
+    ((0x00ul << (MT_DEVICE_nGnRnE * 8)) | /* [0] Device-nGnRnE */                 \
+     (0x04ul << (MT_DEVICE_nGnRE * 8)) |  /* [1] Device-nGnRE */                  \
+     (0x0Cul << (MT_DEVICE_GRE * 8)) |    /* [2] Device-GRE */                    \
+     (0x44ul << (MT_NORMAL_NC * 8)) |     /* [3] Normal Non-cacheable */          \
+     (0xFFul << (MT_NORMAL * 8))          /* [4] Normal memory with write-back */ \
+    )
 
 #define DEVICE_LOWER_ATTRIBUTES 0x1 | (0x0 << 2) | (0x1 << 10) | (0x0 << 6) | (0x0 << 8)
 

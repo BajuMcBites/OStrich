@@ -61,7 +61,7 @@ el1_entry:
     sub    x1, x1, x0
     bl     memzero
 
-    bl    kernel_init
+    bl    primary_kernel_init
     b     proc_hang        // should never come here
 
 secondary:
@@ -152,16 +152,19 @@ setup_el1_for_secondary:
 	.endm
 
 secondary_kernel_main:
-    bl kernel_init
+    bl secondary_kernel_init
     b proc_hang
 
 .global wake_up_cores
 wake_up_cores:
-
+    
     mov x0, #0
     adr x0, secondary 
-    ldr x4, =(0xFFFF000000000000)
+    ldr x4, =(VA_START)
     sub x0, x0, x4
+
+    dsb sy
+    isb
 
     mov x1, #0xe0
     str x0, [x1]
@@ -169,7 +172,21 @@ wake_up_cores:
     str x0, [x1]
     mov x1, #0xf0
     str x0, [x1]
+
+    // we wrote to addresses 0xe0, 0xe8, and 0xf0, we must now write them back to memory since 
+    // primary core has data cache on at this point
+    movz x0, #0xe0
+    dc cvac, x0
+    movz x0, #0xe8
+    dc cvac, x0
+    movz x0, #0xf0
+    dc cvac, x0
+    
+    dsb sy
+    isb
+    
     sev
+    
     ret
 
 
