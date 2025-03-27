@@ -8,20 +8,26 @@ LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
 # Directories
-BUILD_DIR=build
-SRC_DIR=src
-INCLUDE_DIR=include
-RAMFS_DIR=ramfs
+BUILD_DIR = build
+SRC_DIR = src
+FS_DIR = filesystem
+FS_INCLUDE_DIR = include/filesys_compat
+INCLUDE_DIR = include
+RAMFS_DIR = ramfs
 
 # Automatically find all source files
 ASM_SRC = $(wildcard $(SRC_DIR)/*.S)
 C_SRC = $(wildcard $(SRC_DIR)/*.c)
 CPP_SRC = $(wildcard $(SRC_DIR)/*.cpp)
+FS_FILESYS_SRC = $(wildcard $(FS_DIR)/filesys/*.cpp)
+FS_INTERFACE_SRC = $(wildcard $(FS_DIR)/interface/*.cpp)
 
 # Object files
 ASM_OBJ = $(ASM_SRC:$(SRC_DIR)/%.S=$(BUILD_DIR)/%_S.o)
 C_OBJ = $(C_SRC:$(SRC_DIR)/%.c=$(BUILD_DIR)/%_c.o)
 CPP_OBJ = $(CPP_SRC:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%_cpp.o)
+FS_FILESYS_OBJ = $(FS_FILESYS_SRC:$(FS_DIR)/filesys/%.cpp=$(BUILD_DIR)/fs_filesys_%_cpp.o)
+FS_INTERFACE_OBJ = $(FS_INTERFACE_SRC:$(FS_DIR)/interface/%.cpp=$(BUILD_DIR)/fs_interface_%_cpp.o)
 RAMFS_OBJ = $(BUILD_DIR)/ramfs.o
 
 # Output files
@@ -30,7 +36,7 @@ KERNEL_IMG = $(BUILD_DIR)/kernel8.img
 RAMFS_IMG = $(BUILD_DIR)/ramfs.img
 
 # Compiler and linker flags
-CFLAGS = -Wall -Wextra -nostdlib -ffreestanding -I$(INCLUDE_DIR) -g -mcpu=cortex-a53 -march=armv8-a+crc -latomic -mstrict-align -mno-outline-atomics -fno-rtti -fno-exceptions -fno-rtti
+CFLAGS = -Wall -Wextra -nostdlib -ffreestanding -I$(INCLUDE_DIR) -I$(FS_INCLUDE_DIR) -g -mcpu=cortex-a53 -march=armv8-a+crc -latomic -mstrict-align -mno-outline-atomics -fno-rtti -fno-exceptions -fno-rtti
 LDFLAGS = -T linker.ld  # Use the custom linker script
 
 # Build rules
@@ -53,6 +59,14 @@ $(C_OBJ): $(BUILD_DIR)/%_c.o : $(SRC_DIR)/%.c | $(BUILD_DIR)
 $(CPP_OBJ): $(BUILD_DIR)/%_cpp.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
+# Compile the filesystem C++ source files
+$(FS_FILESYS_OBJ): $(BUILD_DIR)/fs_filesys_%_cpp.o : $(FS_DIR)/filesys/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CFLAGS) -c $< -o $@
+
+# Compile the interface C++ source files
+$(FS_INTERFACE_OBJ): $(BUILD_DIR)/fs_interface_%_cpp.o : $(FS_DIR)/interface/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CFLAGS) -c $< -o $@
+
 $(RAMFS_IMG) : $(BUILD_DIR)
 	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
 	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | xargs -d '\n' -t ../../$(BUILD_DIR)/build_ramfs
@@ -64,8 +78,8 @@ $(RAMFS_OBJ) : $(RAMFS_IMG)
 
 
 # Link the object files into the kernel ELF
-$(KERNEL_ELF): $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(RAMFS_OBJ)
-	$(LD) $(LDFLAGS) -o $(KERNEL_ELF) $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(RAMFS_OBJ)
+$(KERNEL_ELF): $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(FS_FILESYS_OBJ) $(FS_INTERFACE_OBJ) $(RAMFS_OBJ)
+	$(LD) $(LDFLAGS) -o $(KERNEL_ELF) $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(FS_FILESYS_OBJ) $(FS_INTERFACE_OBJ) $(RAMFS_OBJ)
 
 # Convert the ELF to a binary image
 $(KERNEL_IMG): $(KERNEL_ELF)
