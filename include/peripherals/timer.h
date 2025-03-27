@@ -12,8 +12,9 @@
 #define TIMER_C3 (volatile unsigned int*)(PBASE + 0x00003018)
 
 // #define GIC_BASE        0x3F000000
-#define GIC_DIST_BASE (PBASE + 0x1000)  // Distributor Base Address
-#define GIC_CPU_BASE (PBASE + 0x2000)   // CPU Interface Base Addres
+#define GIC_DIST_BASE (volatile unsigned int*)(PBASE + 0x1000)  // Distributor Base Address
+#define GIC_CPU_BASE (volatile unsigned int*)(PBASE + 0x2000)   // CPU Interface Base Addres
+#define GICD_ITARGETSR (volatile unsigned int*)(PBASE + 0x1000 + 0x0800)
 
 #define TIMER_CS_M0 (1 << 0)
 #define TIMER_CS_M1 (1 << 1)

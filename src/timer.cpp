@@ -1,5 +1,6 @@
 #include "peripherals/timer.h"
 
+#include "irq.h"
 #include "printf.h"
 #include "sched.h"
 #include "utils.h"
@@ -11,6 +12,10 @@ void timer_init(void) {
     curVal = get32(TIMER_CLO);
     curVal += interval;
     put32(TIMER_C1, curVal);
+}
+
+void core_timer_init(void) {
+    rearm_timer();
 }
 
 extern "C" void handle_timer_irq(void) {

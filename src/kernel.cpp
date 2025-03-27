@@ -95,6 +95,7 @@ extern "C" void kernel_init() {
         init_printf(nullptr, uart_putc_wrapper);
         gic_init();
         timer_init();
+        core_timer_init();
         enable_interrupt_controller();
 
         enable_irq();
@@ -112,6 +113,11 @@ extern "C" void kernel_init() {
         //  kernel_main();
     } else {
         init_mmu();
+        core_timer_init();
+        // core_timer_init();
+        timer_init();
+        enable_interrupt_controller();
+        enable_irq();
     }
 
     printf("Hi, I'm core %d\n", getCoreID());

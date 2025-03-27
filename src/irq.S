@@ -10,11 +10,12 @@ disable_irq:
 
 .globl rearm_timer
 rearm_timer:
-    mov x0, #1                    // Load 1 into x0
-    lsl x0, x0, #20               // Shift left by 20 bits (1 << 20 == 1,000,000)
-    msr CNTPS_TVAL_EL1, x0          // Re-load CNTPS_TVAL register
+    // Set the timer value
+    mov x0, #1
+    lsl x0, x0, #5
+    msr CNTP_TVAL_EL0, x0          // Set the timer value
 
-    // Re-enable the timer interrupt
-    mov x0, #0x3                   // Enable timer and interrupt again
-    msr CNTPS_CTL_EL1, x0           // Re-enable the timer
-	ret
+    // Enable the timer and interrupt
+    mov x0, #0x3                   // Enable timer and interrupt
+    msr CNTP_CTL_EL0, x0           // Enable the timer
+    ret
