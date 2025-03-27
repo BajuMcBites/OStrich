@@ -2,6 +2,7 @@
 
 #include "filesys_compat/cstdint"
 #include "filesys_compat/vector"
+#include "sdio.h"
 
 /**
  * Constructor.
@@ -12,6 +13,7 @@
  */
 RealDiskDriver::RealDiskDriver(size_t numSectors) {
     totalSectors = numSectors;
+    // Fill in partition table.
 }
 
 RealDiskDriver::~RealDiskDriver() {
@@ -27,7 +29,8 @@ RealDiskDriver::~RealDiskDriver() {
  * @return true if successful, false otherwise.
  */
 bool RealDiskDriver::readSector(size_t sectorIndex, uint8_t* buffer) {
-    return false;
+    int ret = sd_read_block(sectorIndex, buffer, 1);
+    return ret == SD_BLK_SIZE;
 }
 
 /**
@@ -38,7 +41,8 @@ bool RealDiskDriver::readSector(size_t sectorIndex, uint8_t* buffer) {
  * @return true if successful, false otherwise.
  */
 bool RealDiskDriver::writeSector(size_t sectorIndex, const uint8_t* buffer) {
-    return false;
+    int ret = sd_write_block((unsigned char*)buffer, sectorIndex, 1);
+    return ret == SD_BLK_SIZE;
 }
 
 /**
@@ -47,6 +51,7 @@ bool RealDiskDriver::writeSector(size_t sectorIndex, const uint8_t* buffer) {
  * @return true on success.
  */
 bool RealDiskDriver::flush() {
+    // I/O is synchronous, so we don't need to do anything.
     return true;
 }
 
