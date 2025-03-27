@@ -1,6 +1,7 @@
-#ifndef _EVENT_H
-#define _EVENT_H
+#ifndef _ELF_LOADER_H
+#define _ELF_LOADER_H
 #include "stdint.h"
+#include "event.h"
 
 typedef uint16_t Elf64_Half;	// Unsigned half int
 typedef uint64_t Elf64_Off;	// Unsigned offset
@@ -300,6 +301,6 @@ typedef struct LoadedLibrary {
 
 extern LoadedLibrary *g_loaded_libs; 
 
-void* elf_load(void* ptr);
+void* elf_load(void* ptr, UserTCB* tcb);
 
 #endif

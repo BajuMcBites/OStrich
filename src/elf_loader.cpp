@@ -4,23 +4,14 @@
 #include "heap.h"
 #include "libk.h"
 #include "ramfs.h"
+#include "event.h"
+#include "mmap.h"
 
 #define ERROR(msg...) printf(msg);
 
-#define MAP_PRIVATE 1
-#define MAP_ANONYMOUS 2
 #define MAP_FAILED (void*)-1
-#define PROT_EXEC 1
-#define PROT_READ 2
-#define PROT_WRITE 4
-#define PROT_NONE 0
 
 LoadedLibrary *g_loaded_libs = nullptr;
-
-void *mmap(void* addr, size_t length, int prot, int flags, int fd, int offset) {
-	printf("calling mmap at %x, with size %d, prot %x, flags %x, fd %d, and offset %d\n", addr, length, prot, flags, fd, offset);
-	return MAP_FAILED;
-}
 
 bool elf_check_file(Elf64_Ehdr *hdr) {
     if (!hdr) return false;
@@ -500,16 +491,15 @@ static int elf_load_stage2(Elf64_Ehdr *hdr) {
     return 0;
 }
 
-void *load_segment_mem(void* mem, Elf64_Phdr *phdr) {
+void *load_segment_mem(void* mem, Elf64_Phdr *phdr, UserTCB* tcb) {
     size_t mem_size = phdr->p_memsz;
+    off_t mem_offset = phdr->p_offset;
     size_t file_size = phdr->p_filesz;
-    off_t offset = phdr->p_offset;
     void *vaddr = (void *)(phdr->p_vaddr);
     
     // Ensure page alignment for mmap
-    size_t page_size = PAGE_SIZE;
-    off_t page_offset = offset % page_size;
-    off_t aligned_offset = offset - page_offset;
+    off_t page_offset = mem_offset % PAGE_SIZE;
+    off_t aligned_offset = mem_offset - page_offset;
     size_t aligned_size = mem_size + page_offset;
 
     // mmap the memory region with the correct protections
@@ -517,29 +507,27 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr) {
     if (phdr->p_flags & PF_R) prot |= PROT_READ;
     if (phdr->p_flags & PF_W) prot |= PROT_WRITE;
     if (phdr->p_flags & PF_X) prot |= PROT_EXEC;
-
-    void *mapped_memory = mmap(vaddr, aligned_size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (mapped_memory == MAP_FAILED) {
-        ERROR("mmap failed\n");
-        return nullptr;
-    }
-
-    // Read segment content from memory
-	K::memcpy((void*)((uint64_t)mapped_memory + page_offset), (void*)((uint64_t)mem + offset), file_size);
-
-    // Zero out the remaining part of the memory (bss segment)
-    if (mem_size > file_size) {
-        //K::memset(mapped_memory + page_offset + file_size, 0, mem_size - file_size);
-    }
-
-    return mapped_memory;
+    mmap(tcb, (uint64_t)vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS, nullptr, 0, aligned_size, 
+		[=]() {
+			load_mmapped_page(tcb, (uint64_t)vaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
+				tcb->page_table->use_page_table();
+				void* to = (void*)((uint64_t)kvaddr + page_offset);
+				void* from = (void*)((uint64_t)mem_offset + (uint64_t)mem);
+				K::memcpy(to, from, file_size);
+				if (mem_size > file_size) {
+					K::memset((void*)((uint64_t)kvaddr + page_offset + file_size), 0, mem_size - file_size);
+				}
+			});
+		}
+	);
+    return (void*)vaddr;
 }
 
 
-void* load_library(char *name);
+void* load_library(char *name, UserTCB* tcb);
 
 
-static int elf_load_stage3(Elf64_Ehdr *hdr) {
+static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
 	Elf64_Phdr *phdr = elf_pheader(hdr);
 	unsigned int i, idx;
 	for (i = 0; i < hdr->e_phnum; i++) {
@@ -549,7 +537,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 				break;
 			case PT_LOAD:
 				// load this in
-				load_segment_mem((void*) hdr, prog);
+				load_segment_mem((void*) hdr, prog, tcb);
 				break;
 			case PT_DYNAMIC: {
 				Elf64_Dyn *dyn = (Elf64_Dyn*)((uint64_t)hdr + prog->p_offset);
@@ -568,7 +556,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 					if (dyn->d_tag == DT_NEEDED) {
 						char *libname = (char*)((uint64_t)hdr + dynstr_addr + dyn->d_un.d_val);
 						printf("Loading dependency: %s\n", libname);
-						void *lib = load_library(libname);
+						void *lib = load_library(libname, tcb);
 						if (!lib) {
 							ERROR("Failed to load %s\n", libname);
 							return ELF_RELOC_ERR;
@@ -594,7 +582,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 				break;
 			case PT_PHDR: 
 				// load this in
-				load_segment_mem((void*) hdr, prog);
+				load_segment_mem((void*) hdr, prog, tcb);
 				break;
 			default:
 				ERROR("unsupported program header type.\n");
@@ -604,7 +592,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr) {
 }
 
 // load
-static inline void *elf_load_rel(Elf64_Ehdr *hdr) {
+static inline void *elf_load_rel(Elf64_Ehdr *hdr, UserTCB* tcb) {
 	int result;
 	result = elf_load_stage1(hdr);
 	if(result == ELF_RELOC_ERR) {
@@ -617,7 +605,7 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr) {
 		return nullptr;
 	}
 	// Parse the program header (if present)
-	result = elf_load_stage3(hdr);
+	result = elf_load_stage3(hdr, tcb);
 	if (result == ELF_PHDR_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -625,7 +613,7 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr) {
 	return (void *)hdr->e_entry;
 }
 
-void* load_library(char *name) {
+void* load_library(char *name, UserTCB* tcb) {
     // check if already loaded
     for (LoadedLibrary *lib = g_loaded_libs; lib; lib = lib->next) {
         if (K::strcmp(lib->name, name) == 0) {
@@ -663,13 +651,13 @@ void* load_library(char *name) {
     // relocate by stage
     elf_load_stage1(lib_hdr);
     elf_load_stage2(lib_hdr);
-    elf_load_stage3(lib_hdr);
+    elf_load_stage3(lib_hdr, tcb);
 
     return lib_hdr;
 }
 
 // load
-static inline void *elf_load_exec(Elf64_Ehdr *hdr) {
+static inline void *elf_load_exec(Elf64_Ehdr *hdr, UserTCB* tcb) {
 	printf("we are hjere now\n");
 	int result;
 	result = elf_load_stage1(hdr);
@@ -678,7 +666,7 @@ static inline void *elf_load_exec(Elf64_Ehdr *hdr) {
 		return nullptr;
 	}
 	// Parse the program header (if present)
-	result = elf_load_stage3(hdr);
+	result = elf_load_stage3(hdr, tcb);
 	if (result == ELF_PHDR_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -686,7 +674,7 @@ static inline void *elf_load_exec(Elf64_Ehdr *hdr) {
 	return (void *)hdr->e_entry;
 }
 
-void *elf_load(void* ptr) {
+void *elf_load(void* ptr, UserTCB* tcb) {
 	Elf64_Ehdr *hdr = (Elf64_Ehdr *)ptr;
 	if(!elf_check_supported(hdr)) {
 		ERROR("ELF File cannot be loaded.\n");
@@ -695,11 +683,11 @@ void *elf_load(void* ptr) {
 	printf("%d type\n", hdr->e_type);
 	switch(hdr->e_type) {
 		case ET_EXEC:
-			return elf_load_exec(hdr);
+			return elf_load_exec(hdr, tcb);
 		case ET_REL:
-			return elf_load_rel(hdr);
+			return elf_load_rel(hdr, tcb);
 		case ET_DYN:
-			return elf_load_rel(hdr);
+			return elf_load_rel(hdr, tcb);
 			// todo ... ?? ? ? ? ? ??
 			return nullptr;
 	}
