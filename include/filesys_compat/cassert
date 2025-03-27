@@ -1,0 +1,8 @@
+#ifndef __CASSERT_H
+#define __CASSERT_H
+
+#include "libk.h"
+
+#define assert(cond) K::assert(cond, "assert failed.");
+
+#endif

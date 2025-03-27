@@ -1,4 +1,4 @@
-[submodule "OStrich-filesystem"]
-	path = OStrich-filesystem
+[submodule "filesystem"]
+	path = filesystem
 	url = https://github.com/AmeyaPurao/OStrich-filesystem.git
-	branch = caleb/redesign
+	branch = caleb/redesign/integrated
