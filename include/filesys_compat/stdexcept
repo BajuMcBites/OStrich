@@ -1,0 +1,25 @@
+#ifndef __STDEXCEPT_H
+#define __STDEXCEPT_H
+
+namespace std {
+    class exception {
+    public:
+        exception() noexcept {}
+        virtual ~exception() noexcept {}
+        virtual const char* what() const noexcept { return "std::exception"; }
+    };
+
+    class runtime_error : public exception {
+    private:
+        const char* _msg;
+    
+    public:
+        explicit runtime_error(const char* what_arg) noexcept : _msg(what_arg) {}
+        
+        virtual const char* what() const noexcept override {
+            return _msg ? _msg : "std::runtime_error";
+        }
+    };
+}
+
+#endif
