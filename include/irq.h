@@ -2,6 +2,7 @@
 #define _IRQ_H
 
 void enable_interrupt_controller(void);
+void gic_init(void);
 
 extern "C" void handle_irq(void);
 extern "C" void enable_irq(void);

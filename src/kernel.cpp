@@ -19,7 +19,7 @@
 #include "vm.h"
 
 struct Stack {
-    static constexpr int BYTES = 16384;
+    static constexpr int BYTES = CORE_STACK_SIZE;
     uint64_t bytes[BYTES] __attribute__((aligned(16)));
 };
 
@@ -93,9 +93,11 @@ extern "C" void kernel_init() {
         patch_page_tables();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
-        // timer_init();
-        // enable_interrupt_controller();
-        // enable_irq();
+        gic_init();
+        timer_init();
+        enable_interrupt_controller();
+
+        enable_irq();
         printf("printf initialized!!!\n");
         init_ramfs();
         create_frame_table(frame_table_start,
@@ -115,7 +117,7 @@ extern "C" void kernel_init() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
-    K::check_stack();
+    //  K::check_stack();
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });

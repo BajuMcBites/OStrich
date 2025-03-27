@@ -9,6 +9,7 @@
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
+#define CORE_STACK_SIZE 16384
 
 //-------------
 //--event.h--

@@ -165,8 +165,8 @@ void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl) {
         coreContext[me]->pc = (uint64_t)&entry;  // I want to go to entry to start running event
                                                  // after context switch
         load_context(nullptr, coreContext[me]);  // switch to kernel task
-        // printf("PANIC post user to kernel\n");  // this should never print
-    } else  // kernel to user
+        printf("PANIC post user to kernel\n");   // this should never print
+    } else                                       // kernel to user
     {
         printf("kernel to user\n");
         cpu_switch_to(coreContext[me], &((UserTCB *)nextThread)->context);

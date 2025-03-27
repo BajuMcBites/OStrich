@@ -1,6 +1,6 @@
 # Cross compiler and tools
 # aarch64-linux-gnu- for windows, aarch64-elf- for mac
-CROSS_COMPILE = aarch64-elf-
+CROSS_COMPILE = aarch64-linux-gnu-
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++

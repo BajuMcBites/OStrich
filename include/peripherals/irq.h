@@ -15,6 +15,10 @@
 #define DISABLE_IRQS_2 (volatile unsigned int*)(PBASE + 0x0000B220)
 #define DISABLE_BASIC_IRQS (volatile unsigned int*)(PBASE + 0x0000B224)
 
+// #define GIC_BASE        0x3F000000
+#define GIC_DIST_BASE (volatile unsigned int*)(PBASE + 0x00001000)  // Distributor Base Address
+#define GIC_CPU_BASE (volatile unsigned int*)(PBASE + 0x00002000)   // CPU Interface Base Addres
+
 #define SYSTEM_TIMER_IRQ_0 (1 << 0)
 #define SYSTEM_TIMER_IRQ_1 (1 << 1)
 #define SYSTEM_TIMER_IRQ_2 (1 << 2)
