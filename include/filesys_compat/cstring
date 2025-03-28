@@ -1,0 +1,21 @@
+#ifndef __STRING_H
+#define __STRING_H
+
+#include "libk.h"
+
+// Replace function declarations with macros that point to K:: implementations
+// Will be removed once newlib is added.
+#define strlen(str) K::strlen(str)
+#define streq(left, right) K::streq(left, right)
+#define strncmp(stra, strb, n) K::strncmp(stra, strb, n)
+#define strnlen(str, n) K::strnlen(str, n)
+#define strncpy(dest, src, n) K::strncpy(dest, src, n)
+#define strntok(str, c, n) K::strntok(str, c, n)
+#define memset(buf, val, n) K::memcpy(buf, val, n)
+#define strcmp(lhs, rhs) K::strcmp(lhs, rhs)
+
+// So compiler can use memcpy to create c strings.
+// Defined in libk.
+extern "C" void* memcpy(void* dest, const void* src, int n);
+
+#endif // __STRING_H
