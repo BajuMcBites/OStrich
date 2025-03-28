@@ -69,12 +69,23 @@ int K::strncpy(char* dest, char* src, int n) {
     return index + 1;
 }
 
+extern "C" void* memcpy(void* dest, const void* src, size_t n) {
+    return K::memcpy(dest, src, n);
+}
+
 void* K::memcpy(void* dest, const void* src, int n) {
-    unsigned char* d = (unsigned char*)dest;
-    const unsigned char* s = (const unsigned char*)src;
+    void* d = dest;
+    void* s = (void*)src;
+
+    while (n >= 8) {
+        *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<uint64_t*>(s);
+        n -= 8;
+        d += 8;
+        s += 8;
+    }
 
     while (n--) {
-        *d++ = *s++;
+        *reinterpret_cast<char*>(d++) = *reinterpret_cast<char*>(s++);
     }
 
     return dest;
@@ -122,4 +133,46 @@ bool K::check_stack() {
     }
 
     return sp > stack_end;
+}
+
+/**
+ * NOTE: not the same as linux strntok, returns the start of the next token
+ *
+ * Tokenizes strings, but not the same as linux strntok, this is stateless,
+ * takes in a string, returns null if no instance of the char c in n characters
+ * or we encounter a '\0' first. returns the start of the next token if there
+ * is an occurance.
+ */
+char* K::strntok(char* str, char c, int n) {
+
+    char* cpy = str;
+    int count = 0;
+
+    while (*cpy != '\0' && *cpy != c && count < n) {
+        cpy++;
+        count++;
+    }
+
+    if (*cpy == c) {
+        *cpy = '\0';
+        cpy++;
+        return cpy;
+    }
+
+    return nullptr;
+}
+
+/**
+ * returns the min of length of the string not including the null terminator and n
+ */
+int K::strnlen(char* str, int n) {
+    char* cpy = str;
+    int len = 0;
+
+    while (*cpy != '\0' && len < n) {
+        cpy++;
+        len++;
+    }
+
+    return len;
 }

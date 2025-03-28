@@ -61,14 +61,7 @@ el1_entry:
     sub    x1, x1, x0
     bl     memzero
 
-    // Set up the stack pointer (SP) for EL1
-    mov    sp, #LOW_MEMORY
-    bl pickKernelStack
-    mov    sp, x0
-
-    //bl    wake_up_cores
-
-    bl    kernel_init
+    bl    primary_kernel_init
     b     proc_hang        // should never come here
 
 secondary:

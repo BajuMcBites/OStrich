@@ -1,6 +1,13 @@
 #ifndef _USB_DEVICE_H
 #define _USB_DEVICE_H
 #include "dwc.h"
+#include "listener.h"
+
+#define HID_PROTOCOL_KEYBOARD 0x01
+#define HID_PROTOCOL_MOUSE 0x02
+
+#define HID_SET_PROTOCOL 0x0B
+#define HID_BOOT_PROTOCOL 0x00
 
 /*
 When creating a new USB device, do this:
@@ -29,11 +36,7 @@ typedef struct {
 
 } usb_device;
 
-#define HID_PROTOCOL_KEYBOARD 0x01
-#define HID_PROTOCOL_MOUSE 0x02
-
-#define HID_SET_PROTOCOL 0x0B
-#define HID_BOOT_PROTOCOL 0x00
+extern EventHandler *event_handler;
 
 void init_usb_session(usb_session *session, usb_device *device_state, int mps);
 void iterate_config_for_hid(uint8_t *buffer, uint16_t length, usb_device *state,
@@ -42,4 +45,5 @@ int hid_device_attach(usb_session *session, usb_device_descriptor_t *device_desc
                       usb_device_config_t *device_config, usb_device *device_state,
                       int dev_bInterfaceProtocol);
 int hid_device_detach();
+void init_hid_devices();
 #endif

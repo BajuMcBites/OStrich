@@ -17,18 +17,22 @@
 #define RIGHT_ALT 6
 #define RIGHT_GUI 7
 
+struct key_event {
+    uint8_t modifiers;
+    uint8_t keycode;
+    struct key_flags {
+        bool pressed : 1;
+        bool released : 1;
+    } flags;
+};
+
 struct keyboard {
     usb_device device_state;
-    struct key_map {
-        SpinLock lock;
-        uint8_t bitmap[32];
-    } keymap;
 };
 
 extern struct keyboard usb_kbd;
 
-char get_keyboard_input();
-int keyboard_attach(usb_session *session, usb_device_descriptor_t *device_descriptor,
-                    usb_device_config_t *device_config);
-int keyboard_detach();
+uint64_t get_keyboard_input();
+void keyboard_loop();
+
 #endif

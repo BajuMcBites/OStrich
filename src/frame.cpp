@@ -31,17 +31,13 @@ void create_frame_table(uintptr_t start, int size) {
         frame_table[i].flags |= PINNED_PAGE_FLAG;
     }
 }
-
-void alloc_frame(int flags, Function<void(uint64_t)> w) {
-    LockGuard<SpinLock>{lock};
+int get_free_index_unlocked() {
     for (int i = 0; i < num_frames; i++) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)) {
-            frame_table[index].flags = flags;
-            frame_table[index].flags |= USED_PAGE_FLAG;
-            create_event<uint64_t>(w, index * PAGE_SIZE, 1);
+            int temp = index;
             index += 1;
-
-            return;
+            index %= num_frames;
+            return temp;
         }
         index += 1;
         index %= num_frames;

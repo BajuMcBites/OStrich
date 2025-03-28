@@ -346,5 +346,24 @@ class Semaphore {
     void down(Function<void()> w);
 };
 
+class Lock {
+    Semaphore sema;
+
+   public:
+    Lock() : sema(1) {
+    }
+
+    Lock(const Lock&) = delete;
+
+    void lock(Function<void()> w) {
+        sema.down(w);
+    }
+
+    void unlock() {
+        sema.up();
+    }
+};
+
+
 
 #endif

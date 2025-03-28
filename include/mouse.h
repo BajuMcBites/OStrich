@@ -8,7 +8,7 @@
 Use this function to poll the mouse and keyboard:
 void poll_keyboard_mouse() {
     while (1) {
-        usleep(100000); // 100ms
+        wait_msec(100000); // 100ms
         if (get_mouse_input()) {
             printf("mouse err\n");
         }

@@ -148,7 +148,6 @@ void usb_initialize();
 void usb_interrupt_handler();
 int get_interval_ms_for_interface(usb_session *, uint32_t);
 int usb_get_device_config_descriptor(usb_session *session, uint8_t *buffer, uint16_t length = 18);
-void usleep(unsigned int microseconds);
 int usb_handle_transfer(usb_session *, usb_setup_packet_t *, uint8_t *, int);
 int usb_interrupt_in_transfer(usb_session *session, uint8_t *buffer, int length);
 void usb_irq_handler();

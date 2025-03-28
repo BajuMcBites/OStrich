@@ -4,10 +4,12 @@
 #include "framebuffer.h"
 #include "keyboard.h"
 #include "libk.h"
+#include "listener.h"
 #include "peripherals/timer.h"
 #include "printf.h"
 #include "rand.h"
 #include "timer.h"
+#include "peripherals/usb_hid_keys.h"
 
 int fb_pitch;
 int fb_size;
@@ -19,6 +21,8 @@ uint8_t screen[WIDTH / SCALE][HEIGHT / SCALE];
 uint16_t enqueue_ptr = 0;
 uint16_t dequeue_ptr = 0;
 undo undo_queue[QUEUE_SIZE];
+
+game_state state;
 
 int enqueue() {
     return (enqueue_ptr++ % QUEUE_SIZE);
@@ -34,15 +38,6 @@ int get_queue_size() {
         adj += QUEUE_SIZE;
     }
     return (enqueue_ptr + adj) - (dequeue_ptr) + 1;
-}
-
-game_state init() {
-    return {.snake = {.cur_length = 0,
-                      .max_length = 3,
-                      .x = (WIDTH / (2 * SCALE)),
-                      .y = (HEIGHT / (2 * SCALE)),
-                      .direction = DIRECTION_RIGHT},
-            .food = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}}};
 }
 
 int tick(game_state *state) {
@@ -119,8 +114,46 @@ int render(game_state *state) {
     return 0;
 }
 
+void snake_on_key_press(struct key_event *event) {
+    if(event->flags.released) return;
+
+    if (event->keycode == KEY_W) {
+        state.snake.direction = DIRECTION_UP;
+    } else if(event->keycode == KEY_D) {
+        state.snake.direction = DIRECTION_RIGHT;
+    } else if(event->keycode == KEY_S) {
+        state.snake.direction = DIRECTION_DOWN;
+    } else if(event->keycode == KEY_A) {
+        state.snake.direction = DIRECTION_LEFT;
+    }
+}
+
+void init() {
+    state.snake = {.cur_length = 0,
+                       .max_length = 3,
+                       .x = (WIDTH / (2 * SCALE)),
+                       .y = (HEIGHT / (2 * SCALE)),
+                       .direction = DIRECTION_RIGHT};
+    state.food = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}};
+    
+    struct Listener<struct key_event *> *listener =
+        (Listener<struct key_event *> *)kmalloc(sizeof(Listener<struct key_event *>));
+
+    listener->handler = (void (*)(key_event *))&snake_on_key_press;
+
+    event_handler->register_listener(KEYBOARD_EVENT, listener);
+    state._listener_id = listener->_id;
+    fb_clear(0xFFFFFFFF);
+}
+
+void reset() {
+    event_handler->unregister_listener(KEYBOARD_EVENT, state._listener_id);
+    fb_clear(0xFFFFFFFF);
+    init_snake();
+}
+
 void init_snake() {
-    game_state state = init();
+    init();
     fb_pitch = fb_get()->pitch >> 2;
     fb_size = fb_get()->size;
     fb_buffer = (uint32_t *)fb_get()->buffer;
@@ -129,21 +162,9 @@ void init_snake() {
         if (tick(&state) || render(&state)) {
             break;
         }
-        char key = get_keyboard_input();
-        uint8_t cur_dir = state.snake.direction;
-        if ((key == 'W' || key == 'w') && cur_dir != DIRECTION_DOWN) {
-            state.snake.direction = DIRECTION_UP;
-        } else if ((key == 'D' || key == 'd') && cur_dir != DIRECTION_LEFT) {
-            state.snake.direction = DIRECTION_RIGHT;
-        } else if ((key == 'S' || key == 's') && cur_dir != DIRECTION_UP) {
-            state.snake.direction = DIRECTION_DOWN;
-        } else if ((key == 'A' || key == 'a') && cur_dir != DIRECTION_RIGHT) {
-            state.snake.direction = DIRECTION_LEFT;
-        }
-        usleep(100000 / FPS);
+        wait_msec(1000000 / FPS);
     }
-    fb_clear(0xFFFFFFFF);
-    init_snake();
+    reset();
 }
 
 int main() {
