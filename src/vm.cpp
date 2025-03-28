@@ -11,6 +11,8 @@ uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PMD[512] __attribute__((aligned(4096), section(".paging")));
 
+PageCache* page_cache;
+
 /**
  * used for setting up kernel memory for devices
  */
@@ -323,3 +325,134 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
     attribute &= (~0xFFFFFFFFFF000L);  // zero out middle bits as sanity check
     return attribute;
 }
+
+void add_local(PageLocation* location, LocalPageLocation* local) {
+
+    location->ref_count++;
+
+    if (location->users == nullptr) {
+        location->users = local;
+        local->prev = nullptr;
+        local->next = nullptr;
+        return;
+    }
+
+    LocalPageLocation* n = location->users;
+    int count = 2;
+
+    while (count < location->ref_count) {
+        count++;
+        n = n->next;
+    }
+
+    n->next = local;
+    local->prev = n;
+}
+
+void remove_local(PageLocation* location, LocalPageLocation* local) {
+    
+    location->ref_count--;
+
+    LocalPageLocation* prev = local->prev;
+    LocalPageLocation* next = local->next;
+
+    if (prev == nullptr) {
+        location->users = next;
+    } else {
+        prev->next = next;
+    }
+
+    if (next != nullptr) {
+        next->prev = prev;
+    }
+}
+
+
+/**
+ * gets or adds a page location from/to the page cache
+ * 
+ * takes in file name offset and id and finds the matching page in the page or 
+ * creates a new one and inserts it into the page cache.
+ */
+void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local, Function<void(PageLocation*)> w) {
+    bool file_backed = file != nullptr;
+    bool unbacked = offset == 1;
+
+    lock.lock([=]() {
+        PCKey key(file, offset, id); 
+        PageLocation* location = map.get(key);
+        if (location == nullptr) {
+
+            location = new PageLocation;
+            location->ref_count = 0;
+            location->present = false;
+
+            if (file_backed) {
+                location->location_type = FILESYSTEM;
+                location->location.filesystem = new FileLocation(file, offset);
+            } else {
+                if (unbacked) {
+                    location->location_type = UNBACKED;
+                    location->location.swap = new SwapLocation(id);
+                } else {
+                    location->location_type = SWAP;
+                    location->location.swap = new SwapLocation(id);
+                }
+            }
+            map.put(key, location);
+        }
+        add_local(location, local);
+        local->location = location;
+        create_event(w, location);
+        lock.unlock();
+    });
+}
+
+
+void PageCache::remove(LocalPageLocation* local) {
+    lock.lock([=]() {
+        PageLocation* location = local->location;
+
+        remove_local(location, local);
+
+        if (location->ref_count == 0) {
+
+            if (location->location_type == FILESYSTEM) {
+                map.remove(PCKey(location->location.filesystem->file, location->location.filesystem->offset, 0));
+            } else if (location->location_type == UNBACKED) {
+                map.remove(PCKey(nullptr, 1, location->location.swap->swap_id));
+            } else if (location->location_type == SWAP) {
+                map.remove(PCKey(nullptr, 0, location->location.swap->swap_id));
+            }
+
+            delete location;
+        }
+
+        lock.unlock();
+    });
+}
+
+void init_page_cache() {
+    page_cache = new PageCache;
+}
+
+
+PageLocation::~PageLocation() {
+    if (location_type == FILESYSTEM) {
+        delete location.filesystem;
+    } else if (location_type == SWAP) {
+        delete location.swap;
+    }
+
+    if (present) {
+        unpin_frame(paddr);
+        free_frame(paddr);
+        /* todo: send signal to swap that the space is no longer needed */
+    }
+}
+
+
+
+
+
+

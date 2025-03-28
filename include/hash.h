@@ -1,7 +1,45 @@
 #ifndef _HASH_H
 #define _HASH_H
 
+#define FNV_OFFSET_BASIS 14695981039346656037ULL
+#define FNV_PRIME 1099511628211ULL
+
+#define HASH_COMBINE_BASIS 0x9e3779b97f4a7c15ULL
+
 #include "heap.h"
+#include "libk.h"
+
+inline uint64_t uint64_t_hash(uint64_t elem) {
+    elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
+    elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
+    elem = (elem >> 16) ^ elem;
+    return elem;
+}
+
+inline bool uint64_t_equals(uint64_t elem1, uint64_t elem2) {
+    return elem1 == elem2;
+}
+
+/*
+static uint64_t string_hash(char* str) {
+    unsigned long long hash = FNV_OFFSET_BASIS;
+    while (*str) {
+        hash ^= (unsigned char)*str++;
+        hash *= FNV_PRIME;
+    }
+    return (uint64_t) hash;
+}
+
+static bool string_equals(char* stra, char* strb) {
+    return K::strncmp(stra, strb, PAGE_SIZE) == 0;
+}
+*/
+
+
+inline uint64_t hash_combine(uint64_t h1, uint64_t h2) {
+    return h1 ^ (h2 + HASH_COMBINE_BASIS + (h1 << 6) + (h1 >> 2));
+}
+
 
 template <typename K, typename T>
 struct HashNode {

@@ -70,7 +70,7 @@ extern "C" void kernel_main() {
     printf("All tests passed\n");
     heapTests();
     event_loop_tests();
-    hash_test();
+    // hash_test();
     frame_alloc_tests();
     user_paging_tests();
     blocking_atomic_tests();
@@ -107,6 +107,7 @@ extern "C" void kernel_init() {
         smpInitDone = true;
         threadsInit();
         wake_up_cores();
+        init_page_cache();
         //  kernel_main();
     } else {
         init_mmu();

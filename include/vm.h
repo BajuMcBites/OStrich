@@ -77,6 +77,8 @@
 #include "hash.h"
 #include "libk.h"
 #include "stdint.h"
+#include "printf.h"
+#include "utils.h"
 
 extern "C" void create_page_tables();
 extern "C" void init_mmu();
@@ -137,25 +139,22 @@ enum PageSharingMode { SHARED, PRIVATE };
 
 struct SwapLocation {
     uint64_t swap_id;
-    // uint64_t hw_id;
+
+    SwapLocation(uint64_t id) {
+        swap_id = id;
+    }
 };
 
 struct FileLocation {
-    char* file_name;
+    struct file* file;
     uint64_t offset;
 
-    FileLocation(char* name, uint64_t off) {
-        int path_length = K::strnlen(name, PATH_MAX - 1);
-        file_name = (char*)kmalloc(path_length + 1);
-        K::strncpy(file_name, name, PATH_MAX);
-
+    FileLocation(struct file* f, uint64_t off) {
+        file = f;
         offset = off;
     }
-
-    ~FileLocation() {
-        kfree(file_name);
-    }
 };
+
 
 /**
  * Lock Ordering:
@@ -163,13 +162,19 @@ struct FileLocation {
  * (1) Supplemental Page Table Lock - protects all child LocalPageLocation and
  *                  ONLY the pointers to the PageLocation
  *
- * (2) Page Location Lock - protects all PageLocation data structures and all
- *                          child LocalPageLocation data structures, except
- *                          child's pointer to the page location.
+ * (2) Page Location Lock - protects present, paddr, and owned PageLocation data
+ *                          structures
+ * 
+ * (3) Page Cache Lock - Protects all location information except on first 
+ *                       initialization which is done in mmap_page for a PageLocation and
+ *                       all the prev/next refs of LocalPageLocations. This location information
+ *                       should never be changed.
  *
  * Never change the PageLocation* of a LocalPageLocation unless you have its
  *  parent Supplemental Page Table Lock
  */
+
+ struct UserTCB;
 
 /**
  * These are local to a processes Supplemental Page Table, holds the specific
@@ -179,10 +184,12 @@ struct LocalPageLocation {
     // Lock location_lock; not needed?
     int perm;
     PageSharingMode sharing_mode;
+    UserTCB* tcb;
     // uint64_t tid; some way to know which process out of the PageLocation->users is the one we
     // faulted on
     PageLocation* location;
     LocalPageLocation* next;
+    LocalPageLocation* prev;
 };
 
 /**
@@ -205,25 +212,8 @@ struct PageLocation {
         FileLocation* filesystem;
     } location;
 
-    ~PageLocation() {
-        if (location_type == FILESYSTEM) {
-            delete location.filesystem;
-        } else if (location_type == SWAP) {
-            delete location.swap;
-        }
-    }
+    ~PageLocation();
 };
-
-static uint64_t supplemental_page_table_hash(uint64_t elem) {
-    elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
-    elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
-    elem = (elem >> 16) ^ elem;
-    return elem;
-}
-
-static bool supplemental_page_table_equals(uint64_t elem1, uint64_t elem2) {
-    return elem1 == elem2;
-}
 
 class SupplementalPageTable {
    public:
@@ -231,7 +221,7 @@ class SupplementalPageTable {
     Lock lock;  // only lock the map with this, Page location and LocalPageLocation are locked
                 // locally;
 
-    SupplementalPageTable() : map(supplemental_page_table_hash, supplemental_page_table_equals, 100) {
+    SupplementalPageTable() : map(uint64_t_hash, uint64_t_equals, 100) {
     }
 
     ~SupplementalPageTable() {
@@ -241,6 +231,74 @@ class SupplementalPageTable {
     LocalPageLocation* vaddr_mapping(uint64_t vaddr);
     void map_vaddr(uint64_t vaddr, LocalPageLocation* local);
 };
+
+struct PCKey {
+    struct file* file;
+    uint64_t offset; // 0 is swap, 1 is unbacked
+    uint64_t id; // swap or unbacked id
+
+    PCKey(struct file* f, uint64_t off, uint64_t _id) {
+        file = f;
+        offset = off;
+        id = _id;
+    }
+};
+
+static uint64_t pc_key_hash(PCKey key) {
+    if (key.file == nullptr) {
+        return hash_combine(uint64_t_hash(key.offset),  uint64_t_hash(key.id));
+    }
+
+    printf("Core %d\n", getCoreID());
+    printf("File: %X\n", key.file);
+    printf("inode %X\n",key.file->inode);
+    printf("inum %d\n", key.file->inode->inode_number);
+
+    return hash_combine(hash_combine(uint64_t_hash(key.file->inode->inode_number), uint64_t_hash(key.offset)),  uint64_t_hash(key.id));
+}
+
+static bool pc_key_equals(PCKey keya, PCKey keyb) {
+    printf("start eq\n");
+    if (keya.file == nullptr && keyb.file != nullptr) {
+        printf("end eq\n");
+
+        return false;
+    } else if (keya.file != nullptr && keyb.file == nullptr) {
+        printf("end eq\n");
+
+        return false;
+    }
+
+    if (keya.file == nullptr) {
+        printf("end eq\n");
+
+        return uint64_t_equals(keya.offset, keyb.offset) && uint64_t_equals(keya.id, keyb.id);
+    }
+
+    printf("end eq\n");
+
+    return uint64_t_equals(keya.file->inode->inode_number, keyb.file->inode->inode_number) && uint64_t_equals(keya.offset, keyb.offset);
+}
+
+
+class PageCache {
+    public:
+    Lock lock;
+    HashMap<PCKey, PageLocation*> map;
+
+    PageCache() 
+        : map(pc_key_hash, pc_key_equals, 100) {
+    }
+
+    ~PageCache() {
+    }
+
+    void get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local, Function<void(PageLocation*)> w);
+
+    void remove(LocalPageLocation* local);
+};
+
+void init_page_cache();
 
 PageTableLevel* descriptor_to_vaddr(uint64_t descriptor);
 uint64_t descriptor_to_paddr(uint64_t descriptor);

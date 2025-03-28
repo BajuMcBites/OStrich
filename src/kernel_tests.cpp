@@ -237,25 +237,30 @@ void mmap_test_file() {
 
     uint64_t uvaddr = 0x9000;
 
-    mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, "/dev/ramfs/test1.txt", 0,
-         PAGE_SIZE * 3 + 46, [=]() {
-             load_mmapped_page(tcb, uvaddr, [=](uint64_t kvaddr) {
-                 tcb->page_table->use_page_table();
-                 char* kbuf = (char*)kvaddr;
-                 char* ubuf = (char*)uvaddr;
+    kfopen("/dev/ramfs/test1.txt", [=](file* file) {
+        printf("we opend the file\n");
+        mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0,
+            PAGE_SIZE * 3 + 46, [=]() {
+                load_mmapped_page(tcb, uvaddr, [=](uint64_t kvaddr) {
+                    tcb->page_table->use_page_table();
+                    char* kbuf = (char*)kvaddr;
+                    char* ubuf = (char*)uvaddr;
+   
+                    printf("file mmap test: %s\n", kbuf);
+   
+                    K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
+                                         60) == 0,
+                              "no reserve mmap test failed\n");
+                    K::assert(K::strncmp(ubuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
+                                         60) == 0,
+                              "no reserve mmap test failed\n");
+   
+                    delete tcb;
+                });
+            });
+    });
 
-                 printf("file mmap test: %s\n", kbuf);
-
-                 K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
-                                      60) == 0,
-                           "no reserve mmap test failed\n");
-                 K::assert(K::strncmp(ubuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
-                                      60) == 0,
-                           "no reserve mmap test failed\n");
-
-                 delete tcb;
-             });
-         });
+    
 }
 
 void mmap_test_no_reserve() {
@@ -265,7 +270,6 @@ void mmap_test_no_reserve() {
     });
 
     uint64_t uvaddr = 0x9000;
-
     mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
          0, PAGE_SIZE * 3 + 46, [=]() {
              load_mmapped_page(tcb, uvaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
