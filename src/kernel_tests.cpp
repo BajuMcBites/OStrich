@@ -375,8 +375,8 @@ void ramfs_test_basic() {
 
 void ramfs_big_file() {
     int test2_index = get_ramfs_index("test2.txt");
-    char buffer[4096];
-    ramfs_read(buffer, 24, 4096, test2_index);
+    char buffer[8192];
+    ramfs_read(buffer, 24, 8192, test2_index);
     K::assert(
         K::strncmp(buffer,
                    "legendaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -464,13 +464,15 @@ void blocking_atomic_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("temp.elf");
+    int elf_index = get_ramfs_index("calc.elf");
     UserTCB* tcb = new UserTCB([]() {
         /* do nothing shouldnt ever be called */
         K::assert(false, "this shouldn't be called");
     });
-    char buffer[70393];
-    ramfs_read(buffer, 0, 70392, elf_index);
+    const int sz = ramfs_size(elf_index);
+    char buffer[sz];
+    printf("%d is size\n", sz);
+    ramfs_read(buffer, 0, sz, elf_index);
     elf_load((void*)buffer, tcb);
     printf("end elf_load tests\n");
 }

@@ -498,8 +498,8 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, UserTCB* tcb) {
     void *vaddr = (void *)(phdr->p_vaddr);
     
     // Ensure page alignment for mmap
-    off_t page_offset = mem_offset % PAGE_SIZE;
-    off_t aligned_offset = mem_offset - page_offset;
+    off_t page_offset = (uint64_t)vaddr % PAGE_SIZE;
+    void* aligned_vaddr = (void*)((uint64_t)vaddr - page_offset);
     size_t aligned_size = mem_size + page_offset;
 
     // mmap the memory region with the correct protections
@@ -507,12 +507,16 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, UserTCB* tcb) {
     if (phdr->p_flags & PF_R) prot |= PROT_READ;
     if (phdr->p_flags & PF_W) prot |= PROT_WRITE;
     if (phdr->p_flags & PF_X) prot |= PROT_EXEC;
-    mmap(tcb, (uint64_t)vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS, nullptr, 0, aligned_size, 
+	printf("vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
+	void* to = (void*)((uint64_t)aligned_vaddr + page_offset);
+	void* from = (void*)(mem_offset);
+	printf("mapping 0x%x, from memory 0x%x\n", to, from);
+    mmap(tcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
 		[=]() {
-			load_mmapped_page(tcb, (uint64_t)vaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
+			load_mmapped_page(tcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
 				tcb->page_table->use_page_table();
 				void* to = (void*)((uint64_t)kvaddr + page_offset);
-				void* from = (void*)((uint64_t)mem_offset + (uint64_t)mem);
+				void* from = (void*)((uint64_t)mem + mem_offset);
 				K::memcpy(to, from, file_size);
 				if (mem_size > file_size) {
 					K::memset((void*)((uint64_t)kvaddr + page_offset + file_size), 0, mem_size - file_size);
@@ -581,8 +585,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
 				// unnecessary..?
 				break;
 			case PT_PHDR: 
-				// load this in
-				load_segment_mem((void*) hdr, prog, tcb);
+				// load_segment_mem((void*) hdr, prog, tcb);
 				break;
 			default:
 				ERROR("unsupported program header type.\n");
@@ -676,6 +679,7 @@ static inline void *elf_load_exec(Elf64_Ehdr *hdr, UserTCB* tcb) {
 
 void *elf_load(void* ptr, UserTCB* tcb) {
 	Elf64_Ehdr *hdr = (Elf64_Ehdr *)ptr;
+	printf("YEA WE HERE\n");
 	if(!elf_check_supported(hdr)) {
 		ERROR("ELF File cannot be loaded.\n");
 		return nullptr;
@@ -687,6 +691,7 @@ void *elf_load(void* ptr, UserTCB* tcb) {
 		case ET_REL:
 			return elf_load_rel(hdr, tcb);
 		case ET_DYN:
+			printf("YEA WE HERE\n");
 			return elf_load_rel(hdr, tcb);
 			// todo ... ?? ? ? ? ? ??
 			return nullptr;

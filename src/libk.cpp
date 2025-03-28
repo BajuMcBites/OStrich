@@ -74,18 +74,11 @@ extern "C" void* memcpy(void* dest, const void* src, int n) {
 }
 
 void* K::memcpy(void* dest, const void* src, int n) {
-    void* d = dest;
-    void* s = (void*)src;
-
-    while (n >= 8) {
-        *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<uint64_t*>(s);
-        n -= 8;
-        d += 8;
-        s += 8;
-    }
+    unsigned char* d = (unsigned char*)dest;
+    const unsigned char* s = (const unsigned char*)src;
 
     while (n--) {
-        *reinterpret_cast<char*>(d++) = *reinterpret_cast<char*>(s++);
+        *d++ = *s++;
     }
 
     return dest;
