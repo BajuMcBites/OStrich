@@ -24,7 +24,10 @@ class EventHandler {
     }
 
     ~EventHandler() {
-        delete &this->map;
+        this->map->for_each([](Queue<Listener<void*>> *queue) {
+            delete queue;
+        });
+        delete this->map;
     }
 
     template <typename... Args>
@@ -32,10 +35,10 @@ class EventHandler {
         static int listener_id = 0;
         if (this->map->get(event_id) == nullptr) {
             Queue<Listener<void *>> *q =
-                (Queue<Listener<void *>> *)kmalloc(sizeof(Queue<Listener<void>>));
+            (Queue<Listener<void *>> *)kmalloc(sizeof(Queue<Listener<void>>));
             this->map->put(event_id, q);
         }
-        listener->_id = listener_id++;
+        listener->_id = listener_id ++;
         this->map->get(event_id)->add(reinterpret_cast<Listener<void *> *>(listener));
     }
 
@@ -60,5 +63,9 @@ class EventHandler {
    protected:
     HashMap<Queue<Listener<void *>>*> *map;
 };
+
+extern EventHandler *event_handler;
+
+void event_listener_init();
 
 #endif

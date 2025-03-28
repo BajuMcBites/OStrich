@@ -2,6 +2,7 @@
 #define _SNAKE_H
 
 #include <stdint.h>
+#include "keyboard.h"
 
 #define SCALE 16
 #define WIDTH 680
@@ -29,6 +30,8 @@ struct undo {
 } __attribute__((packed));
 
 typedef struct {
+    Listener<struct key_event *> key_listener;
+
     // snake info
     struct snake_t {
         uint8_t cur_length;
@@ -36,6 +39,7 @@ typedef struct {
         uint8_t x;
         uint8_t y;
         uint8_t direction;
+        uint8_t prior_direction;
     } __attribute__((packed)) snake;
 
     // food info
@@ -47,7 +51,8 @@ typedef struct {
             bool generate : 1;
         } __attribute__((packed)) flags;
     } __attribute__((packed)) food;
-    int _listener_id;
+    
+
 } __attribute__((packed)) game_state;
 
 void init_snake();

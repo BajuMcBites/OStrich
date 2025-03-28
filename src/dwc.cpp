@@ -583,7 +583,6 @@ void usb_scan_ports() {
 }
 
 void usb_initialize() {
-    init_hid_devices();
 
     usb_reset_controller();
 

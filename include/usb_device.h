@@ -36,7 +36,6 @@ typedef struct {
 
 } usb_device;
 
-extern EventHandler *event_handler;
 
 void init_usb_session(usb_session *session, usb_device *device_state, int mps);
 void iterate_config_for_hid(uint8_t *buffer, uint16_t length, usb_device *state,
@@ -45,5 +44,5 @@ int hid_device_attach(usb_session *session, usb_device_descriptor_t *device_desc
                       usb_device_config_t *device_config, usb_device *device_state,
                       int dev_bInterfaceProtocol);
 int hid_device_detach();
-void init_hid_devices();
+
 #endif

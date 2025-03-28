@@ -25,6 +25,7 @@
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
+#include "listener.h"
 
 void mergeCores();
 
@@ -103,6 +104,7 @@ void mergeCores();
 
 extern "C" void secondary_kernel_init() {
     init_mmu();
+    event_listener_init();
     mergeCores();
 }
 
@@ -122,6 +124,7 @@ extern "C" void primary_kernel_init() {
         printf("Framebuffer initialization failed!\n");
     }
 
+
     // if (sd_init() == 0) {
     //     printf("SD card initialized successfully!\n");
     // } else {
@@ -135,6 +138,7 @@ extern "C" void primary_kernel_init() {
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
     uinit((void *)HEAP_START, HEAP_SIZE);
+    event_listener_init();
 
     usb_initialize();
 

@@ -6,7 +6,7 @@
 #include "utils.h"
 
 void enable_interrupt_controller() {
-    put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1 | (1 << 9));
+    put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
 }
 
 extern "C" void handle_irq(void) {
@@ -15,9 +15,6 @@ extern "C" void handle_irq(void) {
     switch (irq) {
         case (SYSTEM_TIMER_IRQ_1):
             handle_timer_irq();
-            break;
-        case (1 << 9):
-            printf("USB interrupt!\n");
             break;
         default:
             printf("Unknown pending irq: %x\r\n", irq);
