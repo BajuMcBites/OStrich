@@ -19,3 +19,7 @@ rearm_timer:
     mov x0, #0x3                   // Enable timer and interrupt
     msr CNTP_CTL_EL0, x0           // Enable the timer
     ret
+
+.globl gic_init
+gic_init:
+    ret
