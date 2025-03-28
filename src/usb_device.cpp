@@ -1,10 +1,12 @@
 #include "usb_device.h"
 
 #include "dwc.h"
+#include "keyboard.h"
 #include "libk.h"
 #include "peripherals/dwc.h"
 #include "printf.h"
 
+EventHandler *event_handler;
 int CHANNEL_NUM = 2;
 
 void init_usb_session(usb_session *session, usb_device *device_state) {
@@ -88,9 +90,37 @@ int hid_device_attach(usb_session *session, usb_device_descriptor_t *device_desc
         return 1;
     }
 
+    printf("detected HID device!\n");
+
     return 0;
 }
 
 int hid_device_dettach(usb_device *device_state) {
     device_state->connected = false;
+}
+
+#include "event.h"
+
+// void handle_key_event(key_event *event) {
+//     printf("handling keyboard event! modifiers = 0x%08x, keycode = 0x%08x\n", event->modifiers,
+//            event->keycode);
+// }
+
+void init_hid_devices() {
+    printf("init_hid_devices\n");
+    event_handler = new EventHandler{};
+
+    // struct Listener<struct key_event *> *listener =
+    //     (Listener<struct key_event *> *)kmalloc(sizeof(Listener<struct key_event *>));
+
+    // listener->handler = (void (*)(key_event *))handle_key_event;
+
+    // struct key_event event;
+    // event.modifiers = 0x69;
+    // event.keycode = 0x96;
+
+    // // listener->handler(&event);
+
+    // eventHandler->register_listener(KEYBOARD_EVENT, listener);
+    // eventHandler->handle_event(KEYBOARD_EVENT, &event);
 }

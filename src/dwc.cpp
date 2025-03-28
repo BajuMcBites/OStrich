@@ -30,9 +30,9 @@ void usb_reset_controller() {
 
 void usb_reset_port(volatile uint32_t *port) {
     *port |= USB_HPRT_PRT_RST;
-    usleep(50);
+    wait_msec(50);
     *port &= ~USB_HPRT_PRT_RST;
-    usleep(50);
+    wait_msec(50);
 }
 
 int handle_transaction(usb_session *session, uint8_t stage) {
@@ -560,6 +560,8 @@ void usb_scan_ports() {
 }
 
 void usb_initialize() {
+    init_hid_devices();
+
     usb_reset_controller();
 
     hubs.connected[0].num_ports = 1;

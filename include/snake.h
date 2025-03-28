@@ -47,6 +47,7 @@ typedef struct {
             bool generate : 1;
         } __attribute__((packed)) flags;
     } __attribute__((packed)) food;
+    int _listener_id;
 } __attribute__((packed)) game_state;
 
 void init_snake();

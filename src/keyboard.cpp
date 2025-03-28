@@ -1,5 +1,6 @@
 #include "keyboard.h"
 
+#include "event.h"
 #include "peripherals/dwc.h"
 #include "printf.h"
 #include "usb_device.h"
@@ -7,65 +8,79 @@
 
 keyboard kbd;
 
-char keycode_to_ascii(uint8_t keycode, int shift) {
-    if (keycode < 128) {
-        if (keycode == 0x28) {
-            return '\n';
-        } else if (keycode == 0x2C) {
-            return ' ';
-        } else if (keycode >= 0x4 && keycode <= 0x1D) {
-            return shift ? 'A' + (keycode - 0x4) : 'a' + (keycode - 0x4);
-        } else if (keycode >= 0x1E && keycode <= 0x27) {
-            return '1' + (keycode - 0x1E);
-        }
+uint64_t get_keyboard_input() {
+    if (!usb_kbd.device_state.discovered || !usb_kbd.device_state.connected) {
+        return '\0';
     }
-    return '\0';
-}
-
-// uint8_t handle_keycode(uint8_t modifiers, uint8_t code) {
-//     keyboard::key_map *keymap = kbd.key_map;
-//     keymap.lock.lock();
-
-//     uint8_t index = code >> 3;
-//     uint8_t offset = code % 8;
-
-//     uint8_t old = keymap->bitmap[index] & (1 << offset);
-//     if (old) {
-//         // status = pressed, changing to released
-//         keymap->bitmap[index] &= ~(1 << offset);
-//     } else {
-//         // status = released, changing to pressed
-//         keymap->bitmap[index] |= (1 << offset);
-//     }
-
-//     keymap.lock.unlock();
-//     return !old;
-// }
-
-char process_keyboard_report(uint8_t *report, int len) {
-    if (len < 8) return '\0';  // Standard report is 8 bytes
-
-    uint8_t modifier = report[0];
-    uint8_t shift = (modifier & (LEFT_SHIFT | RIGHT_SHIFT)) ? 1 : 0;
-
-    char random = '\0';
-    for (int i = 2; i < 8; i++) {
-        uint8_t keycode = report[i];
-
-        if (keycode < 0x4 || keycode > 0x1D) continue;
-        // fix by keeping track of all key state, this just so happens to work
-        random = keycode_to_ascii(keycode, shift);
-    }
-    return random;
-}
-
-char get_keyboard_input() {
-    if (!kbd.device_state.discovered || !kbd.device_state.connected) return '\0';
 
     uint8_t buffer[8];
     usb_session session;
-    init_usb_session(&session, &kbd.device_state);
+    init_usb_session(&session, &usb_kbd.device_state, usb_kbd.device_state.mps);
 
-    if (usb_interrupt_in_transfer(&session, buffer, 8)) return '\0';
-    return process_keyboard_report(buffer, 8);
+    if (usb_interrupt_in_transfer(&session, buffer, 8)) {
+        return '\0';
+    }
+    return *((uint64_t *)buffer);
+}
+
+void keyboard_loop() {
+    uint64_t input, prior;
+    uint8_t keyboard_state[256];
+    for(int i = 0; i < 256; i++) keyboard_state[i] = 0x00;
+
+    struct key_event events[12];
+    uint8_t event_cnt = 0;
+    uint8_t modifiers, prior_modifiers, keycode;
+
+    while (1) {
+        input = get_keyboard_input();
+        modifiers = input & 0xFF;
+
+        if(input != 0x00) {
+            for (int i = 2; i < 8; i++) {
+                keycode = (input >> (i << 3)) & 0xFF;
+                if(keycode != 0x00) {
+                    if(keyboard_state[keycode] == 0) {
+                        keyboard_state[keycode] = 0b01;
+
+                        events[event_cnt].modifiers = modifiers;
+                        events[event_cnt].keycode = keycode;
+                        events[event_cnt].flags.pressed = true;
+                        events[event_cnt].flags.released = false;
+
+                        event_cnt++;
+                    } else {
+                        keyboard_state[keycode] |= 0b10;
+                    }
+                } 
+            }
+        }
+        if(prior != 0x00) {
+            for(int i = 2; i < 8; i++) {
+                keycode = (prior >> (i << 3)) & 0xFF;
+                if(keycode != 0x00) {
+                    if((keyboard_state[keycode] & 0b11) == 0b01){
+                        keyboard_state[keycode] = 0b00;
+
+                        events[event_cnt].modifiers = prior_modifiers;
+                        events[event_cnt].keycode = keycode;
+                        events[event_cnt].flags.pressed = false;
+                        events[event_cnt].flags.released = true;
+
+                        event_cnt++;
+
+                    }
+                    keyboard_state[keycode] &= ~0b10;
+                }
+            }
+        }
+
+        for(int i = 0; i < event_cnt; i++){
+            event_handler->handle_event(KEYBOARD_EVENT, &events[i]);
+        }
+
+        prior = input;
+        prior_modifiers = modifiers;
+        event_cnt = 0;
+    }
 }
