@@ -1,5 +1,6 @@
 #include "peripherals/irq.h"
 
+#include "dwc.h"
 #include "printf.h"
 #include "timer.h"
 #include "utils.h"
@@ -10,6 +11,7 @@ void enable_interrupt_controller() {
 
 extern "C" void handle_irq(void) {
     unsigned int irq = get32(IRQ_PENDING_1);
+
     switch (irq) {
         case (SYSTEM_TIMER_IRQ_1):
             handle_timer_irq();

@@ -1,4 +1,5 @@
 #include "core.h"
+#include "dwc.h"
 #include "dcache.h"
 #include "event.h"
 #include "fork.h"
@@ -7,6 +8,7 @@
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
+#include "keyboard.h"
 #include "libk.h"
 #include "mm.h"
 #include "partition_tests.h"
@@ -15,6 +17,7 @@
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "snake.h"
 #include "sdio.h"
 #include "sdio_tests.h"
 #include "stdint.h"
@@ -22,6 +25,7 @@
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
+#include "listener.h"
 
 void mergeCores();
 
@@ -96,8 +100,11 @@ extern char __heap_end[];
 
 static Atomic<int> coresAwake(0);
 
+void mergeCores();
+
 extern "C" void secondary_kernel_init() {
     init_mmu();
+    event_listener_init();
     mergeCores();
 }
 
@@ -117,19 +124,24 @@ extern "C" void primary_kernel_init() {
         printf("Framebuffer initialization failed!\n");
     }
 
-    if (sd_init() == 0) {
-        printf("SD card initialized successfully!\n");
-    } else {
-        printf("SD card initialization failed!\n");
-    }
+
+    // if (sd_init() == 0) {
+    //     printf("SD card initialized successfully!\n");
+    // } else {
+    //     printf("SD card initialization failed!\n");
+    // }
     // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
     // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
     // of 0x96000021)
-    init_ramfs();
+    // init_ramfs();
     create_frame_table(frame_table_start,
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
     uinit((void *)HEAP_START, HEAP_SIZE);
+    event_listener_init();
+
+    usb_initialize();
+
     smpInitDone = true;
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
@@ -144,11 +156,18 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    if (number_awake == CORE_COUNT) {
-        create_event([] { kernel_main(); });
+    // if (number_awake == CORE_COUNT) {
+        // create_event([] { kernel_main(); });
 
         // user_thread([]
         //             { printf("i do nothing2\n"); });
+    // }
+    if(getCoreID() == 0){
+        printf("init_snake();\n");
+        create_event(init_snake);
+    } else if(getCoreID() == 1) {
+        printf("keyboard_loop();\n");
+        create_event(keyboard_loop);
     }
     stop();
     printf("PANIC I should not go here\n");

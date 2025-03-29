@@ -60,7 +60,6 @@ class Function<R(Args...)> {
     // Call operator
     R operator()(Args... args) {
         if (callable) return callable->call(args...);
-        return;
     }
 
     // Destructor

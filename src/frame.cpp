@@ -31,7 +31,6 @@ void create_frame_table(uintptr_t start, int size) {
         frame_table[i].flags |= PINNED_PAGE_FLAG;
     }
 }
-
 int get_free_index_unlocked() {
     for (int i = 0; i < num_frames; i++) {
         if (!(frame_table[index].flags & USED_PAGE_FLAG)) {
