@@ -6,7 +6,8 @@
 #include "stdint.h"
 
 #ifdef USE_MONITOR
-static inline void monitor(uintptr_t addr) {
+static inline void monitor(uintptr_t addr)
+{
     // ARM-specific or QEMU-specific implementation of monitor
     asm volatile("monitor %0" : : "r"(addr));
 }
@@ -70,54 +71,64 @@ static inline void monitor(uintptr_t addr) {
 // };
 
 template <typename T>
-class Atomic {
+class Atomic
+{
     volatile T value;
 
-   public:
-    Atomic(T x) : value(x) {
-    }
-    Atomic<T>& operator=(T v) {
+public:
+    Atomic(T x) : value(x) {}
+    Atomic<T> &operator=(T v)
+    {
         __atomic_store_n(&value, v, __ATOMIC_SEQ_CST);
         return *this;
     }
-    operator T() const {
+    operator T() const
+    {
         return __atomic_load_n(&value, __ATOMIC_SEQ_CST);
     }
-    T fetch_add(T inc) {
+    T fetch_add(T inc)
+    {
         return __atomic_fetch_add(&value, inc, __ATOMIC_SEQ_CST);
     }
-    T add_fetch(T inc) {
+    T add_fetch(T inc)
+    {
         return __atomic_add_fetch(&value, inc, __ATOMIC_SEQ_CST);
     }
-    void set(T inc) {
+    void set(T inc)
+    {
         return __atomic_store_n(&value, inc, __ATOMIC_SEQ_CST);
     }
-    T get(void) {
+    T get(void)
+    {
         return __atomic_load_n(&value, __ATOMIC_SEQ_CST);
     }
-    T exchange(T v) {
+    T exchange(T v)
+    {
         T ret;
         __atomic_exchange(&value, &v, &ret, __ATOMIC_SEQ_CST);
         return ret;
     }
-    void monitor_value() {
+    void monitor_value()
+    {
 #ifdef USE_MONITOR
-        monitor((uintptr_t)&value);  // Call monitor if USE_MONITOR is defined
+        monitor((uintptr_t)&value); // Call monitor if USE_MONITOR is defined
 #endif
-                                     // monitor((uintptr_t)&value);
+                                    // monitor((uintptr_t)&value);
     }
 };
 
 template <>
-class Atomic<uint64_t> {
-   public:
+class Atomic<uint64_t>
+{
+public:
     Atomic() = delete;
     Atomic(uint64_t) = delete;
 };
 
 template <>
-class Atomic<int64_t> {
-   public:
+class Atomic<int64_t>
+{
+public:
     Atomic() = delete;
     Atomic(int64_t) = delete;
 };
@@ -154,64 +165,75 @@ public:
 */
 
 template <typename T>
-class LockGuard {
-    T& it;
+class LockGuard
+{
+    T &it;
 
-   public:
-    inline LockGuard(T& it) : it(it) {
+public:
+    inline LockGuard(T &it) : it(it)
+    {
         it.lock();
     }
-    inline ~LockGuard() {
+    inline ~LockGuard()
+    {
         it.unlock();
     }
 };
 
 template <typename T>
-class LockGuardP {
-    T* it;
+class LockGuardP
+{
+    T *it;
 
-   public:
-    inline LockGuardP(T* it) : it(it) {
-        if (it) it->lock();
+public:
+    inline LockGuardP(T *it) : it(it)
+    {
+        if (it)
+            it->lock();
     }
-    inline ~LockGuardP() {
-        if (it) it->unlock();
+    inline ~LockGuardP()
+    {
+        if (it)
+            it->unlock();
     }
 };
 
-class NoLock {
-   public:
-    inline void lock() {
-    }
-    inline void unlock() {
-    }
+class NoLock
+{
+public:
+    inline void lock() {}
+    inline void unlock() {}
 };
 
 // extern void pause();
 
-class SpinLock {
+class SpinLock
+{
     Atomic<bool> taken;
 
-   public:
-    SpinLock() : taken(false) {
-    }
+public:
+    SpinLock() : taken(false) {}
 
-    SpinLock(const SpinLock&) = delete;
+    SpinLock(const SpinLock &) = delete;
 
     // for debugging, etc. Allows false positives
-    bool isMine() {
+    bool isMine()
+    {
         return taken.get();
     }
 
-    void lock(void) {
+    void lock(void)
+    {
         taken.monitor_value();
-        while (taken.exchange(true)) {
+        while (taken.exchange(true))
+        {
             // iAmStuckInALoop(true);
             taken.monitor_value();
         }
     }
 
-    void unlock(void) {
+    void unlock(void)
+    {
         taken.set(false);
     }
 };
@@ -337,5 +359,7 @@ class Lock {
         sema.up();
     }
 };
+
+
 
 #endif
