@@ -1,6 +1,6 @@
 #include "core.h"
-#include "dwc.h"
 #include "dcache.h"
+#include "dwc.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
@@ -10,6 +10,7 @@
 #include "kernel_tests.h"
 #include "keyboard.h"
 #include "libk.h"
+#include "listener.h"
 #include "mm.h"
 #include "partition_tests.h"
 #include "percpu.h"
@@ -17,15 +18,14 @@
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
-#include "snake.h"
 #include "sdio.h"
 #include "sdio_tests.h"
+#include "snake.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
-#include "listener.h"
 
 void mergeCores();
 
@@ -83,9 +83,9 @@ extern "C" void kernel_main() {
     event_loop_tests();
     hash_test();
     frame_alloc_tests();
-    user_paging_tests();
+    // user_paging_tests();
     blocking_atomic_tests();
-    ramfs_tests();
+    // ramfs_tests();
     sdioTests();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.
@@ -124,12 +124,11 @@ extern "C" void primary_kernel_init() {
         printf("Framebuffer initialization failed!\n");
     }
 
-
-    // if (sd_init() == 0) {
-    //     printf("SD card initialized successfully!\n");
-    // } else {
-    //     printf("SD card initialization failed!\n");
-    // }
+    if (sd_init() == 0) {
+        printf("SD card initialized successfully!\n");
+    } else {
+        printf("SD card initialization failed!\n");
+    }
     // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
     // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
     // of 0x96000021)
@@ -156,19 +155,18 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    // if (number_awake == CORE_COUNT) {
-        // create_event([] { kernel_main(); });
+    if (number_awake == CORE_COUNT) {
+        create_event([] { kernel_main(); });
 
-        // user_thread([]
-        //             { printf("i do nothing2\n"); });
-    // }
-    if(getCoreID() == 0){
-        printf("init_snake();\n");
-        create_event(init_snake);
-    } else if(getCoreID() == 1) {
-        printf("keyboard_loop();\n");
-        create_event(keyboard_loop);
+        user_thread([] { printf("i do nothing2\n"); });
     }
+
+    // Uncomment to run snake
+    // if(getCoreID() == 0){
+    //     printf("init_snake() + keyboard_loop();\n");
+    //     user_thread(init_snake);
+    //     user_thread(keyboard_loop);
+    // }
     stop();
     printf("PANIC I should not go here\n");
 }

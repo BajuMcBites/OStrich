@@ -1,6 +1,6 @@
 # Cross compiler and tools
 # aarch64-linux-gnu- for windows, aarch64-elf- for mac
-CROSS_COMPILE = aarch64-elf-
+CROSS_COMPILE = aarch64-linux-gnu-
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
@@ -55,7 +55,6 @@ $(CPP_OBJ): $(BUILD_DIR)/%_cpp.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 
 $(RAMFS_IMG) : $(BUILD_DIR)
 	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
-	echo "test2.txt" | xargs -t echo
 	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | xargs ../../$(BUILD_DIR)/build_ramfs
 	mv $(RAMFS_DIR)/ramfs.img $(BUILD_DIR)
 
@@ -75,11 +74,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd
-
-
-run-with-sd:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -drive file=sdcard.dd,if=sd,format=raw
+	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234

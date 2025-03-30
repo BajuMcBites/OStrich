@@ -35,7 +35,7 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
             FileLocation* file_location = location->location.filesystem;
             read(file_location->file_name, file_location->offset, (char*)page_vaddr, PAGE_SIZE,
                  [=](int ret) {
-                     K::assert(ret >= 0, "read failed");
+                     K::assert(ret >= 0, "mmap: read failed\n");
                      location->paddr = paddr;
                      location->present = true;
 
