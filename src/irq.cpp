@@ -8,6 +8,11 @@
 /*
 https://developer.arm.com/documentation/ddi0500/j/Generic-Interrupt-Controller-CPU-Interface/GIC-programmers-model/CPU-interface-register-summary
 
+https://developer.arm.com/documentation/102379/0104/The-processor-timers/Timer-registers
+
+https://jsandler18.github.io/extra/interrupts.html
+
+https://developer.arm.com/documentation/102909/0100/The-Generic-Interrupt-Controller
 
 */
 
@@ -37,7 +42,7 @@ extern "C" void handle_irq(void) {
     // printf("is it gone irq: %x\r\n", irq);
 }
 
-void gic_init(void) {
-    // Enable interrupt in GIC Distributor (GICD_ISENABLER0)
-    return;
-}
+// void gic_init(void) {
+//     // Enable interrupt in GIC Distributor (GICD_ISENABLER0)
+//     return;
+// }

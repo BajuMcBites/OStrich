@@ -115,7 +115,7 @@ extern "C" void kernel_init() {
         init_mmu();
         core_timer_init();
         // core_timer_init();
-        timer_init();
+       // timer_init();
         enable_interrupt_controller();
         enable_irq();
     }
