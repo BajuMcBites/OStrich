@@ -464,15 +464,19 @@ void blocking_atomic_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("calc.elf");
+    int elf_index = get_ramfs_index("inf_loop.elf");
     UserTCB* tcb = new UserTCB([]() {
         /* do nothing shouldnt ever be called */
         K::assert(false, "this shouldn't be called");
     });
     const int sz = ramfs_size(elf_index);
     char buffer[sz];
-    printf("%d is size\n", sz);
     ramfs_read(buffer, 0, sz, elf_index);
-    elf_load((void*)buffer, tcb);
+    tcb->context.pc = (uint64_t)elf_load((void*)buffer, tcb);
+    tcb->page_table->use_page_table();
+    printf("0x%x this is the tcb pc\n", tcb->context.pc);
+    printf("0x%x THIS IS THE TCB:\n", tcb);
+    
+    readyQueue.forCPU(0).queues[1].add(tcb);
     printf("end elf_load tests\n");
 }

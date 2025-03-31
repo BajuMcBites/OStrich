@@ -155,24 +155,38 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 	}
 }
 
-// create bss sections (sections with a bunch of zeroes)
+void *load_section(void* mem, Elf64_Shdr *shdr, UserTCB* tcb) {
+    size_t sect_size = shdr->sh_size;
+    off_t sect_offset = shdr->sh_offset;
+    void *vaddr = (void *)(shdr->sh_addr);
+    
+    // Ensure page alignment for mmap
+    off_t page_offset = (uint64_t)vaddr % PAGE_SIZE;
+    void* aligned_vaddr = (void*)((uint64_t)vaddr - page_offset);
+    size_t aligned_size = sect_size + page_offset;
 
-uint64_t copy_memory(void* start, Elf64_Xword flags, Elf64_Xword size, Elf64_Ehdr *hdr) {
-	if (flags & SHF_ALLOC) {
-		void* mem = kmalloc(size);
-		K::memcpy(mem, start, size);
-		if (flags & SHF_WRITE) {
-			// make it writable
+    // mmap the memory region with the correct protections
+    int prot = 0;
+    if (shdr->sh_flags & SHF_WRITE) prot |= PROT_WRITE;
+    if (shdr->sh_flags & SHF_EXECINSTR) prot |= PROT_EXEC;
+	printf("section vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
+	void* to = (void*)((uint64_t)aligned_vaddr + page_offset);
+	void* from = (void*)(sect_offset);
+	printf("section mapping 0x%x, from memory 0x%x\n", to, from);
+    mmap(tcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
+		[=]() {
+			load_mmapped_page(tcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
+				tcb->page_table->use_page_table();
+				void* to = (void*)((uint64_t)kvaddr + page_offset);
+				void* from = (void*)((uint64_t)mem + sect_offset);
+				K::memcpy(to, from, sect_size);
+			});
 		}
-		if (flags & SHF_EXECINSTR) {
-			// make it executable
-		}
-		return (uint64_t)mem - (uint64_t)hdr;
-	}
-	return nullptr;
+	);
+    return (void*)vaddr;
 }
 
-static int elf_load_stage1(Elf64_Ehdr *hdr) {
+static int elf_load_stage1(Elf64_Ehdr *hdr, UserTCB* tcb) {
 	Elf64_Shdr *shdr = elf_sheader(hdr);
 
 	unsigned int i;
@@ -183,7 +197,7 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 			case SHT_NULL:
 				break;
 			case SHT_PROGBITS:
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_SYMTAB:
 				// LINKING STUFF
@@ -192,13 +206,13 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 				// not here
 				break;
 			case SHT_HASH: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_DYNAMIC: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_NOTE: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_NOBITS: 
 				// Skip if it the section is empty
@@ -213,20 +227,20 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
 				}
 				break;
 			case SHT_REL: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_SHLIB: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_STRTAB:
 			case SHT_DYNSYM: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_INIT_ARRAY: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_FINI_ARRAY: 
-				section->sh_offset = copy_memory((void*)section->sh_addr, section->sh_flags, section->sh_size, hdr);
+				load_section((void*)hdr, section, tcb);
 				break;
 			case SHT_GROUP: 
 				// do something
@@ -597,7 +611,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
 // load
 static inline void *elf_load_rel(Elf64_Ehdr *hdr, UserTCB* tcb) {
 	int result;
-	result = elf_load_stage1(hdr);
+	result = elf_load_stage1(hdr, tcb);
 	if(result == ELF_RELOC_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -652,7 +666,7 @@ void* load_library(char *name, UserTCB* tcb) {
     g_loaded_libs = new_lib;
 
     // relocate by stage
-    elf_load_stage1(lib_hdr);
+    elf_load_stage1(lib_hdr, tcb);
     elf_load_stage2(lib_hdr);
     elf_load_stage3(lib_hdr, tcb);
 
@@ -661,9 +675,8 @@ void* load_library(char *name, UserTCB* tcb) {
 
 // load
 static inline void *elf_load_exec(Elf64_Ehdr *hdr, UserTCB* tcb) {
-	printf("we are hjere now\n");
 	int result;
-	result = elf_load_stage1(hdr);
+	result = elf_load_stage1(hdr, tcb);
 	if(result == ELF_RELOC_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -679,22 +692,18 @@ static inline void *elf_load_exec(Elf64_Ehdr *hdr, UserTCB* tcb) {
 
 void *elf_load(void* ptr, UserTCB* tcb) {
 	Elf64_Ehdr *hdr = (Elf64_Ehdr *)ptr;
-	printf("YEA WE HERE\n");
 	if(!elf_check_supported(hdr)) {
 		ERROR("ELF File cannot be loaded.\n");
 		return nullptr;
 	}
-	printf("%d type\n", hdr->e_type);
 	switch(hdr->e_type) {
 		case ET_EXEC:
 			return elf_load_exec(hdr, tcb);
 		case ET_REL:
 			return elf_load_rel(hdr, tcb);
 		case ET_DYN:
-			printf("YEA WE HERE\n");
 			return elf_load_rel(hdr, tcb);
 			// todo ... ?? ? ? ? ? ??
-			return nullptr;
 	}
 	return nullptr;
 } 
