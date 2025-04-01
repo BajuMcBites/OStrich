@@ -20,6 +20,7 @@ static volatile int unbacked_id = 1;
 void load_location(PageLocation* location, Function<void(uint64_t)> w) {
     K::assert(location != nullptr, "we are null location");
     K::assert(!location->present, "we are trying to load an already loaded page");
+    printf("in load location\n");
 
     alloc_frame(PINNED_PAGE_FLAG, location, [=](uint64_t paddr) {
         void* page_vaddr = (void*)paddr_to_vaddr(paddr);
@@ -181,9 +182,7 @@ void mmap_page(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, u
         create_local_mapping(tcb, uvaddr, prot, flags, file, offset, id, w);
     } else {
         if (no_reserve) {
-            unbacked_id_lock.lock();
-            id = unbacked_id++;
-            unbacked_id_lock.unlock();
+            id = unreserved_id();
             create_local_mapping(tcb, uvaddr, prot, flags, file, offset, id, w);
             return;
         } else{
@@ -277,4 +276,11 @@ void mmap(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, uint64
         delete sema;
         create_event(w);
     });
+}
+
+int unreserved_id() {
+    unbacked_id_lock.lock();
+    int id = unbacked_id++;
+    unbacked_id_lock.unlock();
+    return id;
 }

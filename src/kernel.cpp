@@ -70,7 +70,7 @@ extern "C" void kernel_main() {
     printf("All tests passed\n");
     heapTests();
     event_loop_tests();
-    // hash_test();
+    hash_test();
     frame_alloc_tests();
     user_paging_tests();
     blocking_atomic_tests();

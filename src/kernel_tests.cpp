@@ -258,9 +258,7 @@ void mmap_test_file() {
                     delete tcb;
                 });
             });
-    });
-
-    
+    }); 
 }
 
 void mmap_test_no_reserve() {
@@ -288,11 +286,54 @@ void mmap_test_no_reserve() {
          });
 }
 
+void mmap_shared_unreserved() {
+
+    UserTCB* tcba = new UserTCB([]() {
+        /* do nothing shouldnt ever be called */
+        K::assert(false, "this shouldn't be called");
+    });
+
+    UserTCB* tcbb = new UserTCB([]() {
+        /* do nothing shouldnt ever be called */
+        K::assert(false, "this shouldn't be called");
+    });
+
+    uint64_t uvaddra = 0x90000;
+    uint64_t uvaddrb = 0x70000;
+
+
+    int shared_page_id = unreserved_id();
+    Semaphore* sema = new Semaphore(-1);
+
+    mmap_page(tcba, uvaddra, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
+        load_mmapped_page(tcba, uvaddra, [=](uint64_t kvaddr) {
+            printf("kvaddr for a is %X%X\n", kvaddr >> 32, kvaddr);
+            sema->up();
+        });
+    });
+
+    mmap_page(tcbb, uvaddrb, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
+        load_mmapped_page(tcbb, uvaddrb, [=](uint64_t kvaddr) {
+            printf("kvaddr for b is %X%X\n", kvaddr >> 32, kvaddr);
+            sema->up();
+        });
+    });
+
+    // sema->down([=]() {
+
+    // })
+
+
+
+}
+
 void user_paging_tests() {
     printf("starting user paging tests\n");
     basic_page_table_creation();
     mmap_test_no_reserve();
     mmap_test_file();
+    mmap_test_file();
+    mmap_shared_unreserved();
     printf("user paging tests complete\n");
 }
 

@@ -72,6 +72,9 @@ void kfopen(char* file_name, Function<void(file*)> w) {
         node->inode_number = inode_numbers++;
         inode_number_lock.unlock();
         node->refs = 1;
+        
+        f->inode = node;
+
 
         inodeListNode* list_node = new inodeListNode;
 
@@ -89,7 +92,6 @@ void kfopen(char* file_name, Function<void(file*)> w) {
         }
 
         inode_list_lock->unlock();
-        printf("file opened on core %d\n", getCoreID());
         create_event(w, f);
     });
 }

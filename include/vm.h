@@ -249,33 +249,19 @@ static uint64_t pc_key_hash(PCKey key) {
         return hash_combine(uint64_t_hash(key.offset),  uint64_t_hash(key.id));
     }
 
-    printf("Core %d\n", getCoreID());
-    printf("File: %X\n", key.file);
-    printf("inode %X\n",key.file->inode);
-    printf("inum %d\n", key.file->inode->inode_number);
-
     return hash_combine(hash_combine(uint64_t_hash(key.file->inode->inode_number), uint64_t_hash(key.offset)),  uint64_t_hash(key.id));
 }
 
 static bool pc_key_equals(PCKey keya, PCKey keyb) {
-    printf("start eq\n");
     if (keya.file == nullptr && keyb.file != nullptr) {
-        printf("end eq\n");
-
         return false;
     } else if (keya.file != nullptr && keyb.file == nullptr) {
-        printf("end eq\n");
-
         return false;
     }
 
     if (keya.file == nullptr) {
-        printf("end eq\n");
-
         return uint64_t_equals(keya.offset, keyb.offset) && uint64_t_equals(keya.id, keyb.id);
     }
-
-    printf("end eq\n");
 
     return uint64_t_equals(keya.file->inode->inode_number, keyb.file->inode->inode_number) && uint64_t_equals(keya.offset, keyb.offset);
 }
