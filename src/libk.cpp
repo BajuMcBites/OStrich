@@ -76,7 +76,7 @@ extern "C" void* memcpy(void* dest, const void* src, int n) {
 void* K::memcpy(void* dest, const void* src, int n) {
     unsigned char* d = (unsigned char*)dest;
     const unsigned char* s = (const unsigned char*)src;
-
+    // printf("%x is dest, mapping till %x\n", (uint64_t)dest, (uint64_t)dest + n);
     while (n--) {
         *d++ = *s++;
     }

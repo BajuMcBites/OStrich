@@ -63,6 +63,7 @@ void mmap_page(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, char* file_na
 
     tcb->supp_page_table->lock.lock([=]() {
         LocalPageLocation* local = tcb->supp_page_table->vaddr_mapping(uvaddr);
+        // if (local != nullptr) return;
         K::assert(local == nullptr, "remapping an already mapped address");
 
         local = new LocalPageLocation;

@@ -244,7 +244,8 @@ void mmap_test_file() {
                  tcb->page_table->use_page_table();
                  char* kbuf = (char*)kvaddr;
                  char* ubuf = (char*)uvaddr;
-
+                 // char* trash = "LMAOUIDAINSDADFA:SDDSLDAD";
+                 //K::memcpy(kbuf, ubuf, 12);
                  printf("file mmap test: %s\n", kbuf);
 
                  K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
@@ -473,9 +474,8 @@ void elf_load_test() {
     char buffer[sz];
     ramfs_read(buffer, 0, sz, elf_index);
     tcb->context.pc = (uint64_t)elf_load((void*)buffer, tcb);
-    tcb->page_table->use_page_table();
-    printf("0x%x this is the tcb pc\n", tcb->context.pc);
-    printf("0x%x THIS IS THE TCB:\n", tcb);
+    // printf("0x%x this is the tcb pc\n", tcb->context.pc);
+    //printf("0x%x THIS IS THE TCB:\n", (uint64_t)tcb);
     
     readyQueue.forCPU(0).queues[1].add(tcb);
     printf("end elf_load tests\n");

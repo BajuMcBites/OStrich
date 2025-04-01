@@ -172,14 +172,23 @@ void *load_section(void* mem, Elf64_Shdr *shdr, UserTCB* tcb) {
 	printf("section vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
 	void* to = (void*)((uint64_t)aligned_vaddr + page_offset);
 	void* from = (void*)(sect_offset);
+	void* end = (void*)((uint64_t)from + sect_size);
 	printf("section mapping 0x%x, from memory 0x%x\n", to, from);
+	
     mmap(tcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
 		[=]() {
 			load_mmapped_page(tcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
 				tcb->page_table->use_page_table();
-				void* to = (void*)((uint64_t)kvaddr + page_offset);
-				void* from = (void*)((uint64_t)mem + sect_offset);
-				K::memcpy(to, from, sect_size);
+				void* page_to = (void*)kvaddr;
+				if (page_to < to) {
+					page_to = to;
+				}
+				void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
+				size_t cpy_size = PAGE_SIZE;
+				if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
+					cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
+				}
+				K::memcpy(page_to, page_from, cpy_size);
 			});
 		}
 	);
@@ -525,16 +534,21 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, UserTCB* tcb) {
 	void* to = (void*)((uint64_t)aligned_vaddr + page_offset);
 	void* from = (void*)(mem_offset);
 	printf("mapping 0x%x, from memory 0x%x\n", to, from);
-    mmap(tcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
+	void* end = (void*)((uint64_t)from + mem_size);
+	mmap(tcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
 		[=]() {
 			load_mmapped_page(tcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
 				tcb->page_table->use_page_table();
-				void* to = (void*)((uint64_t)kvaddr + page_offset);
-				void* from = (void*)((uint64_t)mem + mem_offset);
-				K::memcpy(to, from, file_size);
-				if (mem_size > file_size) {
-					K::memset((void*)((uint64_t)kvaddr + page_offset + file_size), 0, mem_size - file_size);
+				void* page_to = (void*)kvaddr;
+				if (page_to < to) {
+					page_to = to;
 				}
+				void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
+				size_t cpy_size = PAGE_SIZE;
+				if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
+					cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
+				}
+				K::memcpy(page_to, page_from, cpy_size);
 			});
 		}
 	);
