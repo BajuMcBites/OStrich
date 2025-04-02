@@ -26,20 +26,21 @@ class RingBuffer {
         kfree(container);
     }
 
-    void read(Funct) {
+    void read(Function<void (T result)> func) {
         read_sema->down([=]() {
             lock.lock([=]() {
-                // Read and return item, not sure how to
+                T item = container[read_pointer];
                 read_pointer = (read_pointer + 1) % size;
 
                 lock.unlock();
                 write_sema->up();
+                func(item);
             });
         });
     }
 
     
-    void write(T item) {
+    void write(T item, Function<void ()> func) {
         write_sema->down([=]()) {
             lock.lock([=] ()) {
                 container[write_pointer] = item;
@@ -47,6 +48,7 @@ class RingBuffer {
 
                 lock.unlock();
                 read_sema->up();
+                func();
             }
         }
     }
