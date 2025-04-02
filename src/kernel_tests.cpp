@@ -3,6 +3,7 @@
 #include "atomic.h"
 #include "event.h"
 #include "frame.h"
+#include "ring_buffer.h"
 #include "hash.h"
 #include "heap.h"
 #include "libk.h"
@@ -30,6 +31,53 @@ void test_new_delete_basic() {
 
     delete p;
     printf("Test 1 passed.\n");
+}
+
+void ring_buffer_tests() {
+    RingBuffer<int>* buffer = new RingBuffer<int>(3);
+
+    printf("Starting Ring Buffer Tests\n");
+
+    printf("Starting read on empty buffer, should block\n");
+    buffer->read([&] (int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 1, "Expected to read 1");
+    });
+
+    printf("Starting writes\n");
+    buffer->write(1, [=] () {
+        buffer->write(2, [&] () {
+            buffer->write(3, [&] () {
+                buffer->write(4, [&] () {
+                    buffer->write(5, [&] () {
+                        printf("This line shouldn't run until after 2 is read\n");
+                        return;
+                    });
+                });
+            });
+        });
+    });
+
+    
+    buffer->read([=] (int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 2, "Expected to read 2");
+    });
+
+    buffer->read([=] (int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 3, "Expected to read 3");
+    });
+
+    buffer->read([=] (int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 4, "Expected to read 4");
+    });
+
+    buffer->read([=] (int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 5, "Expected to read 5");
+    });
 }
 
 void test_multiple_allocations() {

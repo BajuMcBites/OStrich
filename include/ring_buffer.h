@@ -1,23 +1,21 @@
-#ifndef _HASH_H
-#define _HASH_H
+#ifndef _RING_BUFFER_H
+#define _RING_BUFFER_H
 
 #include "heap.h"
 #include "atomic.h"
+#include "event.h"
 
 template <typename T>
 class RingBuffer {
     public:
     size_t size;
-    Lock lock;
-    Semaphore* read_sema;
-    Semaphore* write_sema;
-
 
     RingBuffer(size_t size) {
-        this.size = size;
-        container = kmalloc(size * sizeof(T));
+        this->size = size;
+        container = (T*) kmalloc(size * sizeof(T));
         read_sema = new Semaphore(0);
         write_sema = new Semaphore(size);
+        lock = new Lock;
     }
 
     ~RingBuffer() {
@@ -28,36 +26,39 @@ class RingBuffer {
 
     void read(Function<void (T result)> func) {
         read_sema->down([=]() {
-            lock.lock([=]() {
+            lock->lock([=]() {
                 T item = container[read_pointer];
                 read_pointer = (read_pointer + 1) % size;
 
-                lock.unlock();
+                lock->unlock();
                 write_sema->up();
-                func(item);
+                create_event<T>(func, item);
             });
         });
     }
-
     
     void write(T item, Function<void ()> func) {
-        write_sema->down([=]()) {
-            lock.lock([=] ()) {
+        write_sema->down([=]() {
+            lock->lock([=] () {
                 container[write_pointer] = item;
                 write_pointer = (write_pointer + 1) % size;
 
-                lock.unlock();
+                lock->unlock();
                 read_sema->up();
-                func();
-            }
-        }
+
+                create_event(func);
+            });
+        });
     }
     
     private:
     T *container;
+    Semaphore *read_sema;
+    Semaphore *write_sema;
+    Lock* lock;
     uint64_t read_pointer = 0;
     uint64_t write_pointer = 0;
 
-}
+};
 
-#endif /*_HASH_H*/
+#endif /*_RING_BUFFER_H*/
