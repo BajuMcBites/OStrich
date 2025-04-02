@@ -7,7 +7,7 @@ LOGFILE="output.log"
 
 while true; do
     echo "Starting make run..." | tee -a "$LOGFILE"
-    make run &
+    make run >> $LOGFILE &
     PID=$!
     sleep 1
     kill $PID 2>/dev/null

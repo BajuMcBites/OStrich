@@ -60,7 +60,8 @@ $(RAMFS_IMG) : $(BUILD_DIR)
 
 # Compile ramfs into source file
 $(RAMFS_OBJ) : $(RAMFS_IMG)
-	$(OBJCOPY) --input binary -O elf64-littleaarch64 $(RAMFS_IMG) $(RAMFS_OBJ)
+	$(OBJCOPY) --input binary -O elf64-littleaarch64 --binary-architecture aarch64 --set-section-alignment .data=16 $(RAMFS_IMG) $(RAMFS_OBJ)
+
 
 # Link the object files into the kernel ELF
 $(KERNEL_ELF): $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(RAMFS_OBJ)

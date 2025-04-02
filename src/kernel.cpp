@@ -83,9 +83,9 @@ extern "C" void kernel_main() {
     event_loop_tests();
     hash_test();
     frame_alloc_tests();
-    // user_paging_tests();
+    user_paging_tests();
     blocking_atomic_tests();
-    // ramfs_tests();
+    ramfs_tests();
     sdioTests();
     ring_buffer_tests();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
@@ -133,7 +133,7 @@ extern "C" void primary_kernel_init() {
     // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
     // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
     // of 0x96000021)
-    // init_ramfs();
+    init_ramfs();
     create_frame_table(frame_table_start,
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
