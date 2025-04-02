@@ -8,6 +8,7 @@
 #include "libk.h"
 #include "mm.h"
 #include "percpu.h"
+#include "peripherals/arm_devices.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
@@ -94,7 +95,7 @@ extern "C" void kernel_init() {
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
         gic_init();
-        timer_init();
+        // timer_init();
         core_timer_init();
         enable_interrupt_controller();
 
@@ -109,14 +110,30 @@ extern "C" void kernel_init() {
         uinit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         threadsInit();
+
+        printf("Setting up Local Timer Irq to Core3\n");
+
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;  // Route local timer IRQ to Core0
+
+        QA7->TimerControlStatus.ReloadValue = 20000000;  // Timer period set
+        QA7->TimerControlStatus.TimerEnable = 1;         // Timer enabled
+        QA7->TimerControlStatus.IntEnable = 1;           // Timer IRQ enabled
+
+        QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+        QA7->TimerClearReload.Reload = 1;    // Reload now
+
+        printf("reload addr %x\n", QA7->TimerControlStatus);
+        QA7->Core3TimerIntControl.nCNTPNSIRQ_IRQ =
+            1;  // We are in NS EL1 so enable IRQ to core0 that level
+        QA7->Core3TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
+
         wake_up_cores();
         //  kernel_main();
     } else {
         init_mmu();
-        core_timer_init();
         // core_timer_init();
-       // timer_init();
-        enable_interrupt_controller();
+        // timer_init();
+        // enable_interrupt_controller();
         enable_irq();
     }
 

@@ -1,5 +1,6 @@
 #include "peripherals/irq.h"
 
+#include "peripherals/arm_devices.h"
 #include "peripherals/timer.h"
 #include "printf.h"
 #include "timer.h"
@@ -18,6 +19,7 @@ https://developer.arm.com/documentation/102909/0100/The-Generic-Interrupt-Contro
 
 void enable_interrupt_controller() {
     put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
+    // put32();
 }
 
 extern "C" void handle_irq(void) {
@@ -29,10 +31,14 @@ extern "C" void handle_irq(void) {
             printf("timer go brr  on core %d irq=%x\n", getCoreID(), irq);
             // printf("timer go brr irq=%x\n", irq);
             handle_timer_irq();
+            // volatile uint32_t *LOCAL_TIMER_CLR = (uint32_t *)(0x4000003C + VA_START);
+            // *LOCAL_TIMER_CLR = 1;  // Clear the timer interrupt
             break;
         default:
             printf("Unknown pending irq: %x\r\n", irq);
     }
+    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+    QA7->TimerClearReload.Reload = 1;    // Reload now
 
     // Step 3: Acknowledge the interrupt in the GIC by writing to the End of Interrupt Register
     // (ICC_EOI)
