@@ -230,21 +230,20 @@ void basic_page_table_creation() {
 }
 
 void mmap_test_file() {
-    UserTCB* tcb = new UserTCB([]() {
-        /* do nothing shouldnt ever be called */
-        K::assert(false, "this shouldn't be called");
-    });
+    PCB* pcb = new PCB;
 
     uint64_t uvaddr = 0x9000;
 
     kfopen("/dev/ramfs/test1.txt", [=](file* file) {
         printf("we opend the file\n");
-        mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0,
+        mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0,
             PAGE_SIZE * 3 + 46, [=]() {
-                load_mmapped_page(tcb, uvaddr, [=](uint64_t kvaddr) {
-                    tcb->page_table->use_page_table();
+                load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
+                    pcb->page_table->use_page_table();
                     char* kbuf = (char*)kvaddr;
                     char* ubuf = (char*)uvaddr;
+
+
    
                     printf("file mmap test: %s\n", kbuf);
    
@@ -255,23 +254,21 @@ void mmap_test_file() {
                                          60) == 0,
                               "no reserve mmap test failed\n");
    
-                    delete tcb;
+                    delete pcb;
                 });
             });
     }); 
 }
 
 void mmap_test_no_reserve() {
-    UserTCB* tcb = new UserTCB([]() {
-        /* do nothing shouldnt ever be called */
-        K::assert(false, "this shouldn't be called");
-    });
+    PCB* pcb = new PCB;
+
 
     uint64_t uvaddr = 0x9000;
-    mmap(tcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
+    mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
          0, PAGE_SIZE * 3 + 46, [=]() {
-             load_mmapped_page(tcb, uvaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
-                 tcb->page_table->use_page_table();
+             load_mmapped_page(pcb, uvaddr + PAGE_SIZE, [=](uint64_t kvaddr) {
+                 pcb->page_table->use_page_table();
 
                  char* kbuf = (char*)kvaddr;
                  char* ubuf = (char*)uvaddr + PAGE_SIZE;
@@ -281,22 +278,16 @@ void mmap_test_no_reserve() {
                  printf("no reserve mmap test: %s\n", ubuf);
 
                  K::assert(K::strncmp(kbuf, ubuf, 30) == 0, "no reserve mmap test failed\n");
-                 delete tcb;
+                 delete pcb;
              });
          });
 }
 
 void mmap_shared_unreserved() {
 
-    UserTCB* tcba = new UserTCB([]() {
-        /* do nothing shouldnt ever be called */
-        K::assert(false, "this shouldn't be called");
-    });
+    PCB* pcba = new PCB;
+    PCB* pcbb = new PCB;
 
-    UserTCB* tcbb = new UserTCB([]() {
-        /* do nothing shouldnt ever be called */
-        K::assert(false, "this shouldn't be called");
-    });
 
     uint64_t uvaddra = 0x90000;
     uint64_t uvaddrb = 0x70000;
@@ -305,26 +296,31 @@ void mmap_shared_unreserved() {
     int shared_page_id = unreserved_id();
     Semaphore* sema = new Semaphore(-1);
 
-    mmap_page(tcba, uvaddra, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
-        load_mmapped_page(tcba, uvaddra, [=](uint64_t kvaddr) {
+    uint64_t* kvaddrs = (uint64_t*) kmalloc(sizeof(uint64_t) * 2);
+
+    mmap_page(pcba, uvaddra, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
+        load_mmapped_page(pcba, uvaddra, [=](uint64_t kvaddr) {
             printf("kvaddr for a is %X%X\n", kvaddr >> 32, kvaddr);
+            kvaddrs[0] = kvaddr;
             sema->up();
         });
     });
 
-    mmap_page(tcbb, uvaddrb, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
-        load_mmapped_page(tcbb, uvaddrb, [=](uint64_t kvaddr) {
+    mmap_page(pcbb, uvaddrb, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
+        load_mmapped_page(pcbb, uvaddrb, [=](uint64_t kvaddr) {
             printf("kvaddr for b is %X%X\n", kvaddr >> 32, kvaddr);
+            kvaddrs[1] = kvaddr;
             sema->up();
         });
     });
 
-    // sema->down([=]() {
-
-    // })
-
-
-
+    sema->down([=]() {
+        K::assert(kvaddrs[0] == kvaddrs[1], "shared mmap test failed\n");
+        delete kvaddrs;
+        delete pcba;
+        delete pcbb;
+        delete sema;
+    });
 }
 
 void user_paging_tests() {

@@ -174,7 +174,7 @@ struct FileLocation {
  *  parent Supplemental Page Table Lock
  */
 
- struct UserTCB;
+ struct PCB;
 
 /**
  * These are local to a processes Supplemental Page Table, holds the specific
@@ -184,7 +184,7 @@ struct LocalPageLocation {
     // Lock location_lock; not needed?
     int perm;
     PageSharingMode sharing_mode;
-    UserTCB* tcb;
+    PCB* pcb;
     // uint64_t tid; some way to know which process out of the PageLocation->users is the one we
     // faulted on
     PageLocation* location;

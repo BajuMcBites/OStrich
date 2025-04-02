@@ -55,92 +55,22 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
     return;
 }
 
-// /**
-//  * fills in necessary tcb datastructures with info for mmapping a SINGLE page and
-//  * runs the continuation function. This does not load the page into memory, which
-//  * can be done by load_mmapped_page.
-//  */
-// void mmap_page(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, char* file_name, uint64_t offset,
-//                Function<void(void)> w) {
-//     bool file_mmap = (flags & MAP_ANONYMOUS) == 0;
-//     bool no_reserve = (flags & MAP_NORESERVE) != 0;
-
-//     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr passed to mmap");
-
-//     tcb->supp_page_table->lock.lock([=]() {
-//         LocalPageLocation* local = tcb->supp_page_table->vaddr_mapping(uvaddr);
-//         K::assert(local == nullptr, "remapping an already mapped address");
-
-//         local = new LocalPageLocation;
-//         local->tcb = tcb;
-//         local->perm = prot;
-//         local->next = nullptr;
-
-//         if ((flags & 0x3) == MAP_SHARED) {
-//             local->sharing_mode = SHARED;
-//         } else if ((flags & 0x3) == MAP_PRIVATE) {
-//             local->sharing_mode = PRIVATE;
-//         }
-
-//         PageLocation* location = nullptr;
-
-//         /* TODO: insert page cache look for page (atomic get or create function), return with
-//          * refcount -1 if newly created */
-
-//         location = new PageLocation;
-//         location->ref_count = -1; /* simulating getting new one from page cache*/
-
-//         location->lock.lock([=]() {
-//             if (location->paddr == 1) {
-//                 local->location = location;
-//                 location->present = false;
-//                 location->paddr = 0;
-
-//                 if (file_mmap) {
-//                     K::assert(file_name != nullptr, "mmapping nullptr file");
-
-//                     location->location_type = FILESYSTEM;
-//                     location->location.filesystem = new FileLocation(file_name, offset);
-//                     tcb->supp_page_table->map_vaddr(uvaddr, local);
-//                     location->lock.unlock();
-//                     tcb->supp_page_table->lock.unlock();
-//                     create_event(w);
-//                     return;
-//                 } else if (!file_mmap) {
-//                     if (!no_reserve) {
-//                         K::assert(false, "swap mmap not implemented yet");
-
-//                     } else {
-//                         location->location_type = UNBACKED;
-//                         tcb->supp_page_table->map_vaddr(uvaddr, local);
-//                         location->lock.unlock();
-//                         tcb->supp_page_table->lock.unlock();
-//                         create_event(w);
-//                         return;
-//                     }
-//                     return;
-//                 }
-//                 K::assert(false, "mmap: we should not get here");
-//             } else {
-//                 /* TODO add local to locations stuff and increase ref count + alter linked list*/
-//                 K::assert(false, "no implemnetation for two pages mapped to same location");
-//                 return;
-//             }
-//         });
-//         return;
-//     });
-//     return;
-// }
-
-void create_local_mapping(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, uint64_t id,
+void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, uint64_t id,
     Function<void(void)> w) {
 
-    tcb->supp_page_table->lock.lock([=]() {
-        LocalPageLocation* local = tcb->supp_page_table->vaddr_mapping(uvaddr);
-        K::assert(local == nullptr, "remapping an already mapped address");
+    pcb->supp_page_table->lock.lock([=]() {
+        LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(uvaddr);
+        // K::assert(local == nullptr, "remapping an already mapped address");
+
+        if (local != nullptr) {
+            pcb->supp_page_table->lock.unlock();
+            create_event(w);
+            return;
+        }
+
 
         local = new LocalPageLocation;
-        local->tcb = tcb;
+        local->pcb = pcb;
         local->perm = prot;
 
         if ((flags & 0x3) == MAP_SHARED) {
@@ -150,8 +80,8 @@ void create_local_mapping(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, fi
         }
 
         page_cache->get_or_add(file, offset, id, local, [=](PageLocation* location) {
-            tcb->supp_page_table->map_vaddr(uvaddr, local);
-            tcb->supp_page_table->lock.unlock();
+            pcb->supp_page_table->map_vaddr(uvaddr, local);
+            pcb->supp_page_table->lock.unlock();
             create_event(w);
         });
         return;
@@ -160,14 +90,14 @@ void create_local_mapping(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, fi
 }
 
 /**
- * fills in necessary tcb datastructures with info for mmapping a SINGLE page and
+ * fills in necessary pcb datastructures with info for mmapping a SINGLE page and
  * runs the continuation function. This does not load the page into memory, which
  * can be done by load_mmapped_page. If we want to request a new id for a swap 
  * or unbacked page, make sure id is 0. If file is null, we use offset to 
  * decide whether it is swap or unbacked (0 for swap 1 for unbacked). All 
  * params passed must match the flags passed aswell.
  */
-void mmap_page(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, uint64_t id,
+void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, uint64_t id,
     Function<void(void)> w) {
 
     bool file_mmap = (flags & MAP_ANONYMOUS) == 0;
@@ -179,11 +109,11 @@ void mmap_page(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, u
     K::assert(file_mmap || (no_reserve && (offset == 1)) || (!no_reserve && (offset == 0)), "flags dont match other mmap params");
 
     if (file_mmap || id != 0) {
-        create_local_mapping(tcb, uvaddr, prot, flags, file, offset, id, w);
+        create_local_mapping(pcb, uvaddr, prot, flags, file, offset, id, w);
     } else {
         if (no_reserve) {
             id = unreserved_id();
-            create_local_mapping(tcb, uvaddr, prot, flags, file, offset, id, w);
+            create_local_mapping(pcb, uvaddr, prot, flags, file, offset, id, w);
             return;
         } else{
             K::assert(false, "swap mmap is not a thing yet");
@@ -199,11 +129,11 @@ void mmap_page(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, u
  * pinned in memory so unpin it once the kernel is done working with it so it
  * can be evicted (on not based off use case).
  */
-void load_mmapped_page(UserTCB* tcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
+void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr passed to mmap");
 
-    tcb->supp_page_table->lock.lock([=]() {
-        LocalPageLocation* local = tcb->supp_page_table->vaddr_mapping(uvaddr);
+    pcb->supp_page_table->lock.lock([=]() {
+        LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(uvaddr);
         K::assert(local != nullptr, "page being loaded has not been mmapped.");
 
         PageLocation* location = local->location;
@@ -213,22 +143,22 @@ void load_mmapped_page(UserTCB* tcb, uint64_t uvaddr, Function<void(uint64_t)> w
             if (!location->present) {
 
                 load_location(location, [=](uint64_t paddr) {
-                    tcb->page_table->map_vaddr(
+                    pcb->page_table->map_vaddr(
                         uvaddr, paddr, build_page_attributes(local),
                         [=]() { 
                                 location->lock.unlock();
-                                tcb->supp_page_table->lock.unlock();
+                                pcb->supp_page_table->lock.unlock();
                                 create_event(w, paddr_to_vaddr(paddr));
                         });
                 });
                 return;
             } else {
                 pin_frame(location->paddr);
-                tcb->page_table->map_vaddr(
+                pcb->page_table->map_vaddr(
                     uvaddr, location->paddr, build_page_attributes(local),
                     [=]() {
                             location->lock.unlock();
-                            tcb->supp_page_table->lock.unlock();
+                            pcb->supp_page_table->lock.unlock();
                             create_event(w, paddr_to_vaddr(location->paddr));
                     });
                 return;
@@ -240,11 +170,11 @@ void load_mmapped_page(UserTCB* tcb, uint64_t uvaddr, Function<void(uint64_t)> w
 }
 
 /**
- * fills in necessary tcb datastructures with info for mmapping of a page and
+ * fills in necessary pcb datastructures with info for mmapping of a page and
  * runs the continuation function. This does not load the region into memory, which
  * can be done by load_mmapped_region.
  */
-void mmap(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset,
+void mmap(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset,
           int length, Function<void(void)> w) {
     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr being mmapped");
     K::assert(length > 0, "invalid length input into mmap");
@@ -268,7 +198,7 @@ void mmap(UserTCB* tcb, uint64_t uvaddr, int prot, int flags, file* file, uint64
             swap_offset = offset + (i * PAGE_SIZE);
         }
 
-        mmap_page(tcb, uvaddr + (i * PAGE_SIZE), prot, flags, file, swap_offset, 0,
+        mmap_page(pcb, uvaddr + (i * PAGE_SIZE), prot, flags, file, swap_offset, 0,
                   [=]() { sema->up(); });
     }
 
