@@ -16,7 +16,6 @@ class RingBuffer {
     RingBuffer(size_t size) {
         this.size = size;
         container = kmalloc(size * sizeof(T));
-        // sema = new Semaphore(0);
         read_sema = new Semaphore(0);
         write_sema = new Semaphore(size);
     }
@@ -28,21 +27,27 @@ class RingBuffer {
     }
 
     void read(Funct) {
-            read_sema->down([=]() {
-                lock.lock([=]() {
-                    
-                    
+        read_sema->down([=]() {
+            lock.lock([=]() {
+                // Read and return item, not sure how to
+                read_pointer = (read_pointer + 1) % size;
 
-                    lock.unlock();
-                });
+                lock.unlock();
+                write_sema->up();
             });
+        });
     }
 
     
     void write(T item) {
         write_sema->down([=]()) {
-        lock.lock([=] ()) {
-            if (write_pointer - size == read_pointer)
+            lock.lock([=] ()) {
+                container[write_pointer] = item;
+                write_pointer = (write_pointer + 1) % size;
+
+                lock.unlock();
+                read_sema->up();
+            }
         }
     }
     
