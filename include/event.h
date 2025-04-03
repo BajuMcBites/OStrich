@@ -6,8 +6,8 @@
 #include "locked_queue.h"
 #include "percpu.h"
 #include "printf.h"
-#include "vm.h"
 #include "process.h"
+#include "vm.h"
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5

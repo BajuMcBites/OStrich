@@ -1,22 +1,33 @@
 #include "core.h"
+#include "dcache.h"
+#include "dwc.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
+#include "framebuffer.h"
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
+#include "keyboard.h"
 #include "libk.h"
+#include "listener.h"
 #include "mm.h"
+#include "partition_tests.h"
 #include "percpu.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "sdio.h"
+#include "sdio_tests.h"
+#include "snake.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
+
+void mergeCores();
 
 struct Stack {
     static constexpr int BYTES = 16384;
@@ -75,6 +86,10 @@ extern "C" void kernel_main() {
     user_paging_tests();
     blocking_atomic_tests();
     ramfs_tests();
+    sdioTests();
+    ring_buffer_tests();
+    // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
+    // it out.
 }
 
 extern char __heap_start[];
@@ -86,33 +101,56 @@ extern char __heap_end[];
 
 static Atomic<int> coresAwake(0);
 
-extern "C" void kernel_init() {
-    if (getCoreID() == 0) {
-        create_page_tables();
-        init_mmu();
-        patch_page_tables();
-        uart_init();
-        init_printf(nullptr, uart_putc_wrapper);
-        // timer_init();
-        // enable_interrupt_controller();
-        // enable_irq();
-        printf("printf initialized!!!\n");
-        init_ramfs();
-        create_frame_table(frame_table_start,
-                           0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
-        printf("frame table initialized! \n");
-        breakpoint();
-        print_ascii_art();
-        uinit((void *)HEAP_START, HEAP_SIZE);
-        smpInitDone = true;
-        threadsInit();
-        wake_up_cores();
-        init_page_cache();
-        //  kernel_main();
+void mergeCores();
+
+extern "C" void secondary_kernel_init() {
+    init_mmu();
+    event_listener_init();
+    mergeCores();
+}
+
+extern "C" void primary_kernel_init() {
+    create_page_tables();
+    patch_page_tables();
+    init_mmu();
+    uart_init();
+    init_printf(nullptr, uart_putc_wrapper);
+    // timer_init();
+    // enable_interrupt_controller();
+    // enable_irq();
+    printf("printf initialized!!!\n");
+    if (fb_init()) {
+        printf("Framebuffer initialization successful!\n");
     } else {
-        init_mmu();
+        printf("Framebuffer initialization failed!\n");
     }
 
+    if (sd_init() == 0) {
+        printf("SD card initialized successfully!\n");
+    } else {
+        printf("SD card initialization failed!\n");
+    }
+    // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
+    // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
+    // of 0x96000021)
+    init_ramfs();
+    create_frame_table(frame_table_start,
+                       0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
+    printf("frame table initialized! \n");
+    uinit((void *)HEAP_START, HEAP_SIZE);
+    event_listener_init();
+
+    usb_initialize();
+
+    smpInitDone = true;
+    // with data cache on, we must write the boolean back to memory to allow other cores to see it.
+    clean_dcache_line(&smpInitDone);
+    threadsInit();
+    wake_up_cores();
+    mergeCores();
+}
+
+void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
@@ -120,10 +158,15 @@ extern "C" void kernel_init() {
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });
-
-        // user_thread([]
-        //             { printf("i do nothing2\n"); });
+        user_thread([] { printf("i do nothing2\n"); });
     }
+
+    // Uncomment to run snake
+    // if(getCoreID() == 0){
+    //     printf("init_snake() + keyboard_loop();\n");
+    //     user_thread(init_snake);
+    //     user_thread(keyboard_loop);
+    // }
     stop();
     printf("PANIC I should not go here\n");
 }

@@ -129,8 +129,8 @@ void PageTable::map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint64_t page_attr
         alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t pud_paddr) {
             K::assert(pud_paddr != nullptr, "palloc failed");
             pgd->descriptors[pgd_index] =
-                paddr_to_table_descriptor(pud_paddr, page_attributes);        // put frame into table
-            pud_t* pud = (pud_t*)paddr_to_vaddr(pud_paddr);  // get vaddr of frame
+                paddr_to_table_descriptor(pud_paddr, page_attributes);  // put frame into table
+            pud_t* pud = (pud_t*)paddr_to_vaddr(pud_paddr);             // get vaddr of frame
             K::memset((void*)pud, 0, PAGE_SIZE);
             map_vaddr_pud(pud, vaddr, paddr, page_attributes, w);
         });
@@ -311,7 +311,7 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
 
     if ((local->perm & WRITE_PERM) != 0) {
         attribute |= (0x01L << 6);
-    } else if ((local->perm & READ_PERM) != 0 || (local->perm & EXEC_PERM) != 0 ) {
+    } else if ((local->perm & READ_PERM) != 0 || (local->perm & EXEC_PERM) != 0) {
         attribute |= (0x11L << 6);
     } else {
         attribute |= (0x00L << 6);
@@ -319,7 +319,7 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
 
     attribute |= (0x2L << 2);   // 2nd index in mair
     attribute |= (0x1L << 11);  // set nG (non global) [11] bit to true
-    attribute |= (0x1L << 10);   // set AF (access flag) [10] bit to true so we dont fault on access
+    attribute |= (0x1L << 10);  // set AF (access flag) [10] bit to true so we dont fault on access
     attribute |= (0x3L << 8);   // set sharability [9:8] to inner sharable across cores
 
     attribute &= (~0xFFFFFFFFFF000L);  // zero out middle bits as sanity check
@@ -327,7 +327,6 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
 }
 
 void add_local(PageLocation* location, LocalPageLocation* local) {
-
     location->ref_count++;
 
     if (location->users == nullptr) {
@@ -350,7 +349,6 @@ void add_local(PageLocation* location, LocalPageLocation* local) {
 }
 
 void remove_local(PageLocation* location, LocalPageLocation* local) {
-    
     location->ref_count--;
 
     LocalPageLocation* prev = local->prev;
@@ -367,22 +365,21 @@ void remove_local(PageLocation* location, LocalPageLocation* local) {
     }
 }
 
-
 /**
  * gets or adds a page location from/to the page cache
- * 
- * takes in file name offset and id and finds the matching page in the page or 
+ *
+ * takes in file name offset and id and finds the matching page in the page or
  * creates a new one and inserts it into the page cache.
  */
-void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local, Function<void(PageLocation*)> w) {
+void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+                           Function<void(PageLocation*)> w) {
     bool file_backed = file != nullptr;
     bool unbacked = offset == 1;
 
     lock.lock([=]() {
-        PCKey key(file, offset, id); 
+        PCKey key(file, offset, id);
         PageLocation* location = map.get(key);
         if (location == nullptr) {
-
             location = new PageLocation;
             location->ref_count = 0;
             location->present = false;
@@ -408,7 +405,6 @@ void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLo
     });
 }
 
-
 void PageCache::remove(LocalPageLocation* local) {
     lock.lock([=]() {
         PageLocation* location = local->location;
@@ -416,9 +412,9 @@ void PageCache::remove(LocalPageLocation* local) {
         remove_local(location, local);
 
         if (location->ref_count == 0) {
-
             if (location->location_type == FILESYSTEM) {
-                map.remove(PCKey(location->location.filesystem->file, location->location.filesystem->offset, 0));
+                map.remove(PCKey(location->location.filesystem->file,
+                                 location->location.filesystem->offset, 0));
             } else if (location->location_type == UNBACKED) {
                 map.remove(PCKey(nullptr, 1, location->location.swap->swap_id));
             } else if (location->location_type == SWAP) {
@@ -436,7 +432,6 @@ void init_page_cache() {
     page_cache = new PageCache;
 }
 
-
 PageLocation::~PageLocation() {
     if (location_type == FILESYSTEM) {
         delete location.filesystem;
@@ -450,9 +445,3 @@ PageLocation::~PageLocation() {
         /* todo: send signal to swap that the space is no longer needed */
     }
 }
-
-
-
-
-
-

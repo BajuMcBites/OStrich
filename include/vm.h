@@ -3,7 +3,7 @@
 
 #include "peripherals/base.h"
 
-#define VA_START 0xFFFF000000000000
+#define VA_START 0xffff000000000000
 
 #define PAGE_SHIFT 12
 #define TABLE_SHIFT 9
@@ -64,8 +64,21 @@
      (0b0LL << 6) |   /* [6]     Reserved - Must be 0 */                                           \
      (16LL << 0)      /* [5:0]   T0SZ: VA Size (TTBR0) - 16 = 256TB (Same options as T1SZ) */      \
     )
+// Memory attribute indices
+#define MT_DEVICE_nGnRnE 0  // Device memory: non-Gathering, non-Reordering, non-Early write ack
+#define MT_DEVICE_nGnRE 1   // Device memory: non-Gathering, non-Reordering, Early write ack
+#define MT_DEVICE_GRE 2     // Device memory: Gathering, Reordering, Early write ack
+#define MT_NORMAL_NC 3      // Normal memory: Non-cacheable
+#define MT_NORMAL 4         // Normal memory: Cacheable
 
-#define MAIR_VALUE 0x0000000000BB4400
+// Memory Attribute Indirection Register (MAIR) settings
+#define MAIR_VALUE                                                                \
+    ((0x00ul << (MT_DEVICE_nGnRnE * 8)) | /* [0] Device-nGnRnE */                 \
+     (0x04ul << (MT_DEVICE_nGnRE * 8)) |  /* [1] Device-nGnRE */                  \
+     (0x0Cul << (MT_DEVICE_GRE * 8)) |    /* [2] Device-GRE */                    \
+     (0x44ul << (MT_NORMAL_NC * 8)) |     /* [3] Normal Non-cacheable */          \
+     (0xFFul << (MT_NORMAL * 8))          /* [4] Normal memory with write-back */ \
+    )
 
 #define DEVICE_LOWER_ATTRIBUTES 0x1 | (0x0 << 2) | (0x1 << 10) | (0x0 << 6) | (0x0 << 8)
 
@@ -76,8 +89,8 @@
 #include "function.h"
 #include "hash.h"
 #include "libk.h"
-#include "stdint.h"
 #include "printf.h"
+#include "stdint.h"
 #include "utils.h"
 
 extern "C" void create_page_tables();
@@ -155,7 +168,6 @@ struct FileLocation {
     }
 };
 
-
 /**
  * Lock Ordering:
  *
@@ -164,8 +176,8 @@ struct FileLocation {
  *
  * (2) Page Location Lock - protects present, paddr, and owned PageLocation data
  *                          structures
- * 
- * (3) Page Cache Lock - Protects all location information except on first 
+ *
+ * (3) Page Cache Lock - Protects all location information except on first
  *                       initialization which is done in mmap_page for a PageLocation and
  *                       all the prev/next refs of LocalPageLocations. This location information
  *                       should never be changed.
@@ -174,7 +186,7 @@ struct FileLocation {
  *  parent Supplemental Page Table Lock
  */
 
- struct PCB;
+struct PCB;
 
 /**
  * These are local to a processes Supplemental Page Table, holds the specific
@@ -234,8 +246,8 @@ class SupplementalPageTable {
 
 struct PCKey {
     struct file* file;
-    uint64_t offset; // 0 is swap, 1 is unbacked
-    uint64_t id; // swap or unbacked id
+    uint64_t offset;  // 0 is swap, 1 is unbacked
+    uint64_t id;      // swap or unbacked id
 
     PCKey(struct file* f, uint64_t off, uint64_t _id) {
         file = f;
@@ -246,10 +258,12 @@ struct PCKey {
 
 static uint64_t pc_key_hash(PCKey key) {
     if (key.file == nullptr) {
-        return hash_combine(uint64_t_hash(key.offset),  uint64_t_hash(key.id));
+        return hash_combine(uint64_t_hash(key.offset), uint64_t_hash(key.id));
     }
 
-    return hash_combine(hash_combine(uint64_t_hash(key.file->inode->inode_number), uint64_t_hash(key.offset)),  uint64_t_hash(key.id));
+    return hash_combine(
+        hash_combine(uint64_t_hash(key.file->inode->inode_number), uint64_t_hash(key.offset)),
+        uint64_t_hash(key.id));
 }
 
 static bool pc_key_equals(PCKey keya, PCKey keyb) {
@@ -263,23 +277,23 @@ static bool pc_key_equals(PCKey keya, PCKey keyb) {
         return uint64_t_equals(keya.offset, keyb.offset) && uint64_t_equals(keya.id, keyb.id);
     }
 
-    return uint64_t_equals(keya.file->inode->inode_number, keyb.file->inode->inode_number) && uint64_t_equals(keya.offset, keyb.offset);
+    return uint64_t_equals(keya.file->inode->inode_number, keyb.file->inode->inode_number) &&
+           uint64_t_equals(keya.offset, keyb.offset);
 }
 
-
 class PageCache {
-    public:
+   public:
     Lock lock;
     HashMap<PCKey, PageLocation*> map;
 
-    PageCache() 
-        : map(pc_key_hash, pc_key_equals, 100) {
+    PageCache() : map(pc_key_hash, pc_key_equals, 100) {
     }
 
     ~PageCache() {
     }
 
-    void get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local, Function<void(PageLocation*)> w);
+    void get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+                    Function<void(PageLocation*)> w);
 
     void remove(LocalPageLocation* local);
 };

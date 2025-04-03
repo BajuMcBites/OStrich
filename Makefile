@@ -60,7 +60,8 @@ $(RAMFS_IMG) : $(BUILD_DIR)
 
 # Compile ramfs into source file
 $(RAMFS_OBJ) : $(RAMFS_IMG)
-	$(OBJCOPY) --input binary -O elf64-littleaarch64 $(RAMFS_IMG) $(RAMFS_OBJ)
+	$(OBJCOPY) --input binary -O elf64-littleaarch64 --binary-architecture aarch64 --set-section-alignment .data=16 $(RAMFS_IMG) $(RAMFS_OBJ)
+
 
 # Link the object files into the kernel ELF
 $(KERNEL_ELF): $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(RAMFS_OBJ)
@@ -74,7 +75,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio
+	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234

@@ -1,8 +1,7 @@
-# ifndef _PROCESS_H_
+#ifndef _PROCESS_H_
 #define _PROCESS_H_
 
 #include "vm.h"
-
 
 struct PCB {
     int pid;

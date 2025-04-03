@@ -10,9 +10,9 @@
 #define OTHER_FAIL -100
 #define NOT_IMPLEMENTED_FS -99
 
+#include "atomic.h"
 #include "function.h"
 #include "stdint.h"
-#include "atomic.h"
 
 struct inode;
 
@@ -35,7 +35,6 @@ struct inodeListNode {
 void kfopen(char* file_name, Function<void(file*)> w);
 void kfclose(file* file);
 void get_file_name(file* file, Function<void(char*)> w);
-
 
 void read(file* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);

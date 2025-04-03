@@ -41,7 +41,7 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
             FileLocation* file_location = location->location.filesystem;
             read(file_location->file, file_location->offset, (char*)page_vaddr, PAGE_SIZE,
                  [=](int ret) {
-                     K::assert(ret >= 0, "read failed");
+                     K::assert(ret >= 0, "mmap: read failed\n");
                      location->paddr = paddr;
                      location->present = true;
 
@@ -55,9 +55,8 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
     return;
 }
 
-void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, uint64_t id,
-    Function<void(void)> w) {
-
+void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file,
+                          uint64_t offset, uint64_t id, Function<void(void)> w) {
     pcb->supp_page_table->lock.lock([=]() {
         LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(uvaddr);
         // K::assert(local == nullptr, "remapping an already mapped address");
@@ -67,7 +66,6 @@ void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* 
             create_event(w);
             return;
         }
-
 
         local = new LocalPageLocation;
         local->pcb = pcb;
@@ -92,21 +90,21 @@ void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* 
 /**
  * fills in necessary pcb datastructures with info for mmapping a SINGLE page and
  * runs the continuation function. This does not load the page into memory, which
- * can be done by load_mmapped_page. If we want to request a new id for a swap 
- * or unbacked page, make sure id is 0. If file is null, we use offset to 
- * decide whether it is swap or unbacked (0 for swap 1 for unbacked). All 
+ * can be done by load_mmapped_page. If we want to request a new id for a swap
+ * or unbacked page, make sure id is 0. If file is null, we use offset to
+ * decide whether it is swap or unbacked (0 for swap 1 for unbacked). All
  * params passed must match the flags passed aswell.
  */
-void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, uint64_t id,
-    Function<void(void)> w) {
-
+void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset,
+               uint64_t id, Function<void(void)> w) {
     bool file_mmap = (flags & MAP_ANONYMOUS) == 0;
     bool no_reserve = (flags & MAP_NORESERVE) != 0;
 
     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr passed to mmap");
     K::assert(!file_mmap || file_mmap != nullptr, "we are mmapping a null file");
 
-    K::assert(file_mmap || (no_reserve && (offset == 1)) || (!no_reserve && (offset == 0)), "flags dont match other mmap params");
+    K::assert(file_mmap || (no_reserve && (offset == 1)) || (!no_reserve && (offset == 0)),
+              "flags dont match other mmap params");
 
     if (file_mmap || id != 0) {
         create_local_mapping(pcb, uvaddr, prot, flags, file, offset, id, w);
@@ -115,12 +113,11 @@ void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint6
             id = unreserved_id();
             create_local_mapping(pcb, uvaddr, prot, flags, file, offset, id, w);
             return;
-        } else{
+        } else {
             K::assert(false, "swap mmap is not a thing yet");
         }
     }
 }
-
 
 /**
  * This should take in the vaddr of a previously mapped page and load it into
@@ -138,29 +135,24 @@ void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
 
         PageLocation* location = local->location;
 
-
         location->lock.lock([=]() {
             if (!location->present) {
-
                 load_location(location, [=](uint64_t paddr) {
-                    pcb->page_table->map_vaddr(
-                        uvaddr, paddr, build_page_attributes(local),
-                        [=]() { 
-                                location->lock.unlock();
-                                pcb->supp_page_table->lock.unlock();
-                                create_event(w, paddr_to_vaddr(paddr));
-                        });
+                    pcb->page_table->map_vaddr(uvaddr, paddr, build_page_attributes(local), [=]() {
+                        location->lock.unlock();
+                        pcb->supp_page_table->lock.unlock();
+                        create_event(w, paddr_to_vaddr(paddr));
+                    });
                 });
                 return;
             } else {
                 pin_frame(location->paddr);
-                pcb->page_table->map_vaddr(
-                    uvaddr, location->paddr, build_page_attributes(local),
-                    [=]() {
-                            location->lock.unlock();
-                            pcb->supp_page_table->lock.unlock();
-                            create_event(w, paddr_to_vaddr(location->paddr));
-                    });
+                pcb->page_table->map_vaddr(uvaddr, location->paddr, build_page_attributes(local),
+                                           [=]() {
+                                               location->lock.unlock();
+                                               pcb->supp_page_table->lock.unlock();
+                                               create_event(w, paddr_to_vaddr(location->paddr));
+                                           });
                 return;
             }
         });
@@ -174,8 +166,8 @@ void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
  * runs the continuation function. This does not load the region into memory, which
  * can be done by load_mmapped_region.
  */
-void mmap(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset,
-          int length, Function<void(void)> w) {
+void mmap(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, int length,
+          Function<void(void)> w) {
     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr being mmapped");
     K::assert(length > 0, "invalid length input into mmap");
 

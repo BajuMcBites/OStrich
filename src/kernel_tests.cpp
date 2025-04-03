@@ -12,6 +12,7 @@
 #include "queue.h"
 #include "ramfs.h"
 #include "rand.h"
+#include "ring_buffer.h"
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
@@ -30,6 +31,52 @@ void test_new_delete_basic() {
 
     delete p;
     printf("Test 1 passed.\n");
+}
+
+void ring_buffer_tests() {
+    RingBuffer<int>* buffer = new RingBuffer<int>(3);
+
+    printf("Starting Ring Buffer Tests\n");
+
+    printf("Starting read on empty buffer, should block\n");
+    buffer->read([&](int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 1, "Expected to read 1");
+    });
+
+    printf("Starting writes\n");
+    buffer->write(1, [=]() {
+        buffer->write(2, [&]() {
+            buffer->write(3, [&]() {
+                buffer->write(4, [&]() {
+                    buffer->write(5, [&]() {
+                        printf("This line shouldn't run until after 2 is read\n");
+                        return;
+                    });
+                });
+            });
+        });
+    });
+
+    buffer->read([=](int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 2, "Expected to read 2");
+    });
+
+    buffer->read([=](int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 3, "Expected to read 3");
+    });
+
+    buffer->read([=](int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 4, "Expected to read 4");
+    });
+
+    buffer->read([=](int result) {
+        printf("Read %d\n", result);
+        K::assert(result == 5, "Expected to read 5");
+    });
 }
 
 void test_multiple_allocations() {
@@ -236,33 +283,29 @@ void mmap_test_file() {
 
     kfopen("/dev/ramfs/test1.txt", [=](file* file) {
         printf("we opend the file\n");
-        mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0,
-            PAGE_SIZE * 3 + 46, [=]() {
-                load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
-                    pcb->page_table->use_page_table();
-                    char* kbuf = (char*)kvaddr;
-                    char* ubuf = (char*)uvaddr;
+        mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0, PAGE_SIZE * 3 + 46, [=]() {
+            load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
+                pcb->page_table->use_page_table();
+                char* kbuf = (char*)kvaddr;
+                char* ubuf = (char*)uvaddr;
 
+                printf("file mmap test: %s\n", kbuf);
 
-   
-                    printf("file mmap test: %s\n", kbuf);
-   
-                    K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
-                                         60) == 0,
-                              "no reserve mmap test failed\n");
-                    K::assert(K::strncmp(ubuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
-                                         60) == 0,
-                              "no reserve mmap test failed\n");
-   
-                    delete pcb;
-                });
+                K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
+                                     60) == 0,
+                          "no reserve mmap test failed\n");
+                K::assert(K::strncmp(ubuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
+                                     60) == 0,
+                          "no reserve mmap test failed\n");
+
+                delete pcb;
             });
-    }); 
+        });
+    });
 }
 
 void mmap_test_no_reserve() {
     PCB* pcb = new PCB;
-
 
     uint64_t uvaddr = 0x9000;
     mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
@@ -284,35 +327,34 @@ void mmap_test_no_reserve() {
 }
 
 void mmap_shared_unreserved() {
-
     PCB* pcba = new PCB;
     PCB* pcbb = new PCB;
-
 
     uint64_t uvaddra = 0x90000;
     uint64_t uvaddrb = 0x70000;
 
-
     int shared_page_id = unreserved_id();
     Semaphore* sema = new Semaphore(-1);
 
-    uint64_t* kvaddrs = (uint64_t*) kmalloc(sizeof(uint64_t) * 2);
+    uint64_t* kvaddrs = (uint64_t*)kmalloc(sizeof(uint64_t) * 2);
 
-    mmap_page(pcba, uvaddra, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
-        load_mmapped_page(pcba, uvaddra, [=](uint64_t kvaddr) {
-            printf("kvaddr for a is %X%X\n", kvaddr >> 32, kvaddr);
-            kvaddrs[0] = kvaddr;
-            sema->up();
-        });
-    });
+    mmap_page(pcba, uvaddra, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE,
+              nullptr, 1, shared_page_id, [=]() {
+                  load_mmapped_page(pcba, uvaddra, [=](uint64_t kvaddr) {
+                      printf("kvaddr for a is %X%X\n", kvaddr >> 32, kvaddr);
+                      kvaddrs[0] = kvaddr;
+                      sema->up();
+                  });
+              });
 
-    mmap_page(pcbb, uvaddrb, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 1, shared_page_id, [=]() {
-        load_mmapped_page(pcbb, uvaddrb, [=](uint64_t kvaddr) {
-            printf("kvaddr for b is %X%X\n", kvaddr >> 32, kvaddr);
-            kvaddrs[1] = kvaddr;
-            sema->up();
-        });
-    });
+    mmap_page(pcbb, uvaddrb, PROT_WRITE | PROT_READ, MAP_SHARED | MAP_ANONYMOUS | MAP_NORESERVE,
+              nullptr, 1, shared_page_id, [=]() {
+                  load_mmapped_page(pcbb, uvaddrb, [=](uint64_t kvaddr) {
+                      printf("kvaddr for b is %X%X\n", kvaddr >> 32, kvaddr);
+                      kvaddrs[1] = kvaddr;
+                      sema->up();
+                  });
+              });
 
     sema->down([=]() {
         K::assert(kvaddrs[0] == kvaddrs[1], "shared mmap test failed\n");
@@ -334,7 +376,7 @@ void user_paging_tests() {
 }
 
 uint64_t hash_func(int elem) {
-    return (uint64_t) elem;
+    return (uint64_t)elem;
 }
 
 bool equals_func(int elem1, int elem2) {

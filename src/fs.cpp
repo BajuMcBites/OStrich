@@ -13,13 +13,12 @@ SpinLock inode_number_lock;
 
 /**
  * opens a file specified by file name and returns a file* to it
- * 
- * This as of right now does not verify the file exists, only checks if 
  *
- * 
+ * This as of right now does not verify the file exists, only checks if
+ *
+ *
  */
 void kfopen(char* file_name, Function<void(file*)> w) {
-
     if (inode_list_lock == nullptr) { /* hacky way to use one lock but only on first go */
         inode_number_lock.lock();
         if (inode_list_lock == nullptr) {
@@ -31,12 +30,10 @@ void kfopen(char* file_name, Function<void(file*)> w) {
     /* TODO: verify file exists and get characteristics */
 
     inode_list_lock->lock([=]() {
-
         inodeListNode* n = inode_list;
         inodeListNode* prev = nullptr;
 
         while (n != nullptr && K::strncmp(n->file_name, file_name, PATH_MAX) != 0) {
-
             if (n->inode->refs == 0) { /* clean up 0 ref inodes */
                 delete n->file_name;
                 if (prev == nullptr) {
@@ -72,9 +69,8 @@ void kfopen(char* file_name, Function<void(file*)> w) {
         node->inode_number = inode_numbers++;
         inode_number_lock.unlock();
         node->refs = 1;
-        
-        f->inode = node;
 
+        f->inode = node;
 
         inodeListNode* list_node = new inodeListNode;
 
@@ -113,7 +109,6 @@ void get_file_name(file* file, Function<void(char*)> w) {
     }
 
     inode_list_lock->lock([=]() {
-
         inodeListNode* n = inode_list;
         while (n != nullptr && n->inode->inode_number != file->inode->inode_number) {
             n = n->next;
@@ -126,7 +121,6 @@ void get_file_name(file* file, Function<void(char*)> w) {
     });
 }
 
-
 /**
  * kread should read a file into the specified buffer by routing a read call to the
  * correct filesystem handler, ie userspace main fs, device read
@@ -136,30 +130,30 @@ void read(file* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)
         int path_length = K::strnlen(file_name, PATH_MAX - 1);
         char* file_name_cpy = (char*)kmalloc(path_length + 1);
         K::strncpy(file_name_cpy, file_name, PATH_MAX);
-    
+
         file_name = file_name_cpy;
-    
+
         char* next;
-    
+
         auto work = [=](int ret) {
             kfree(file_name_cpy);
             create_event<int>(w, ret);
         };
-    
+
         if (file_name == nullptr) {
             create_event<int>(work, INVALID_FILE);
             return;
         }
-    
+
         if (*file_name == '/') { /* starting from root */
             file_name++;
             next = K::strntok(file_name, '/', ENTRY_MAX + 1);
-    
+
             if (next == nullptr) {
                 create_event<int>(work, INVALID_FILE);
                 return;
             }
-    
+
             if (K::strncmp(file_name, "dev", ENTRY_MAX) == 0) {
                 read_dev(next, offset, buf, n, work);
                 return;
