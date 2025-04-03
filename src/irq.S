@@ -12,7 +12,7 @@ disable_irq:
 rearm_timer:
     // Set the timer value
     mov x0, #1
-    lsl x0, x0, #5
+    lsl x0, x0, #10
     msr CNTP_TVAL_EL0, x0          // Set the timer value
 
     // Enable the timer and interrupt

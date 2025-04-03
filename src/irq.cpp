@@ -19,10 +19,12 @@ https://developer.arm.com/documentation/102909/0100/The-Generic-Interrupt-Contro
 
 void enable_interrupt_controller() {
     put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
+    put32(ENABLE_IRQS_1, 1);
     // put32();
 }
 
 extern "C" void handle_irq(void) {
+    printf("is irq handle?\n");
     unsigned int irq = get32(IRQ_PENDING_1);
     // unsigned int irq = get32(GIC_CPU_BASE + 0x0C);
     // unsigned int irq = get32(GIC_CPU_BASE + 0x0C);  // GICC_IAR

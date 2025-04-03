@@ -4,7 +4,8 @@
 #include "utils.h"
 
 // Base addresses for UART0 and GPIO
-#define MMIO_BASE 0xFFFF00003F000000
+// #define MMIO_BASE 0xFFFF00003F000000
+#define MMIO_BASE 0x000000003F000000
 #define GPFSEL1 ((volatile unsigned int*)(MMIO_BASE + 0x200004))
 #define GPPUD ((volatile unsigned int*)(MMIO_BASE + 0x200094))
 #define GPPUDCLK0 ((volatile unsigned int*)(MMIO_BASE + 0x200098))

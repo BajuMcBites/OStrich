@@ -160,7 +160,6 @@ struct __attribute__((__packed__, aligned(4))) QA7Registers {
     core_int_source_reg_t Core3FIQSource;               // 0x7C
 };
 
-#define QA7 \
-    ((volatile __attribute__((aligned(4))) struct QA7Registers *)(uintptr_t)(0x40000024 + VA_START))
+#define QA7 ((volatile struct QA7Registers *)(uintptr_t)(0x40000024 + VA_START))
 
 #endif

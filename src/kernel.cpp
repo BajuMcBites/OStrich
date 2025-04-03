@@ -69,13 +69,13 @@ extern char _frame_table_start[];
 extern "C" void kernel_main() {
     // queue_test();
     printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
-    user_paging_tests();
-    blocking_atomic_tests();
-    ramfs_tests();
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
+    // user_paging_tests();
+    // blocking_atomic_tests();
+    // ramfs_tests();
 }
 
 extern char __heap_start[];
@@ -90,16 +90,11 @@ static Atomic<int> coresAwake(0);
 extern "C" void kernel_init() {
     if (getCoreID() == 0) {
         create_page_tables();
-        init_mmu();
+        // init_mmu();
         patch_page_tables();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
-        gic_init();
-        // timer_init();
-        core_timer_init();
-        enable_interrupt_controller();
 
-        enable_irq();
         printf("printf initialized!!!\n");
         init_ramfs();
         create_frame_table(frame_table_start,
@@ -110,31 +105,34 @@ extern "C" void kernel_init() {
         uinit((void *)HEAP_START, HEAP_SIZE);
         smpInitDone = true;
         threadsInit();
-
+        enable_irq();
+        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
         printf("Setting up Local Timer Irq to Core3\n");
-
         QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;  // Route local timer IRQ to Core0
 
         QA7->TimerControlStatus.ReloadValue = 20000000;  // Timer period set
         QA7->TimerControlStatus.TimerEnable = 1;         // Timer enabled
         QA7->TimerControlStatus.IntEnable = 1;           // Timer IRQ enabled
-
+        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
+        printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
         QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
         QA7->TimerClearReload.Reload = 1;    // Reload now
+        printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
 
-        printf("reload addr %x\n", QA7->TimerControlStatus);
         QA7->Core3TimerIntControl.nCNTPNSIRQ_IRQ =
             1;  // We are in NS EL1 so enable IRQ to core0 that level
         QA7->Core3TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
+        // printf("reload addr %x\n", (uint32_t *)&QA7->TimerControlStatus);
 
         wake_up_cores();
         //  kernel_main();
     } else {
-        init_mmu();
-        // core_timer_init();
-        // timer_init();
+        // init_mmu();
         // enable_interrupt_controller();
         enable_irq();
+        while (1) {
+            // printf("Hi, I'm core %d\n", getCoreID());
+        }
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
