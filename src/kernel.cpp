@@ -19,6 +19,38 @@
 #include "utils.h"
 #include "vm.h"
 
+struct __attribute__((__packed__, aligned(4))) SystemTimerRegisters {
+    uint32_t ControlStatus;  // 0x00
+    uint32_t TimerLo;        // 0x04
+    uint32_t TimerHi;        // 0x08
+    uint32_t Compare0;       // 0x0C
+    uint32_t Compare1;       // 0x10
+    uint32_t Compare2;       // 0x14
+    uint32_t Compare3;       // 0x18
+};
+
+#define SYSTEMTIMER \
+    ((volatile      \
+      __attribute__((aligned(4))) struct SystemTimerRegisters *)(uintptr_t)(PBASE + 0x3000))
+
+uint64_t timer_getTickCount64(void) {
+    uint64_t resVal;
+    uint32_t lowCount;
+    do {
+        resVal = SYSTEMTIMER->TimerHi;    // Read Arm system timer high count
+        lowCount = SYSTEMTIMER->TimerLo;  // Read Arm system timer low count
+    } while (resVal !=
+             (uint64_t)SYSTEMTIMER->TimerHi);  // Check hi counter hasn't rolled in that time
+    resVal = (uint64_t)resVal << 32 | lowCount;  // Join the 32 bit values to a full 64 bit
+    return (resVal);                             // Return the uint64_t timer tick count
+}
+
+void timer_wait(uint64_t us) {
+    us += timer_getTickCount64();  // Add current tickcount onto delay
+    while (timer_getTickCount64() < us) {
+    };  // Loop on timeout function until timeout
+}
+
 struct Stack {
     static constexpr int BYTES = CORE_STACK_SIZE;
     uint64_t bytes[BYTES] __attribute__((aligned(16)));
@@ -90,11 +122,10 @@ static Atomic<int> coresAwake(0);
 extern "C" void kernel_init() {
     if (getCoreID() == 0) {
         create_page_tables();
-        // init_mmu();
         patch_page_tables();
+        init_mmu();
         uart_init();
         init_printf(nullptr, uart_putc_wrapper);
-
         printf("printf initialized!!!\n");
         init_ramfs();
         create_frame_table(frame_table_start,
@@ -106,33 +137,47 @@ extern "C" void kernel_init() {
         smpInitDone = true;
         threadsInit();
         enable_irq();
-        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
-        printf("Setting up Local Timer Irq to Core3\n");
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;  // Route local timer IRQ to Core0
 
-        QA7->TimerControlStatus.ReloadValue = 20000000;  // Timer period set
-        QA7->TimerControlStatus.TimerEnable = 1;         // Timer enabled
-        QA7->TimerControlStatus.IntEnable = 1;           // Timer IRQ enabled
+        printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
+        printf("Setting up Local Timer Irq to Core0\n");
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0
+        asm volatile("dsb sy");                               // Ensure the write reaches the device
+        printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
+        printf("TimerRouting adr:0x%x\n", (void *)&QA7->TimerRouting.Raw32);
+
         printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
+        QA7->TimerControlStatus.ReloadValue = 500000;  // Timer period set
+        QA7->TimerControlStatus.TimerEnable = 1;       // Timer enabled
+        QA7->TimerControlStatus.IntEnable = 1;         // Timer IRQ enabled
+        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
+        printf("TimerControlStatus ard: 0x%x\n", (void *)&QA7->TimerControlStatus.Raw32);
+
         printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
         QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
         QA7->TimerClearReload.Reload = 1;    // Reload now
         printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
+        printf("TimerClearReload adr: 0x%x\n", (void *)&QA7->TimerClearReload.Raw32);
 
+        printf("Core3TimerIntControl: 0x%x\n", QA7->Core3TimerIntControl.Raw32);
         QA7->Core3TimerIntControl.nCNTPNSIRQ_IRQ =
             1;  // We are in NS EL1 so enable IRQ to core0 that level
         QA7->Core3TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
-        // printf("reload addr %x\n", (uint32_t *)&QA7->TimerControlStatus);
+        printf("Core3TimerIntControl: 0x%x\n", QA7->Core3TimerIntControl.Raw32);
+        printf("Core3TimerIntControl adr: 0x%x\n", (void *)&QA7->Core3TimerIntControl.Raw32);
+
+        printf("core3 IRQ pending: 0x%x\n", QA7->Core3IRQSource.Raw32);
+        printf("core3 IRQ pending adr: 0x%x\n", (void *)&QA7->Core3IRQSource.Raw32);
+        printf("core0 IRQ pending: 0x%x\n", QA7->Core0IRQSource.Raw32);
 
         wake_up_cores();
+        // printf("waking\n");
         //  kernel_main();
     } else {
-        // init_mmu();
-        // enable_interrupt_controller();
+        init_mmu();
         enable_irq();
-        while (1) {
-            // printf("Hi, I'm core %d\n", getCoreID());
-        }
+        // while (1) {
+        //     // printf("Hi, I'm core %d\n", getCoreID());
+        // }
     }
 
     printf("Hi, I'm core %d\n", getCoreID());
@@ -142,7 +187,10 @@ extern "C" void kernel_init() {
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });
-
+        while (1) {
+            printf("timer tick %d\n", timer_getTickCount64());
+            timer_wait(500000);
+        }
         // user_thread([]
         //             { printf("i do nothing2\n"); });
     }
