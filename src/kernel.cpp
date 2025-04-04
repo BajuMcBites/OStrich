@@ -137,11 +137,10 @@ extern "C" void kernel_init() {
         smpInitDone = true;
         threadsInit();
         enable_irq();
-
         printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
         printf("Setting up Local Timer Irq to Core0\n");
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0
-        asm volatile("dsb sy");                               // Ensure the write reaches the device
+        QA7->TimerRouting.Routing =
+            LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0 // Ensure the
         printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
         printf("TimerRouting adr:0x%x\n", (void *)&QA7->TimerRouting.Raw32);
 
@@ -155,19 +154,16 @@ extern "C" void kernel_init() {
         printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
         QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
         QA7->TimerClearReload.Reload = 1;    // Reload now
-        printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
+        printf("TimerClearReload: 0x%x\n",
+               QA7->TimerClearReload.Raw32);  // This should read 0 but is not??
         printf("TimerClearReload adr: 0x%x\n", (void *)&QA7->TimerClearReload.Raw32);
 
-        printf("Core3TimerIntControl: 0x%x\n", QA7->Core3TimerIntControl.Raw32);
-        QA7->Core3TimerIntControl.nCNTPNSIRQ_IRQ =
+        printf("Core3TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
+        QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ =
             1;  // We are in NS EL1 so enable IRQ to core0 that level
-        QA7->Core3TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
-        printf("Core3TimerIntControl: 0x%x\n", QA7->Core3TimerIntControl.Raw32);
-        printf("Core3TimerIntControl adr: 0x%x\n", (void *)&QA7->Core3TimerIntControl.Raw32);
-
-        printf("core3 IRQ pending: 0x%x\n", QA7->Core3IRQSource.Raw32);
-        printf("core3 IRQ pending adr: 0x%x\n", (void *)&QA7->Core3IRQSource.Raw32);
-        printf("core0 IRQ pending: 0x%x\n", QA7->Core0IRQSource.Raw32);
+        QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
+        printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
+        printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
 
         wake_up_cores();
         // printf("waking\n");

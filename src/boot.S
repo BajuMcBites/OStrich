@@ -38,7 +38,7 @@ master:
     # mov x0, #1        // Enable timer (bit 0)
     # msr CNTV_CTL_EL0, x0
 	
-    # ldr x0, #200000  // Set desired tick interval (e.g., 10ms worth of timer ticks)
+    # ldr x0,#200000  // Set desired tick interval (e.g., 10ms worth of timer ticks)
     # msr CNTV_TVAL_EL0, x0
 
     // Disable coprocessor traps in EL2
