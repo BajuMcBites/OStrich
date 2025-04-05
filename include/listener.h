@@ -20,7 +20,8 @@ struct Listener {
 class EventHandler {
    public:
     EventHandler() {
-        this->map = new HashMap<uint64_t, Queue<Listener<void *>> *>(uint64_t_hash, uint64_t_equals, 10);
+        this->map =
+            new HashMap<uint64_t, Queue<Listener<void *>> *>(uint64_t_hash, uint64_t_equals, 10);
     }
 
     ~EventHandler() {
