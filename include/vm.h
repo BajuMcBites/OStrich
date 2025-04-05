@@ -197,8 +197,6 @@ struct LocalPageLocation {
     int perm;
     PageSharingMode sharing_mode;
     PCB* pcb;
-    // uint64_t tid; some way to know which process out of the PageLocation->users is the one we
-    // faulted on
     PageLocation* location;
     LocalPageLocation* next;
     LocalPageLocation* prev;
@@ -256,7 +254,7 @@ struct PCKey {
     }
 };
 
-static uint64_t pc_key_hash(PCKey key) {
+static inline uint64_t pc_key_hash(PCKey key) {
     if (key.file == nullptr) {
         return hash_combine(uint64_t_hash(key.offset), uint64_t_hash(key.id));
     }
@@ -266,7 +264,7 @@ static uint64_t pc_key_hash(PCKey key) {
         uint64_t_hash(key.id));
 }
 
-static bool pc_key_equals(PCKey keya, PCKey keyb) {
+static inline bool pc_key_equals(PCKey keya, PCKey keyb) {
     if (keya.file == nullptr && keyb.file != nullptr) {
         return false;
     } else if (keya.file != nullptr && keyb.file == nullptr) {

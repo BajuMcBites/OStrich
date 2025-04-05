@@ -9,14 +9,14 @@
 #include "heap.h"
 #include "libk.h"
 
-inline uint64_t uint64_t_hash(uint64_t elem) {
+static uint64_t uint64_t_hash(uint64_t elem) {
     elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
     elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
     elem = (elem >> 16) ^ elem;
     return elem;
 }
 
-inline bool uint64_t_equals(uint64_t elem1, uint64_t elem2) {
+static bool uint64_t_equals(uint64_t elem1, uint64_t elem2) {
     return elem1 == elem2;
 }
 
@@ -88,7 +88,6 @@ class HashMap {
 
                 cur = cur->next;
             }
-
             return equals_func(cur->key, key) ? cur->value : nullptr;
         }
 

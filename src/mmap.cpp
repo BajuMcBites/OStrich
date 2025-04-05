@@ -20,7 +20,6 @@ static volatile int unbacked_id = 1;
 void load_location(PageLocation* location, Function<void(uint64_t)> w) {
     K::assert(location != nullptr, "we are null location");
     K::assert(!location->present, "we are trying to load an already loaded page");
-    printf("in load location\n");
 
     alloc_frame(PINNED_PAGE_FLAG, location, [=](uint64_t paddr) {
         void* page_vaddr = (void*)paddr_to_vaddr(paddr);
@@ -70,6 +69,7 @@ void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* 
         local = new LocalPageLocation;
         local->pcb = pcb;
         local->perm = prot;
+        local->next = nullptr;
 
         if ((flags & 0x3) == MAP_SHARED) {
             local->sharing_mode = SHARED;

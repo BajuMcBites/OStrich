@@ -375,7 +375,6 @@ void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLo
                            Function<void(PageLocation*)> w) {
     bool file_backed = file != nullptr;
     bool unbacked = offset == 1;
-
     lock.lock([=]() {
         PCKey key(file, offset, id);
         PageLocation* location = map.get(key);
@@ -383,6 +382,7 @@ void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLo
             location = new PageLocation;
             location->ref_count = 0;
             location->present = false;
+            location->users = nullptr;
 
             if (file_backed) {
                 location->location_type = FILESYSTEM;

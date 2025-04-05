@@ -146,6 +146,7 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     threadsInit();
+    init_page_cache();
     wake_up_cores();
     mergeCores();
 }
