@@ -67,7 +67,7 @@ void* K::memcpy(void* dest, const void* src, int n) {
     void* d = dest;
     void* s = (void*)src;
 
-    while ((((uint64_t) d) % 8 == 0) && (((uint64_t) s) % 8 == 0) && n >= 8) {
+    while ((((uint64_t)d) % 8 == 0) && (((uint64_t)s) % 8 == 0) && n >= 8) {
         *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<uint64_t*>(s);
         n -= 8;
         d += 8;

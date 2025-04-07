@@ -63,17 +63,17 @@ class Queue {
         }
     }
     void remove_if(Function<bool(T *t)> predicate) {
-        if(first == nullptr) return;
+        if (first == nullptr) return;
 
         T *prior = nullptr;
         T *it = first;
-        while(it != nullptr) {
+        while (it != nullptr) {
             bool should_remove = predicate(it);
-            if(should_remove) {
-                if(prior == nullptr) { 
+            if (should_remove) {
+                if (prior == nullptr) {
                     // removing head
                     first = first->next;
-                } else if(it->next == nullptr && prior != nullptr) {
+                } else if (it->next == nullptr && prior != nullptr) {
                     // removing head
                     last = prior;
                     prior->next = nullptr;
@@ -86,7 +86,6 @@ class Queue {
             it = it->next;
         }
     }
-
 };
 
 #endif
