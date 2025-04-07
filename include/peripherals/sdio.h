@@ -72,6 +72,6 @@
 #define INT_READ_RDY 0x00000020
 #define INT_WRITE_RDY 0x00000010
 
-#define SD_BLK_SIZE (unsigned int) 512 /* bytes */
+#define SD_BLK_SIZE (unsigned int)512 /* bytes */
 
 #endif

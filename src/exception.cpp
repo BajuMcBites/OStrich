@@ -101,9 +101,8 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
         }
     }
     // dump registers
-    printf_err(":\n  ESR_EL1 0x%X ELR_EL1 0x%X\n SPSR_EL1 0%xX FAR_EL1 0x%X\n", esr, elr, spsr,
-               far);
-    lockErr.unlock();
+    printf(":\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n", esr >> 32, esr,
+           elr >> 32, elr, spsr >> 32, spsr, far >> 32, far);
 
     // no return from exception for now
     while (1);

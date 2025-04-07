@@ -11,6 +11,8 @@ uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PMD[512] __attribute__((aligned(4096), section(".paging")));
 
+PageCache* page_cache;
+
 /**
  * used for setting up kernel memory for devices
  */
@@ -127,8 +129,8 @@ void PageTable::map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint64_t page_attr
         alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t pud_paddr) {
             K::assert(pud_paddr != nullptr, "palloc failed");
             pgd->descriptors[pgd_index] =
-                paddr_to_table_descriptor(pud_paddr);        // put frame into table
-            pud_t* pud = (pud_t*)paddr_to_vaddr(pud_paddr);  // get vaddr of frame
+                paddr_to_table_descriptor(pud_paddr, page_attributes);  // put frame into table
+            pud_t* pud = (pud_t*)paddr_to_vaddr(pud_paddr);             // get vaddr of frame
             K::memset((void*)pud, 0, PAGE_SIZE);
             map_vaddr_pud(pud, vaddr, paddr, page_attributes, w);
         });
@@ -146,7 +148,7 @@ void PageTable::map_vaddr_pud(pud_t* pud, uint64_t vaddr, uint64_t paddr, uint64
     if (pmd == nullptr) {
         alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t pmd_paddr) {
             K::assert(pmd_paddr != nullptr, "palloc failed");
-            pud->descriptors[pud_index] = paddr_to_table_descriptor(pmd_paddr);
+            pud->descriptors[pud_index] = paddr_to_table_descriptor(pmd_paddr, page_attributes);
             pmd_t* pmd = (pmd_t*)paddr_to_vaddr(pmd_paddr);
             K::memset((void*)pmd, 0, PAGE_SIZE);
             map_vaddr_pmd(pmd, vaddr, paddr, page_attributes, w);
@@ -165,7 +167,7 @@ void PageTable::map_vaddr_pmd(pud_t* pmd, uint64_t vaddr, uint64_t paddr, uint64
     if (pte == nullptr) {
         alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t pte_paddr) {
             K::assert(pte_paddr != nullptr, "palloc failed");
-            pmd->descriptors[pmd_index] = paddr_to_table_descriptor(pte_paddr);
+            pmd->descriptors[pmd_index] = paddr_to_table_descriptor(pte_paddr, page_attributes);
             pte_t* pte = (pte_t*)paddr_to_vaddr(pte_paddr);
             K::memset((void*)pte, 0, PAGE_SIZE);
             map_vaddr_pte(pte, vaddr, paddr, page_attributes);
@@ -251,11 +253,12 @@ uint64_t vaddr_to_paddr(uint64_t vaddr) {
     return vaddr & (~VA_START);
 }
 
-uint64_t paddr_to_table_descriptor(uint64_t paddr) {
+uint64_t paddr_to_table_descriptor(uint64_t paddr, uint64_t page_attributes) {
     K::assert((paddr & 0xFFF) == 0, "non-aligned paddr for table descriptor");
     K::assert(paddr != 0, "null paddr for table descriptor");
     uint64_t descriptor = paddr & ~0xFFF & ~((uint64_t)0xFF << 48);
     descriptor |= (TABLE_ENTRY | VALID_DESCRIPTOR);
+    // descriptor |= (page_attributes);
     return descriptor;
 }
 
@@ -303,22 +306,142 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
     uint64_t attribute = 0;
 
     if ((local->perm & EXEC_PERM) == 0) {
-        attribute |= (0x1L << 53);  // set XN (execute never) to true
+        attribute |= (0x1L << 54);  // set XN (execute never) to true
     }
 
-    if (local->perm & READ_PERM != 0) {
-        attribute |= (0x1L << 5);
-    }
-
-    if (local->perm & WRITE_PERM != 0) {
-        attribute |= (0x0L << 5);
+    if ((local->perm & WRITE_PERM) != 0) {
+        attribute |= (0x01L << 6);
+    } else if ((local->perm & READ_PERM) != 0 || (local->perm & EXEC_PERM) != 0) {
+        attribute |= (0x11L << 6);
+    } else {
+        attribute |= (0x00L << 6);
     }
 
     attribute |= (0x2L << 2);   // 2nd index in mair
-    attribute |= (0x1L << 10);  // set nG (non global) [11] bit to true
-    attribute |= (0x1L << 9);   // set AF (access flag) [10] bit to true so we dont fault on access
-    attribute |= (0x3L << 7);   // set sharability [9:8] to inner sharable across cores
+    attribute |= (0x1L << 11);  // set nG (non global) [11] bit to true
+    attribute |= (0x1L << 10);  // set AF (access flag) [10] bit to true so we dont fault on access
+    attribute |= (0x3L << 8);   // set sharability [9:8] to inner sharable across cores
 
     attribute &= (~0xFFFFFFFFFF000L);  // zero out middle bits as sanity check
     return attribute;
+}
+
+void add_local(PageLocation* location, LocalPageLocation* local) {
+    location->ref_count++;
+
+    if (location->users == nullptr) {
+        location->users = local;
+        local->prev = nullptr;
+        local->next = nullptr;
+        return;
+    }
+
+    LocalPageLocation* n = location->users;
+    int count = 2;
+
+    while (count < location->ref_count) {
+        count++;
+        n = n->next;
+    }
+
+    n->next = local;
+    local->prev = n;
+}
+
+void remove_local(PageLocation* location, LocalPageLocation* local) {
+    location->ref_count--;
+
+    LocalPageLocation* prev = local->prev;
+    LocalPageLocation* next = local->next;
+
+    if (prev == nullptr) {
+        location->users = next;
+    } else {
+        prev->next = next;
+    }
+
+    if (next != nullptr) {
+        next->prev = prev;
+    }
+}
+
+/**
+ * gets or adds a page location from/to the page cache
+ *
+ * takes in file name offset and id and finds the matching page in the page or
+ * creates a new one and inserts it into the page cache.
+ */
+void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+                           Function<void(PageLocation*)> w) {
+    bool file_backed = file != nullptr;
+    bool unbacked = offset == 1;
+    lock.lock([=]() {
+        PCKey key(file, offset, id);
+        PageLocation* location = map.get(key);
+        if (location == nullptr) {
+            location = new PageLocation;
+            location->ref_count = 0;
+            location->present = false;
+            location->users = nullptr;
+
+            if (file_backed) {
+                location->location_type = FILESYSTEM;
+                location->location.filesystem = new FileLocation(file, offset);
+            } else {
+                if (unbacked) {
+                    location->location_type = UNBACKED;
+                    location->location.swap = new SwapLocation(id);
+                } else {
+                    location->location_type = SWAP;
+                    location->location.swap = new SwapLocation(id);
+                }
+            }
+            map.put(key, location);
+        }
+        add_local(location, local);
+        local->location = location;
+        create_event(w, location);
+        lock.unlock();
+    });
+}
+
+void PageCache::remove(LocalPageLocation* local) {
+    lock.lock([=]() {
+        PageLocation* location = local->location;
+
+        remove_local(location, local);
+
+        if (location->ref_count == 0) {
+            if (location->location_type == FILESYSTEM) {
+                map.remove(PCKey(location->location.filesystem->file,
+                                 location->location.filesystem->offset, 0));
+            } else if (location->location_type == UNBACKED) {
+                map.remove(PCKey(nullptr, 1, location->location.swap->swap_id));
+            } else if (location->location_type == SWAP) {
+                map.remove(PCKey(nullptr, 0, location->location.swap->swap_id));
+            }
+
+            delete location;
+        }
+
+        lock.unlock();
+    });
+}
+
+void init_page_cache() {
+    page_cache = new PageCache;
+}
+
+PageLocation::~PageLocation() {
+    if (location_type == FILESYSTEM) {
+        delete location.filesystem;
+    } else if (location_type == SWAP) {
+        delete location.swap;
+    }
+
+    if (present) {
+        unpin_frame(paddr);
+        free_frame(paddr);
+        /* todo: send signal to swap that the space is no longer needed */
+    }
 }

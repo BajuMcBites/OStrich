@@ -69,16 +69,23 @@ int K::strncpy(char* dest, char* src, int n) {
     return index + 1;
 }
 
-extern "C" void* memcpy(void* dest, const void* src, int n) {
+extern "C" void* memcpy(void* dest, const void* src, size_t n) {
     return K::memcpy(dest, src, n);
 }
 
 void* K::memcpy(void* dest, const void* src, int n) {
-    unsigned char* d = (unsigned char*)dest;
-    const unsigned char* s = (const unsigned char*)src;
-    // printf("%x is dest, mapping till %x\n", (uint64_t)dest, (uint64_t)dest + n);
+    void* d = dest;
+    void* s = (void*)src;
+
+    while ((((uint64_t)d) % 8 == 0) && (((uint64_t)s) % 8 == 0) && n >= 8) {
+        *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<uint64_t*>(s);
+        n -= 8;
+        d += 8;
+        s += 8;
+    }
+
     while (n--) {
-        *d++ = *s++;
+        *reinterpret_cast<char*>(d++) = *reinterpret_cast<char*>(s++);
     }
 
     return dest;

@@ -1,5 +1,6 @@
 #include "core.h"
 #include "dcache.h"
+#include "dwc.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
@@ -7,7 +8,9 @@
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
+#include "keyboard.h"
 #include "libk.h"
+#include "listener.h"
 #include "mm.h"
 #include "partition_tests.h"
 #include "percpu.h"
@@ -17,6 +20,7 @@
 #include "sched.h"
 #include "sdio.h"
 #include "sdio_tests.h"
+#include "snake.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
@@ -80,10 +84,10 @@ extern "C" void kernel_main() {
     // hash_test();
     // frame_alloc_tests();
     user_paging_tests();
-    // blocking_atomic_tests();
-    // ramfs_tests();
-    // elf_load_test();
-    // sdioTests();
+    blocking_atomic_tests();
+    ramfs_tests();
+    sdioTests();
+    ring_buffer_tests();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.
 }
@@ -97,8 +101,11 @@ extern char __heap_end[];
 
 static Atomic<int> coresAwake(0);
 
+void mergeCores();
+
 extern "C" void secondary_kernel_init() {
     init_mmu();
+    event_listener_init();
     mergeCores();
 }
 
@@ -131,10 +138,15 @@ extern "C" void primary_kernel_init() {
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
     uinit((void *)HEAP_START, HEAP_SIZE);
+    event_listener_init();
+
+    usb_initialize();
+
     smpInitDone = true;
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     threadsInit();
+    init_page_cache();
     wake_up_cores();
     mergeCores();
 }
@@ -147,10 +159,15 @@ void mergeCores() {
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });
-
-        // user_thread([]
-        //             { printf("i do nothing2\n"); });
+        user_thread([] { printf("i do nothing2\n"); });
     }
+
+    // Uncomment to run snake
+    // if(getCoreID() == 0){
+    //     printf("init_snake() + keyboard_loop();\n");
+    //     user_thread(init_snake);
+    //     user_thread(keyboard_loop);
+    // }
     stop();
     printf("PANIC I should not go here\n");
 }
