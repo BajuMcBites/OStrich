@@ -2,6 +2,7 @@
 #include "irq.h"
 #include "printf.h"
 #include "stdint.h"
+#include "syscall_handler.h"
 #include "uart.h"
 
 /**
@@ -41,7 +42,8 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
             printf_err("Illegal execution");
             break;
         case 0b010101:
-            printf_err("System call");
+            printf_err("System call\n");
+            svc_handler();
             break;
         case 0b100000:
             printf_err("Instruction abort, lower EL");

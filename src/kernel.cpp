@@ -22,6 +22,7 @@
 #include "sdio_tests.h"
 #include "snake.h"
 #include "stdint.h"
+#include "syscall_handler.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
@@ -157,9 +158,13 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
-        create_event([] { kernel_main(); });
+        // create_event([] { kernel_main(); });
 
-        user_thread([] { printf("i do nothing2\n"); });
+        user_thread([] {
+            printf("user thread running\n");
+            printf("Before EL: %d\n", get_current_el());
+            invoke_handler(0);
+        });
     }
 
     // Uncomment to run snake
