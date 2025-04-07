@@ -20,13 +20,11 @@ struct Listener {
 class EventHandler {
    public:
     EventHandler() {
-        this->map = new HashMap<Queue<Listener<void *>>*>(10);
+        this->map = new HashMap<Queue<Listener<void *>> *>(10);
     }
 
     ~EventHandler() {
-        this->map->for_each([](Queue<Listener<void*>> *queue) {
-            delete queue;
-        });
+        this->map->for_each([](Queue<Listener<void *>> *queue) { delete queue; });
         delete this->map;
     }
 
@@ -35,15 +33,14 @@ class EventHandler {
         static int listener_id = 0;
         if (this->map->get(event_id) == nullptr) {
             Queue<Listener<void *>> *q =
-            (Queue<Listener<void *>> *)kmalloc(sizeof(Queue<Listener<void>>));
+                (Queue<Listener<void *>> *)kmalloc(sizeof(Queue<Listener<void>>));
             this->map->put(event_id, q);
         }
-        listener->_id = listener_id ++;
+        listener->_id = listener_id++;
         this->map->get(event_id)->add(reinterpret_cast<Listener<void *> *>(listener));
     }
 
-
-    void unregister_listener(int event_id, int listener_id){
+    void unregister_listener(int event_id, int listener_id) {
         this->map->get(event_id)->remove_if([&listener_id](Listener<void *> *listener) -> bool {
             return listener->_id == listener_id;
         });
@@ -52,16 +49,16 @@ class EventHandler {
     template <typename... Args>
     void handle_event(int event_id, Args &&...args) {
         if (this->map->get(event_id) == nullptr) return;
-        Function<void(Listener<void *>*)> consumer = [&args...](Listener<void *> *listener) {
+        Function<void(Listener<void *> *)> consumer = [&args...](Listener<void *> *listener) {
             if (listener->handler != nullptr) {
-                reinterpret_cast<Listener<Args...>*>(listener)->handler(args...);
+                reinterpret_cast<Listener<Args...> *>(listener)->handler(args...);
             }
         };
         this->map->get(event_id)->for_each(consumer);
     }
 
    protected:
-    HashMap<Queue<Listener<void *>>*> *map;
+    HashMap<Queue<Listener<void *>> *> *map;
 };
 
 extern EventHandler *event_handler;

@@ -4,7 +4,7 @@ EventHandler *event_handler;
 
 void event_listener_init() {
     static bool initialized = false;
-    if(initialized) return;
+    if (initialized) return;
     event_handler = new EventHandler{};
     initialized = true;
 }

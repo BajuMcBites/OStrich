@@ -5,11 +5,10 @@
 #include "libk.h"
 #include "listener.h"
 #include "peripherals/timer.h"
+#include "peripherals/usb_hid_keys.h"
 #include "printf.h"
 #include "rand.h"
 #include "timer.h"
-#include "peripherals/usb_hid_keys.h"
-#include "listener.h"
 
 int fb_pitch;
 int fb_size;
@@ -104,34 +103,30 @@ int render(game_state *state) {
 }
 
 void snake_on_key_press(struct key_event *event) {
-    if(event->flags.released) return;
+    if (event->flags.released) return;
 
     if (event->keycode == KEY_W && state.snake.prior_direction != DIRECTION_DOWN) {
         state.snake.direction = DIRECTION_UP;
-    } else if(event->keycode == KEY_D && state.snake.prior_direction != DIRECTION_LEFT) {
+    } else if (event->keycode == KEY_D && state.snake.prior_direction != DIRECTION_LEFT) {
         state.snake.direction = DIRECTION_RIGHT;
-    } else if(event->keycode == KEY_S && state.snake.prior_direction != DIRECTION_UP) {
+    } else if (event->keycode == KEY_S && state.snake.prior_direction != DIRECTION_UP) {
         state.snake.direction = DIRECTION_DOWN;
-    } else if(event->keycode == KEY_A && state.snake.prior_direction != DIRECTION_RIGHT) {
+    } else if (event->keycode == KEY_A && state.snake.prior_direction != DIRECTION_RIGHT) {
         state.snake.direction = DIRECTION_LEFT;
     }
 }
 
 void init() {
     state.snake = {.cur_length = 0,
-                       .max_length = 3,
-                       .x = (WIDTH / (2 * SCALE)),
-                       .y = (HEIGHT / (2 * SCALE)),
-                       .direction = DIRECTION_RIGHT,
-                       .prior_direction = 0};
+                   .max_length = 3,
+                   .x = (WIDTH / (2 * SCALE)),
+                   .y = (HEIGHT / (2 * SCALE)),
+                   .direction = DIRECTION_RIGHT,
+                   .prior_direction = 0};
     state.food = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}};
 
-    
-    state.key_listener = {
-        .handler = (void (*)(key_event *))&snake_on_key_press,
-        .next = nullptr
-    };
-    
+    state.key_listener = {.handler = (void (*)(key_event *))&snake_on_key_press, .next = nullptr};
+
     event_handler->register_listener(KEYBOARD_EVENT, &state.key_listener);
     fb_clear(0xFFFFFFFF);
 }

@@ -89,7 +89,7 @@ class HashMap {
         return false;
     }
 
-    void for_each(Function<void(T t)> consumer){
+    void for_each(Function<void(T t)> consumer) {
         for (unsigned long i = 0; i < true_size; i++) {
             struct HashNode<T> *cur = container[i];
             struct HashNode<T> *temp;
