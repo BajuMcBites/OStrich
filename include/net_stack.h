@@ -5,7 +5,6 @@
 #include "hash.h"
 #include "heap.h"
 #include "libk.h"
-#include "printf.h"
 #include "stdint.h"
 #include "tuple.h"
 
@@ -109,19 +108,19 @@ typedef struct {
 } __attribute__((packed)) icpm_header;
 
 typedef struct {
-    net_uint16_t hardware_type;  // Hardware type (1 for Ethernet)
-    net_uint16_t protocol_type;  // Protocol type (0x0800 for IPv4)
-    uint8_t hardware_size;       // Hardware address length (6 for MAC)
-    uint8_t protocol_size;       // Protocol address length (4 for IPv4)
-    net_uint16_t opcode;         // Operation code (1 for request, 2 for reply)
-    uint8_t sender_mac[6];       // Sender's MAC address
-    uint8_t sender_ip[4];        // Sender's IP address
-    uint8_t target_mac[6];       // Target's MAC address
-    uint8_t target_ip[4];        // Target's IP address
+    net_uint16_t hardware_type;
+    net_uint16_t protocol_type;
+    uint8_t hardware_size;
+    uint8_t protocol_size;
+    net_uint16_t opcode;
+    uint8_t sender_mac[6];
+    uint8_t sender_ip[4];
+    uint8_t target_mac[6];
+    uint8_t target_ip[4];
 } __attribute__((packed)) arp_packet;
 
 typedef struct {
-    uint8_t ihl : 4;  // because we are in a little endian machine, this matters
+    uint8_t ihl : 4;
     uint8_t version : 4;
 
     uint8_t type_of_service;
@@ -129,10 +128,6 @@ typedef struct {
 
     net_uint16_t identification;
 
-    // #ifdef LITTLE_ENDIAN
-    //     net_uint16_t fragment_offset : 13;
-    //     uint8_t flags : 3;
-    // #else
     net_uint16_t _flags_fragments;
     uint8_t get_flags() {
         return _flags_fragments.get() >> 13;
@@ -146,9 +141,7 @@ typedef struct {
     void set_fragment_offset(uint16_t offset) {
         _flags_fragments = ((get_flags() << 13) | offset);
     }
-    // uint8_t flags : 3;
-    // net_uint16_t fragment_offset : 13;
-    // #endif
+
     uint8_t ttl;
     uint8_t protocol;
     net_uint16_t header_check_sum;
@@ -161,7 +154,7 @@ typedef struct {
 typedef struct {
     uint8_t dst_mac[6];
     uint8_t src_mac[6];
-    net_uint16_t ethertype;  // 0x0800 for IPv4
+    net_uint16_t ethertype;
 } __attribute__((packed)) ethernet_header;
 
 typedef union {
@@ -169,9 +162,25 @@ typedef union {
         uint32_t ack_number;
         uint32_t seq_number;
     } __attribute__((packed)) tcp;
-    // typedef struct {
-    // } __attribute__((packed)) socket;
 } __attribute__((packed)) port_status;
+
+typedef struct {
+    uint8_t op;
+    uint8_t htype;
+    uint8_t hlen;
+    uint8_t hops;
+    net_uint32_t xid;
+    net_uint16_t secs;
+    net_uint16_t flags;
+    net_uint32_t ciaddr;
+    net_uint32_t yiaddr;
+    net_uint32_t siaddr;
+    net_uint32_t giaddr;
+    uint8_t chaddr[16];
+    char sname[64];
+    char file[128];
+    uint8_t options[312];
+} __attribute__((packed)) dhcp_packet;
 
 template <typename T>
 class PacketBuilder {
@@ -188,7 +197,7 @@ class PacketBuilder {
     PacketBuilder& encapsulate(PacketBuilder<J>* other) {
         this->encapsulated = reinterpret_cast<PacketBuilder<void>*>(other);
 
-        length = sizeof(T) + this->encapsulated->get_size();
+        length = sizeof(T) + (other != nullptr ? this->encapsulated->get_size() : 0);
         return *this;
     }
     virtual void build_at(void*) = 0;
@@ -197,6 +206,7 @@ class PacketBuilder {
     }
 
     T* build(size_t* len_store = nullptr) {
+        // TODO: allow for passing in of a buffer to build the packet to?
         if (len_store) *len_store = this->get_size();
         void* packet = kmalloc(this->get_size());
         build_at(packet);
@@ -210,9 +220,9 @@ class PacketBuilder {
     PacketBuilder<void>* encapsulated;
 };
 
-class PacketBuffer : public PacketBuilder<uint8_t> {
+class PacketBufferBuilder : public PacketBuilder<uint8_t> {
    public:
-    PacketBuffer(uint8_t* buffer, size_t length) : buffer(buffer) {
+    PacketBufferBuilder(uint8_t* buffer, size_t length) : buffer(buffer) {
         this->length = length;
     };
 
@@ -220,8 +230,12 @@ class PacketBuffer : public PacketBuilder<uint8_t> {
         return length;
     }
 
-    PacketBuffer* ptr() {
+    PacketBufferBuilder* ptr() {
         return this;
+    }
+
+    const uint8_t* get_buffer() {
+        return const_cast<const uint8_t*>(this->buffer);
     }
 
    protected:
@@ -296,7 +310,14 @@ class UDPBuilder : public PacketBuilder<udp_header> {
         this->internal->dst_port = dst_port;
     };
 
+    UDPBuilder& with_pseduo_header(uint32_t src, uint32_t dst) {
+        pseudo.src_ip = src;
+        pseudo.dst_ip = dst;
+        return *this;
+    }
+
    protected:
+    pseduo_header pseudo;
     void build_at(void*);
 };
 
@@ -355,6 +376,8 @@ typedef Packet<ethernet_header> EthernetFrame;
 typedef Packet<arp_packet> ARPPacket;
 typedef Packet<udp_header> UDPDatagram;
 typedef Packet<icpm_header> ICMPPacket;
+typedef Packet<dhcp_packet> DHCPPacket;
+typedef Packet<uint8_t*> PacketBuffer;
 
 class PacketBufferParser {
    private:

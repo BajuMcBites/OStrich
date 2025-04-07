@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "arp.h"
+#include "dhcp.h"
 #include "dwc.h"
 #include "event.h"
 #include "ipv4.h"
@@ -22,16 +23,10 @@ uint16_t bulk_out_mps = 0;
 uint8_t mac_address[6];
 
 void process_packet(usb_session *session, uint8_t *buffer, size_t len) {
-    printf("Received: ");
-    for (int i = 0; i < len; i++) {
-        printf("%02x ", buffer[i]);
-    }
-    printf("\n");
-
-    PacketBufferParser parser((buffer + 0), len);
+    PacketBufferParser parser(buffer, len);
 
     auto frame = parser.pop<EthernetFrame>();
-    
+
     switch (frame->ethertype.get()) {
         case 0x0806:  // ARP
             handle_arp_packet(session, &parser);
@@ -47,12 +42,6 @@ void send_packet(usb_session *session, uint8_t *data, size_t length) {
         printf("Error: Packet too large to send.\n");
         return;
     }
-
-    printf("sending data (%d): ", length);
-    for(size_t i = 0; i < length; i++){
-        printf("%02x ", data[i]);
-    }
-    printf("\n");
 
     session->mps = bulk_out_mps;
     usb_send_bulk(session, data, length);
@@ -177,7 +166,6 @@ int cdc_ecm_init(usb_session *session) {
 
 void initialize_network_card(usb_session *session, usb_device_descriptor_t *device,
                              usb_device_config_t *config) {
-
     if (cdc_ecm_init(session)) {
         printf("[ethernet-driver] failed to initialize cdc ecm\n");
         stop();
@@ -210,9 +198,14 @@ void initialize_network_card(usb_session *session, usb_device_descriptor_t *devi
     session->in_toggle = 0;
     session->out_toggle = 0;
 
+    printf("\n[ethernet-driver] network card initialized, attempting dhcp discovery...\n");
+
+    dhcp_discover(session);
+
     while (1) {
-        if (receive_packet(session, ethernet_buffer, sizeof(ethernet_buffer)) == 0x10) {
-            process_packet(session, ethernet_buffer, 90);
+        int res = receive_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
+        if (res == 0x10 || res == 0x00) {
+            process_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
         }
     }
 }
