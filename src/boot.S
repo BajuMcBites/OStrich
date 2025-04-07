@@ -2,7 +2,6 @@
 #include "vm.h"
 #include "entry.h"
 #include "mm.h"
-#include "sys.h"
 
 .section ".text.boot"
 _start:	

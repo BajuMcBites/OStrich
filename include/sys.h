@@ -1,8 +1,6 @@
 #ifndef _SYS__H_
 #define _SYS___H_
 
-#include "stdint.h"
-
 #define SYS_EXIT 0
 #define SYS_CLOSE 1
 #define SYS_ENV 2
