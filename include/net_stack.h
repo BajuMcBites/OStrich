@@ -436,5 +436,6 @@ port_status* obtain_port(uint16_t port);
 void release_port(uint16_t port);
 
 port_status* get_port_status(uint16_t port);
+uint16_t calc_checksum(void*, void*, size_t, size_t);
 
 #endif
