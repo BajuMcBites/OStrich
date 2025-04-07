@@ -134,7 +134,6 @@ void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl) {
             return;
         }
     }
-    printf("%x this is the next tcb in event loop:\n", nextThread);
     K::assert(runningThreads[me] != nullptr, "null pointer trying to run as event");
 
     oldThreads[me] = runningThreads[me];  // save the old thread

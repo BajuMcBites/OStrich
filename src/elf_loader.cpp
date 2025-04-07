@@ -155,7 +155,7 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 	}
 }
 
-void *load_section(void* mem, Elf64_Shdr *shdr, UserTCB* tcb) {
+void *load_section(void* mem, Elf64_Shdr *shdr, PCB* pcb) {
     size_t sect_size = shdr->sh_size;
     off_t sect_offset = shdr->sh_offset;
     void *vaddr = (void *)(shdr->sh_addr);
@@ -170,18 +170,18 @@ void *load_section(void* mem, Elf64_Shdr *shdr, UserTCB* tcb) {
     if (shdr->sh_flags & SHF_WRITE) prot |= PROT_WRITE;
     if (shdr->sh_flags & SHF_EXECINSTR) prot |= PROT_EXEC;
 	printf("section vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
-	void* to = (void*)((uint64_t)aligned_vaddr + page_offset);
-	void* from = (void*)(sect_offset);
-	void* end = (void*)((uint64_t)from + sect_size);
+	uint64_t to = (uint64_t)aligned_vaddr + page_offset;
+	uint64_t from = (uint64_t)mem + sect_offset;
+	uint64_t end = from + sect_size;
 	printf("section mapping 0x%x, from memory 0x%x\n", to, from);
 	
-    mmap(tcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
+    mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
 		[=]() {
-			load_mmapped_page(tcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
-				tcb->page_table->use_page_table();
-				void* page_to = (void*)kvaddr;
-				if (page_to < to) {
-					page_to = to;
+			load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
+				pcb->page_table->use_page_table();
+				void* page_to = aligned_vaddr;
+				if (page_to < (void*)to) {
+					page_to = (void*)to;
 				}
 				void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
 				size_t cpy_size = PAGE_SIZE;
@@ -195,7 +195,7 @@ void *load_section(void* mem, Elf64_Shdr *shdr, UserTCB* tcb) {
     return (void*)vaddr;
 }
 
-static int elf_load_stage1(Elf64_Ehdr *hdr, UserTCB* tcb) {
+static int elf_load_stage1(Elf64_Ehdr *hdr, PCB* pcb) {
 	Elf64_Shdr *shdr = elf_sheader(hdr);
 
 	unsigned int i;
@@ -206,7 +206,7 @@ static int elf_load_stage1(Elf64_Ehdr *hdr, UserTCB* tcb) {
 			case SHT_NULL:
 				break;
 			case SHT_PROGBITS:
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_SYMTAB:
 				// LINKING STUFF
@@ -215,13 +215,13 @@ static int elf_load_stage1(Elf64_Ehdr *hdr, UserTCB* tcb) {
 				// not here
 				break;
 			case SHT_HASH: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_DYNAMIC: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_NOTE: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_NOBITS: 
 				// Skip if it the section is empty
@@ -236,20 +236,20 @@ static int elf_load_stage1(Elf64_Ehdr *hdr, UserTCB* tcb) {
 				}
 				break;
 			case SHT_REL: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_SHLIB: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_STRTAB:
 			case SHT_DYNSYM: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_INIT_ARRAY: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_FINI_ARRAY: 
-				load_section((void*)hdr, section, tcb);
+				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_GROUP: 
 				// do something
@@ -514,7 +514,7 @@ static int elf_load_stage2(Elf64_Ehdr *hdr) {
     return 0;
 }
 
-void *load_segment_mem(void* mem, Elf64_Phdr *phdr, UserTCB* tcb) {
+void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb) {
     size_t mem_size = phdr->p_memsz;
     off_t mem_offset = phdr->p_offset;
     size_t file_size = phdr->p_filesz;
@@ -531,17 +531,17 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, UserTCB* tcb) {
     if (phdr->p_flags & PF_W) prot |= PROT_WRITE;
     if (phdr->p_flags & PF_X) prot |= PROT_EXEC;
 	printf("vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
-	void* to = (void*)((uint64_t)aligned_vaddr + page_offset);
-	void* from = (void*)(mem_offset);
-	printf("mapping 0x%x, from memory 0x%x\n", to, from);
-	void* end = (void*)((uint64_t)from + mem_size);
-	mmap(tcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
+	uint64_t to = (uint64_t)aligned_vaddr + page_offset;
+	uint64_t from = (uint64_t)mem + mem_offset;
+	printf("mapping 0x%x%x, from memory 0x%x%x\n", to >> 32, to, from >> 32, from);
+	uint64_t end = from + mem_size;
+	mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
 		[=]() {
-			load_mmapped_page(tcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
-				tcb->page_table->use_page_table();
-				void* page_to = (void*)kvaddr;
-				if (page_to < to) {
-					page_to = to;
+			load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
+				pcb->page_table->use_page_table();
+				void* page_to = aligned_vaddr;
+				if (page_to < (void*)to) {
+					page_to = (void*)to;
 				}
 				void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
 				size_t cpy_size = PAGE_SIZE;
@@ -556,10 +556,10 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, UserTCB* tcb) {
 }
 
 
-void* load_library(char *name, UserTCB* tcb);
+void* load_library(char *name, PCB* pcb);
 
 
-static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
+static int elf_load_stage3(Elf64_Ehdr *hdr, PCB* pcb) {
 	Elf64_Phdr *phdr = elf_pheader(hdr);
 	unsigned int i, idx;
 	for (i = 0; i < hdr->e_phnum; i++) {
@@ -569,7 +569,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
 				break;
 			case PT_LOAD:
 				// load this in
-				load_segment_mem((void*) hdr, prog, tcb);
+				load_segment_mem((void*) hdr, prog, pcb);
 				break;
 			case PT_DYNAMIC: {
 				Elf64_Dyn *dyn = (Elf64_Dyn*)((uint64_t)hdr + prog->p_offset);
@@ -588,7 +588,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
 					if (dyn->d_tag == DT_NEEDED) {
 						char *libname = (char*)((uint64_t)hdr + dynstr_addr + dyn->d_un.d_val);
 						printf("Loading dependency: %s\n", libname);
-						void *lib = load_library(libname, tcb);
+						void *lib = load_library(libname, pcb);
 						if (!lib) {
 							ERROR("Failed to load %s\n", libname);
 							return ELF_RELOC_ERR;
@@ -613,7 +613,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
 				// unnecessary..?
 				break;
 			case PT_PHDR: 
-				// load_segment_mem((void*) hdr, prog, tcb);
+				// load_segment_mem((void*) hdr, prog, pcb);
 				break;
 			default:
 				ERROR("unsupported program header type.\n");
@@ -623,9 +623,9 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, UserTCB* tcb) {
 }
 
 // load
-static inline void *elf_load_rel(Elf64_Ehdr *hdr, UserTCB* tcb) {
+static inline void *elf_load_rel(Elf64_Ehdr *hdr, PCB* pcb) {
 	int result;
-	result = elf_load_stage1(hdr, tcb);
+	result = elf_load_stage1(hdr, pcb);
 	if(result == ELF_RELOC_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -636,7 +636,7 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr, UserTCB* tcb) {
 		return nullptr;
 	}
 	// Parse the program header (if present)
-	result = elf_load_stage3(hdr, tcb);
+	result = elf_load_stage3(hdr, pcb);
 	if (result == ELF_PHDR_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -644,7 +644,7 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr, UserTCB* tcb) {
 	return (void *)hdr->e_entry;
 }
 
-void* load_library(char *name, UserTCB* tcb) {
+void* load_library(char *name, PCB* pcb) {
     // check if already loaded
     for (LoadedLibrary *lib = g_loaded_libs; lib; lib = lib->next) {
         if (K::strcmp(lib->name, name) == 0) {
@@ -680,23 +680,23 @@ void* load_library(char *name, UserTCB* tcb) {
     g_loaded_libs = new_lib;
 
     // relocate by stage
-    elf_load_stage1(lib_hdr, tcb);
+    elf_load_stage1(lib_hdr, pcb);
     elf_load_stage2(lib_hdr);
-    elf_load_stage3(lib_hdr, tcb);
+    elf_load_stage3(lib_hdr, pcb);
 
     return lib_hdr;
 }
 
 // load
-static inline void *elf_load_exec(Elf64_Ehdr *hdr, UserTCB* tcb) {
+static inline void *elf_load_exec(Elf64_Ehdr *hdr, PCB* pcb) {
 	int result;
-	result = elf_load_stage1(hdr, tcb);
+	result = elf_load_stage1(hdr, pcb);
 	if(result == ELF_RELOC_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
 	}
 	// Parse the program header (if present)
-	result = elf_load_stage3(hdr, tcb);
+	result = elf_load_stage3(hdr, pcb);
 	if (result == ELF_PHDR_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -704,7 +704,7 @@ static inline void *elf_load_exec(Elf64_Ehdr *hdr, UserTCB* tcb) {
 	return (void *)hdr->e_entry;
 }
 
-void *elf_load(void* ptr, UserTCB* tcb) {
+void *elf_load(void* ptr, PCB* pcb) {
 	Elf64_Ehdr *hdr = (Elf64_Ehdr *)ptr;
 	if(!elf_check_supported(hdr)) {
 		ERROR("ELF File cannot be loaded.\n");
@@ -712,11 +712,11 @@ void *elf_load(void* ptr, UserTCB* tcb) {
 	}
 	switch(hdr->e_type) {
 		case ET_EXEC:
-			return elf_load_exec(hdr, tcb);
+			return elf_load_exec(hdr, pcb);
 		case ET_REL:
-			return elf_load_rel(hdr, tcb);
+			return elf_load_rel(hdr, pcb);
 		case ET_DYN:
-			return elf_load_rel(hdr, tcb);
+			return elf_load_rel(hdr, pcb);
 			// todo ... ?? ? ? ? ? ??
 	}
 	return nullptr;

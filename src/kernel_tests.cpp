@@ -557,17 +557,12 @@ void blocking_atomic_tests() {
 void elf_load_test() {
     printf("start elf_load tests\n");
     int elf_index = get_ramfs_index("inf_loop.elf");
-    UserTCB* tcb = new UserTCB([]() {
-        /* do nothing shouldnt ever be called */
-        K::assert(false, "this shouldn't be called");
-    });
+    PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
     char buffer[sz];
     ramfs_read(buffer, 0, sz, elf_index);
-    tcb->context.pc = (uint64_t)elf_load((void*)buffer, tcb);
+    void* new_pc = elf_load((void*)buffer, pcb);
     // printf("0x%x this is the tcb pc\n", tcb->context.pc);
     //printf("0x%x THIS IS THE TCB:\n", (uint64_t)tcb);
-    
-    readyQueue.forCPU(0).queues[1].add(tcb);
     printf("end elf_load tests\n");
 }

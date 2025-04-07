@@ -301,6 +301,6 @@ typedef struct LoadedLibrary {
 
 extern LoadedLibrary *g_loaded_libs; 
 
-void* elf_load(void* ptr, UserTCB* tcb);
+void* elf_load(void* ptr, PCB* pcb);
 
 #endif
