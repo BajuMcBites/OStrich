@@ -1,5 +1,5 @@
-#ifndef _SYS_H_
-#define _SYS_H_
+#ifndef _SYS__CALL_H_
+#define _SYS__CALL_H_
 
 #include "stdint.h"
 
@@ -23,25 +23,25 @@
 #define SYS_TIME 17
 
 extern void _exit();
-extern int close(int file);
+extern int _close(int file);
 extern char *
     *environ; /* pointer to array of char * strings that define the current environment variables */
-extern int execve(char *name, char **argv, char **env);
-extern int fork();
-extern int fstat(int file, struct stat *st);
-extern int getpid();
-extern int isatty(int file);
-extern int kill(int pid, int sig);
-extern int link(char *old, char *new);
-extern int lseek(int file, int ptr, int dir);
-extern int open(const char *name, int flags, ...);
-extern int read(int file, char *ptr, int len);
-// extern caddr_t sbrk(int incr);
-extern int stat(const char *file, struct stat *st);
+extern int _execve(char *name, char **argv, char **env);
+extern int _fork();
+extern int _fstat(int file, struct stat *st);
+extern int _getpid();
+extern int _isatty(int file);
+extern int _kill(int pid, int sig);
+extern int _link(char *old, char *new);
+extern int _lseek(int file, int ptr, int dir);
+extern int _open(const char *name, int flags, ...);
+extern int _read(int file, char *ptr, int len);
+// extern caddr_t _sbrk(int incr);
+extern int _stat(const char *file, struct stat *st);
 // extern clock_t times(struct tms *buf);
-extern int unlink(char *name);
-extern int wait(int *status);
-extern int write(int file, char *ptr, int len);
-extern int gettimeofday(struct timeval *p, struct timezone *z);
+extern int _unlink(char *name);
+extern int _wait(int *status);
+extern int _write(int file, char *ptr, int len);
+extern int _gettimeofday(struct timeval *p, struct timezone *z);
 
 #endif

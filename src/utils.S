@@ -51,3 +51,9 @@ memset_loop:
 
 memset_done:
     ret
+
+
+.global switchToUser
+    switchToUser:
+    # TODO: 
+    eret
