@@ -30,7 +30,7 @@ KERNEL_IMG = $(BUILD_DIR)/kernel8.img
 RAMFS_IMG = $(BUILD_DIR)/ramfs.img
 
 # Compiler and linker flags
-CFLAGS = -Wall -Wextra -nostdlib -ffreestanding -I$(INCLUDE_DIR) -g -mcpu=cortex-a53 -march=armv8-a+crc -latomic -mstrict-align -mno-outline-atomics -fno-rtti -fno-exceptions -fno-rtti
+CFLAGS = -Wall -Wextra -nostdlib -ffreestanding -I$(INCLUDE_DIR) -g -mcpu=cortex-a53 -march=armv8-a+crc -latomic -mstrict-align -mno-outline-atomics -fno-exceptions -fno-rtti
 LDFLAGS = -T linker.ld  # Use the custom linker script
 
 # Build rules
