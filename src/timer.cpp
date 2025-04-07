@@ -1,4 +1,5 @@
 #include "peripherals/timer.h"
+
 #include "printf.h"
 #include "sched.h"
 #include "utils.h"

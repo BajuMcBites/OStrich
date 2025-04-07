@@ -36,7 +36,6 @@ typedef struct {
 
 } usb_device;
 
-
 void init_usb_session(usb_session *session, usb_device *device_state, int mps);
 void iterate_config_for_hid(uint8_t *buffer, uint16_t length, usb_device *state,
                             int dev_bInterfaceProtocol);

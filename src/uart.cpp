@@ -1,7 +1,8 @@
 #include "uart.h"
-#include "utils.h"
+
 #include "gpio.h"
 #include "peripherals/base.h"
+#include "utils.h"
 
 // Base addresses for UART0 and GPIO
 #define MMIO_BASE (VA_START | 0x3F000000)

@@ -199,7 +199,6 @@
 #define USB_DATA1 0x2
 #define USB_MDATA_CONTROL 0x3
 
-
 // Request Types
 /*
 RECIPIENT: 5 bits

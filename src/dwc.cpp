@@ -583,7 +583,6 @@ void usb_scan_ports() {
 }
 
 void usb_initialize() {
-
     usb_reset_controller();
 
     hubs.connected[0].num_ports = 1;

@@ -1,11 +1,11 @@
 #include "usb_device.h"
 
 #include "dwc.h"
+#include "event.h"
 #include "keyboard.h"
 #include "libk.h"
 #include "peripherals/dwc.h"
 #include "printf.h"
-#include "event.h"
 
 void init_usb_session(usb_session *session, usb_device *device_state, int mps) {
     session->device_address = device_state->device_address;

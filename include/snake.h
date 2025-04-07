@@ -2,12 +2,12 @@
 #define _SNAKE_H
 
 #include <stdint.h>
+
 #include "keyboard.h"
 
 #define SCALE 16
 #define WIDTH 680
 #define HEIGHT 480
-
 
 #define DIRECTION_UP ((1 << 4) | (0 << 0))
 #define DIRECTION_DOWN ((1 << 4) | (2 << 0))
@@ -51,7 +51,6 @@ typedef struct {
             bool generate : 1;
         } __attribute__((packed)) flags;
     } __attribute__((packed)) food;
-    
 
 } __attribute__((packed)) game_state;
 
