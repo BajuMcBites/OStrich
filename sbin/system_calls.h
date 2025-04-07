@@ -24,8 +24,9 @@
 
 extern void _exit();
 extern int _close(int file);
-extern char *
-    *environ; /* pointer to array of char * strings that define the current environment variables */
+// environ needs to be set by the kernel when user space is loaded i thnk
+extern char **
+    _environ; /* pointer to array of char * strings that define the current environment variables */
 extern int _execve(char *name, char **argv, char **env);
 extern int _fork();
 extern int _fstat(int file, struct stat *st);

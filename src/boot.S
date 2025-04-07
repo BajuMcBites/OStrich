@@ -229,8 +229,19 @@ b       exc_handler
 .endm
 
 synchronous_el0:
-    mov     x0, #0
-    handle_exception
+    mrs     x1, esr_el1         // ESR_EL1 has EC in bits [31:26]
+    lsr     x2, x1, #26         // x2 = EC = ESR_EL1[31:26]
+    cmp     x2, #0x15           // 0x15 = SVC from EL0
+    b.ne    not_syscall         // if not SVC, go handle as exception
+
+    // It's an SVC -> syscall
+    kernel_entry
+    bl syscall_handler
+    kernel_exit                 // returns to user via eret
+
+not_syscall:
+    mov     x0, #0              // you could pass reason info here if needed
+    handle_exception            // handle exception (which jumps to exc_handler)
 
 irq_el0: 
 	kernel_entry 
@@ -246,9 +257,17 @@ serror_el0:
     handle_exception
     
 
+// set up this way to test svc calls while in el1
 synchronous_el1:
-    mov     x0, #0
-    handle_exception
+    mrs     x1, esr_el1         // ESR_EL1 has EC in bits [31:26]
+    lsr     x2, x1, #26         // x2 = EC = ESR_EL1[31:26]
+    cmp     x2, #0x15           // 0x15 = SVC from EL0
+    b.ne    not_syscall         // if not SVC, go handle as exception
+
+    // It's an SVC -> syscall
+    kernel_entry
+    bl syscall_handler
+    kernel_exit                 // returns to user via eret
 
 irq_el1: 
 	kernel_entry 
