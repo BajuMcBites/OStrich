@@ -7,11 +7,9 @@
 extern "C" void* __dso_handle;
 
 extern "C" int __cxa_atexit(void (*func)(void*), void* arg, void* dso) {
-    // Do nothing (or store for later if you want custom handling)
     return 0;
 }
 
-// Define the dummy handle
 void* __dso_handle;
 
 HashMap<void*> ports(20);
@@ -56,7 +54,7 @@ uint32_t i32(uint32_t val) {
 }
 
 /*
- * From: https://www.packetmania.net/en/2021/12/26/IPv4-IPv6-checksum/
+ * Adapted from: https://www.packetmania.net/en/2021/12/26/IPv4-IPv6-checksum/
  */
 uint16_t calc_checksum(void* pseudo, void* header, size_t pseudo_length, size_t length) {
     /* Compute Internet Checksum for "N" bytes
@@ -82,10 +80,8 @@ uint16_t calc_checksum(void* pseudo, void* header, size_t pseudo_length, size_t 
         sum += i16(*ptr++);
         n -= 2;
     }
-    /*  Add left-over byte, if any */
-    if (n > 0) sum += *((uint8_t*)ptr);
+    if (n > 0) sum += i16(*((uint8_t*)ptr));
 
-    /*  Fold 32-bit sum to 16 bits */
     while (sum >> 16) sum = (sum & 0xffff) + (sum >> 16);
 
     return ~sum;
@@ -95,29 +91,6 @@ template <typename lambda>
 static void* get(void* value, lambda if_null) {
     if (value != nullptr) return value;
     return reinterpret_cast<void*>(if_null());
-}
-
-void TCPBuilder::build_at(void* addr) {
-    this->pseudo.length = this->internal->data_offset_reserved_flags.get_data_offset() * 4;
-    this->pseudo.protocol = 0x06;
-    this->pseudo.zero = 0x00;
-
-    this->internal->checksum = 0;
-    this->internal->checksum = calc_checksum(&this->pseudo, this->internal, sizeof(this->pseudo),
-                                             this->pseudo.length.get());
-
-    // this->internal->checksum = 0;
-    uint32_t checked = calc_checksum(&this->pseudo, (void*)this->internal, sizeof(this->pseudo),
-                                     this->pseudo.length.get());
-    printf("tcp checked = 0x%x\n", checked);
-
-    memcpy(addr, this->internal, sizeof(*this->internal));
-
-    uint8_t* encapsulated_ptr = nullptr;
-    size_t encapsulated_length = 0;
-    if (this->encapsulated) {
-        this->encapsulated->build_at(addr + sizeof(tcp_header));
-    }
 }
 
 IPv4Builder& IPv4Builder::with_src_address(uint32_t src_addr) {
@@ -138,28 +111,18 @@ IPv4Builder& IPv4Builder::with_protocol(uint8_t protocol) {
 }
 
 void ETHFrameBuilder::build_at(void* addr) {
-    size_t offset = 0;
-    uint8_t* header_ptr = reinterpret_cast<uint8_t*>(this->internal);
-
     memcpy(addr, this->internal, sizeof(*this->internal));
 
-    uint8_t* encapsulated_ptr = nullptr;
     if (this->encapsulated) {
         this->encapsulated->build_at(((uint8_t*)addr) + sizeof(ethernet_header));
     }
 }
 
 void IPv4Builder::build_at(void* addr) {
-    size_t offset = 0;
-
     this->internal->header_check_sum = 0;
     this->internal->total_length = get_size();
     this->internal->header_check_sum =
         calc_checksum(nullptr, this->internal, 0, sizeof(ipv4_header));
-
-    uint32_t checked = calc_checksum(nullptr, this->internal, 0, sizeof(ipv4_header));
-
-    printf("");  // don't delete
 
     memcpy(addr, this->internal, sizeof(*this->internal));
 
@@ -169,14 +132,38 @@ void IPv4Builder::build_at(void* addr) {
 }
 
 void UDPBuilder::build_at(void* addr) {
-    this->internal->checksum = 0;
-    this->internal->checksum = calc_checksum(nullptr, this->internal, 0, sizeof(udp_header));
+    size_t total_length = this->get_size();
+    this->internal->total_length = total_length;
 
-    this->internal->total_length = this->get_size();
-
-    memcpy(addr, this->internal, sizeof(*this->internal));
+    this->pseudo.length = total_length;
+    this->pseudo.protocol = 0x11;
+    this->pseudo.zero = 0x00;
 
     if (this->encapsulated) {
         this->encapsulated->build_at((addr) + sizeof(udp_header));
     }
+    memcpy(addr, this->internal, sizeof(*this->internal));
+
+    this->internal->checksum = 0;
+    this->internal->checksum =
+        calc_checksum(&this->pseudo, addr, sizeof(this->pseudo), total_length);
+}
+
+void TCPBuilder::build_at(void* addr) {
+    uint16_t header_length = this->internal->data_offset_reserved_flags.get_data_offset() * 4;
+
+    if (this->encapsulated) {
+        this->encapsulated->build_at(addr + 1 + header_length);
+    }
+
+    this->pseudo.length =
+        header_length + (this->encapsulated != nullptr ? this->encapsulated->get_size() : 0);
+    this->pseudo.protocol = 0x06;
+    this->pseudo.zero = 0x00;
+
+    this->internal->checksum = 0;
+    memcpy(addr, this->internal, sizeof(*this->internal));
+
+    ((tcp_header*)addr)->checksum =
+        calc_checksum(&this->pseudo, addr, sizeof(this->pseudo), this->pseudo.length.get());
 }
