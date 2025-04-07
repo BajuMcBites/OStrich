@@ -31,7 +31,7 @@ char **environ = __env;
 // getpid -- Process-ID
 // Return 1 by default
 int _getpid(void) {
-    return 1;
+    return 6969;
 }
 
 // fork -- Create a new process
