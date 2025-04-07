@@ -153,13 +153,12 @@ void IPv4Builder::build_at(void* addr) {
     size_t offset = 0;
 
     this->internal->header_check_sum = 0;
+    this->internal->total_length = get_size();
     this->internal->header_check_sum =
         calc_checksum(nullptr, this->internal, 0, sizeof(ipv4_header));
 
     uint32_t checked = calc_checksum(nullptr, this->internal, 0, sizeof(ipv4_header));
-    printf("ipv4 checked = 0x%x\n", checked);
 
-    this->internal->total_length = get_size();
     printf("");  // don't delete
 
     memcpy(addr, this->internal, sizeof(*this->internal));

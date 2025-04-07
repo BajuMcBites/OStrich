@@ -38,7 +38,7 @@ void _ipv4_print(PacketParser<EthernetFrame, IPv4Packet, TCPPacket> *parser) {
     printf("tcp_packet->urgent_pointer.get() = %d\n", tcp_packet->urgent_pointer.get());
 }
 
-// uint16_t _temp_calc_checksum(void *header, size_t length) {
+// uint16_t calc_checksum(void *header, size_t length) {
 //     /* Compute Internet Checksum for "N" bytes
 //      * beginning at location "header".
 //      */
@@ -66,12 +66,12 @@ void handle_ipv4_packet(usb_session *session, PacketBufferParser *buffer_parser)
                                                               buffer_parser->get_length());
     _ipv4_print(&parser);
 
-    // uint16_t checked = 0x00;
-    // if ((checked = _temp_calc_checksum(ipv4_packet, 5 * 4)) != 0x00) {
-    //     printf("Received ipv4 packet with invalid checksum\n");
-    //     printf("Checksum: 0x%x\n", checked);
-    //     return;
-    // }
+    uint32_t checked = 0;
+    if ((checked = calc_checksum(nullptr, ipv4_packet, 0, 5 * 4)) != 0x00) {
+        printf("Received ipv4 packet with invalid checksum\n");
+        printf("Checksum: 0x%x\n", checked);
+        return;
+    }
 
     switch (ipv4_packet->protocol) {
         case IP_TCP:

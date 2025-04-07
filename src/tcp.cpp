@@ -57,39 +57,6 @@ void handle_receive_status(port_status *status, tcp_header *tcp, uint32_t bytes_
     }
 }
 
-uint16_t _temp_calc_checksum(void *pseudo, void *header, size_t pseudo_length, size_t length) {
-    /* Compute Internet Checksum for "N" bytes
-     * beginning at location "header".
-     */
-    uint32_t sum = 0;
-
-    size_t n;
-    uint16_t *ptr;
-
-    if (pseudo != nullptr && pseudo_length > 0) {
-        n = pseudo_length;
-        ptr = (uint16_t *)pseudo;
-        while (n > 1) {
-            sum += i16(*ptr++);
-            n -= 2;
-        }
-    }
-
-    n = length;
-    ptr = (uint16_t *)header;
-    while (n > 1) {
-        sum += i16(*ptr++);
-        n -= 2;
-    }
-    /*  Add left-over byte, if any */
-    if (n > 0) sum += *((uint8_t *)ptr);
-
-    /*  Fold 32-bit sum to 16 bits */
-    while (sum >> 16) sum = (sum & 0xffff) + (sum >> 16);
-
-    return ~sum;
-}
-
 void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
     PacketParser<EthernetFrame, IPv4Packet, TCPPacket> parser(buffer_parser->get_packet_base(),
                                                               buffer_parser->get_length());
@@ -108,7 +75,8 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
 
     uint32_t packet_checksum = tcp_packet->checksum.get();
 
-    if ((checked = _temp_calc_checksum(&header, tcp_packet, sizeof(header), header.length.get())) != 0x00) {
+    if ((checked = calc_checksum(&header, tcp_packet, sizeof(header), header.length.get())) !=
+        0x00) {
         printf("Received TCP packet with invalid checksum\n");
         printf("Check Checksum result: 0x%x\n", checked);
         return;
@@ -181,7 +149,7 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
 
     send_packet(session, (uint8_t *)response, packet_length);
 
-    delete response;
+    // delete response;
 
     if (flags & TCP_FLAG_FIN) {
         cleanup_connection(port_id);
