@@ -13,6 +13,8 @@ extern "C" unsigned long get_sp();
 extern "C" void monitor(long addr);
 extern "C" void outb(int port, int val);
 
+extern "C" void switchToUser();
+
 extern int onHypervisor;
 
 #endif /*_BOOT_H */

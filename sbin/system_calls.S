@@ -1,6 +1,17 @@
 #include "system_calls.h"
 
+/*---------------------------------------------------------
+ This file does not do much. This puts the system call type into register x8 similar to how linux does and then 
+ generates an interrupt using the svc call. The system call handeler can check x8 to identify what system call was 
+ called.
 
+ These should be the system calls needed for newlib. There 
+ is a matching system_calls.h file that can be included to 
+ reference these funcitons in a .c file as needed for 
+ newlib. (i think)
+ --------------------------------------------------------*/
+
+ 
 .global _exit
 _exit:
     mov x8, #SYS_EXIT

@@ -2,6 +2,7 @@
 #include "vm.h"
 #include "entry.h"
 #include "mm.h"
+#include "sys.h"
 
 .section ".text.boot"
 _start:	
@@ -236,6 +237,7 @@ synchronous_el0:
 
     // It's an SVC -> syscall
     kernel_entry
+    mov x0, sp
     bl syscall_handler
     kernel_exit                 // returns to user via eret
 

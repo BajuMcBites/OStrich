@@ -1,7 +1,7 @@
 #ifndef _SYS__CALL_H_
 #define _SYS__CALL_H_
 
-#include "stdint.h"
+#include <stdint.h>
 
 #define SYS_EXIT 0
 #define SYS_CLOSE 1
