@@ -100,19 +100,20 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
 
     handle_receive_status(status, tcp_packet, bytes_received);
 
-    PacketBufferBuilder *payload = nullptr;
+    PayloadBuilder *payload = nullptr;
+    char *response_payload = nullptr;
+    size_t response_length = 0;
 
     if (bytes_received > 0) {
-        auto receive_buffer = buffer_parser->pop<PacketBuffer>();
+        auto receive_buffer = buffer_parser->pop<Payload>();
 
         char print_buffer[bytes_received + 1];
         memcpy(print_buffer, receive_buffer, bytes_received);
         print_buffer[bytes_received] = '\0';
-        printf("received payload (%d): %s\n", bytes_received, print_buffer);
 
-        // TODO: clean this up, hardcoded response for when we receive data
-        PacketBufferBuilder buffer((uint8_t *)"Hello from server!", 19);
-        payload = &buffer;
+        printf("received payload (%d): %s\n", bytes_received, print_buffer);
+        response_payload = "Hello from server!";
+        response_length = 19;
     }
 
     size_t packet_length;
@@ -121,31 +122,22 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
     response =
         ETHFrameBuilder{eth_frame->dst_mac, eth_frame->src_mac, 0x0800}
             .encapsulate(
-                &IPv4Builder{}
-                     .with_src_address(ip_packet->dst_address.get())
-                     .with_dst_address(ip_packet->src_address.get())
-                     .with_protocol(IP_TCP)
-                     .encapsulate(
-                         &TCPBuilder{tcp_packet->dst_port.get(), tcp_packet->src_port.get()}
-                              .with_seq_number(status->tcp.seq_number)
-                              .with_ack_number(status->tcp.ack_number)
-                              .with_flags(respond_flags)
-                              .with_data_offset(5)
-                              .with_window_size(0xFFFF)
-                              .with_urgent_pointer(0)
-                              .with_pseduo_header(ip_packet->src_address.get(),
-                                                  ip_packet->dst_address.get())
-                              .encapsulate(
-                                  bytes_received > 0
-                                      ? PacketBufferBuilder{(uint8_t *)"Hello from server!", 19}
-                                            .ptr()
-                                      : nullptr)))
+                IPv4Builder{}
+                    .with_src_address(ip_packet->dst_address.get())
+                    .with_dst_address(ip_packet->src_address.get())
+                    .with_protocol(IP_TCP)
+                    .encapsulate(
+                        TCPBuilder{tcp_packet->dst_port.get(), tcp_packet->src_port.get()}
+                            .with_seq_number(status->tcp.seq_number)
+                            .with_ack_number(status->tcp.ack_number)
+                            .with_flags(respond_flags)
+                            .with_data_offset(5)
+                            .with_window_size(0xFFFF)
+                            .with_urgent_pointer(0)
+                            .with_pseduo_header(ip_packet->src_address.get(),
+                                                ip_packet->dst_address.get())
+                            .encapsulate(PayloadBuilder{(uint8_t*)response_payload, response_length})))
             .build(&packet_length);
-
-    if (payload) {
-        // TODO: some way to relay this payload data back to application layer/user process
-        printf("sending payload (%d): %s\n", payload->get_size(), payload->get_buffer());
-    }
 
     send_packet(session, (uint8_t *)response, packet_length);
 

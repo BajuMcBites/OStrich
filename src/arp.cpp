@@ -27,7 +27,7 @@ void send_arp_response(usb_session *session, arp_packet *request) {
     size_t len;
     ethernet_header *frame =
         ETHFrameBuilder{mac_ptr, ((arp_packet *)request)->sender_mac, 0x0806}
-            .encapsulate(PacketBufferBuilder((uint8_t *)&packet, sizeof(packet)).ptr())
+            .encapsulate(PayloadBuilder((uint8_t *)&packet, sizeof(packet)))
             .build(&len);
 
     send_packet(session, (uint8_t *)frame, len);
