@@ -308,9 +308,9 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
     if ((local->perm & EXEC_PERM) == 0) {
         attribute |= (0x1L << 54);  // set XN (execute never) to true
     }
-
+    // TEMPORARY FIX, WE NEED TO FIX THIS
     if ((local->perm & WRITE_PERM) != 0) {
-        attribute |= (0x01L << 6);
+        attribute |= (0x00L << 6);
     } else if ((local->perm & READ_PERM) != 0 && (local->perm & WRITE_PERM) == 0) {
         attribute |= (0x03L << 6);
     } else if ((local->perm & READ_PERM) != 0) {
