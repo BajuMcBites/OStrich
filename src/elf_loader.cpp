@@ -6,6 +6,7 @@
 #include "ramfs.h"
 #include "event.h"
 #include "mmap.h"
+#include "atomic.h"
 
 #define ERROR(msg...) printf(msg);
 
@@ -169,29 +170,29 @@ void *load_section(void* mem, Elf64_Shdr *shdr, PCB* pcb) {
     int prot = 0;
     if (shdr->sh_flags & SHF_WRITE) prot |= PROT_WRITE;
     if (shdr->sh_flags & SHF_EXECINSTR) prot |= PROT_EXEC;
-	printf("section vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
+	// printf("section vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
 	uint64_t to = (uint64_t)aligned_vaddr + page_offset;
 	uint64_t from = (uint64_t)mem + sect_offset;
 	uint64_t end = from + sect_size;
-	printf("section mapping 0x%x, from memory 0x%x\n", to, from);
+	// printf("section mapping 0x%x, from memory 0x%x\n", to, from);
 	
-    mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
-		[=]() {
-			load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
-				pcb->page_table->use_page_table();
-				void* page_to = aligned_vaddr;
-				if (page_to < (void*)to) {
-					page_to = (void*)to;
-				}
-				void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
-				size_t cpy_size = PAGE_SIZE;
-				if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
-					cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
-				}
-				K::memcpy(page_to, page_from, cpy_size);
-			});
-		}
-	);
+    // mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
+	// 	[=]() {
+	// 		load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
+	// 			pcb->page_table->use_page_table();
+	// 			void* page_to = aligned_vaddr;
+	// 			if (page_to < (void*)to) {
+	// 				page_to = (void*)to;
+	// 			}
+	// 			void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
+	// 			size_t cpy_size = PAGE_SIZE;
+	// 			if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
+	// 				cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
+	// 			}
+	// 			K::memcpy(page_to, page_from, cpy_size);
+	// 		});
+	// 	}
+	// );
     return (void*)vaddr;
 }
 
@@ -514,12 +515,12 @@ static int elf_load_stage2(Elf64_Ehdr *hdr) {
     return 0;
 }
 
-void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb) {
+void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb, Semaphore* sema) {
     size_t mem_size = phdr->p_memsz;
     off_t mem_offset = phdr->p_offset;
     size_t file_size = phdr->p_filesz;
     void *vaddr = (void *)(phdr->p_vaddr);
-    
+    printf("%x%x, memoff\n", mem_offset >> 32, mem_offset);
     // Ensure page alignment for mmap
     off_t page_offset = (uint64_t)vaddr % PAGE_SIZE;
     void* aligned_vaddr = (void*)((uint64_t)vaddr - page_offset);
@@ -530,36 +531,40 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb) {
     if (phdr->p_flags & PF_R) prot |= PROT_READ;
     if (phdr->p_flags & PF_W) prot |= PROT_WRITE;
     if (phdr->p_flags & PF_X) prot |= PROT_EXEC;
+	prot |= PROT_WRITE; // add this for now, make sure to turn it off later
 	printf("vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
 	uint64_t to = (uint64_t)aligned_vaddr + page_offset;
 	uint64_t from = (uint64_t)mem + mem_offset;
 	printf("mapping 0x%x%x, from memory 0x%x%x\n", to >> 32, to, from >> 32, from);
 	uint64_t end = from + mem_size;
-	mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
-		[=]() {
-			load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
-				pcb->page_table->use_page_table();
-				void* page_to = aligned_vaddr;
-				if (page_to < (void*)to) {
-					page_to = (void*)to;
-				}
-				void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
-				size_t cpy_size = PAGE_SIZE;
-				if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
-					cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
-				}
-				K::memcpy(page_to, page_from, cpy_size);
-			});
-		}
-	);
+	sema->down([=]() {
+		mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
+			[=]() {
+				load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
+					pcb->page_table->use_page_table();
+					void* page_to = aligned_vaddr;
+					if (page_to < (void*)to) {
+						page_to = (void*)to;
+					}
+					void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
+					size_t cpy_size = PAGE_SIZE;
+					if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
+						cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
+					}
+					K::memcpy(page_to, page_from, cpy_size);
+					sema->up();
+				});
+			}
+		);
+	});
     return (void*)vaddr;
 }
 
 
-void* load_library(char *name, PCB* pcb);
+void* load_library(char *name, PCB* pcb, Semaphore* sema);
 
 
-static int elf_load_stage3(Elf64_Ehdr *hdr, PCB* pcb) {
+static int elf_load_stage3(Elf64_Ehdr *hdr, PCB* pcb, Semaphore* sema) {
 	Elf64_Phdr *phdr = elf_pheader(hdr);
 	unsigned int i, idx;
 	for (i = 0; i < hdr->e_phnum; i++) {
@@ -569,7 +574,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, PCB* pcb) {
 				break;
 			case PT_LOAD:
 				// load this in
-				load_segment_mem((void*) hdr, prog, pcb);
+				load_segment_mem((void*) hdr, prog, pcb, sema);
 				break;
 			case PT_DYNAMIC: {
 				Elf64_Dyn *dyn = (Elf64_Dyn*)((uint64_t)hdr + prog->p_offset);
@@ -588,7 +593,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, PCB* pcb) {
 					if (dyn->d_tag == DT_NEEDED) {
 						char *libname = (char*)((uint64_t)hdr + dynstr_addr + dyn->d_un.d_val);
 						printf("Loading dependency: %s\n", libname);
-						void *lib = load_library(libname, pcb);
+						void *lib = load_library(libname, pcb, sema);
 						if (!lib) {
 							ERROR("Failed to load %s\n", libname);
 							return ELF_RELOC_ERR;
@@ -623,7 +628,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, PCB* pcb) {
 }
 
 // load
-static inline void *elf_load_rel(Elf64_Ehdr *hdr, PCB* pcb) {
+static inline void *elf_load_rel(Elf64_Ehdr *hdr, PCB* pcb, Semaphore* sema) {
 	int result;
 	result = elf_load_stage1(hdr, pcb);
 	if(result == ELF_RELOC_ERR) {
@@ -636,7 +641,7 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr, PCB* pcb) {
 		return nullptr;
 	}
 	// Parse the program header (if present)
-	result = elf_load_stage3(hdr, pcb);
+	result = elf_load_stage3(hdr, pcb, sema);
 	if (result == ELF_PHDR_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -644,7 +649,7 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr, PCB* pcb) {
 	return (void *)hdr->e_entry;
 }
 
-void* load_library(char *name, PCB* pcb) {
+void* load_library(char *name, PCB* pcb, Semaphore* sema) {
     // check if already loaded
     for (LoadedLibrary *lib = g_loaded_libs; lib; lib = lib->next) {
         if (K::strcmp(lib->name, name) == 0) {
@@ -682,13 +687,13 @@ void* load_library(char *name, PCB* pcb) {
     // relocate by stage
     elf_load_stage1(lib_hdr, pcb);
     elf_load_stage2(lib_hdr);
-    elf_load_stage3(lib_hdr, pcb);
+    elf_load_stage3(lib_hdr, pcb, sema);
 
     return lib_hdr;
 }
 
 // load
-static inline void *elf_load_exec(Elf64_Ehdr *hdr, PCB* pcb) {
+static inline void *elf_load_exec(Elf64_Ehdr *hdr, PCB* pcb, Semaphore* sema) {
 	int result;
 	result = elf_load_stage1(hdr, pcb);
 	if(result == ELF_RELOC_ERR) {
@@ -696,7 +701,7 @@ static inline void *elf_load_exec(Elf64_Ehdr *hdr, PCB* pcb) {
 		return nullptr;
 	}
 	// Parse the program header (if present)
-	result = elf_load_stage3(hdr, pcb);
+	result = elf_load_stage3(hdr, pcb, sema);
 	if (result == ELF_PHDR_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
@@ -704,7 +709,7 @@ static inline void *elf_load_exec(Elf64_Ehdr *hdr, PCB* pcb) {
 	return (void *)hdr->e_entry;
 }
 
-void *elf_load(void* ptr, PCB* pcb) {
+void *elf_load(void* ptr, PCB* pcb, Semaphore* sema) {
 	Elf64_Ehdr *hdr = (Elf64_Ehdr *)ptr;
 	if(!elf_check_supported(hdr)) {
 		ERROR("ELF File cannot be loaded.\n");
@@ -712,11 +717,11 @@ void *elf_load(void* ptr, PCB* pcb) {
 	}
 	switch(hdr->e_type) {
 		case ET_EXEC:
-			return elf_load_exec(hdr, pcb);
+			return elf_load_exec(hdr, pcb, sema);
 		case ET_REL:
-			return elf_load_rel(hdr, pcb);
+			return elf_load_rel(hdr, pcb, sema);
 		case ET_DYN:
-			return elf_load_rel(hdr, pcb);
+			return elf_load_rel(hdr, pcb, sema);
 			// todo ... ?? ? ? ? ? ??
 	}
 	return nullptr;

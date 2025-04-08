@@ -2,6 +2,7 @@
 #define _ELF_LOADER_H
 #include "stdint.h"
 #include "event.h"
+#include "atomic.h"
 
 typedef uint16_t Elf64_Half;	// Unsigned half int
 typedef uint64_t Elf64_Off;	// Unsigned offset
@@ -250,9 +251,9 @@ enum Program_Type {
 };
 
 enum Program_Flags {
-	PF_X = 1, // can execute
+	PF_X = 4, // can execute
 	PF_W = 2, // can write
-	PF_R = 4, // can read
+	PF_R = 1, // can read
 };
 
 static inline Elf64_Phdr *elf_pheader(Elf64_Ehdr *hdr) {
@@ -301,6 +302,6 @@ typedef struct LoadedLibrary {
 
 extern LoadedLibrary *g_loaded_libs; 
 
-void* elf_load(void* ptr, PCB* pcb);
+void* elf_load(void* ptr, PCB* pcb, Semaphore* sema);
 
 #endif

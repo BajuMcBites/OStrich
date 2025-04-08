@@ -311,10 +311,10 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
 
     if ((local->perm & WRITE_PERM) != 0) {
         attribute |= (0x01L << 6);
-    } else if ((local->perm & READ_PERM) != 0 || (local->perm & EXEC_PERM) != 0) {
-        attribute |= (0x11L << 6);
-    } else {
-        attribute |= (0x00L << 6);
+    } else if ((local->perm & READ_PERM) != 0 && (local->perm & WRITE_PERM) == 0) {
+        attribute |= (0x03L << 6);
+    } else if ((local->perm & READ_PERM) != 0) {
+        attribute |= (0x02L << 6);
     }
 
     attribute |= (0x2L << 2);   // 2nd index in mair
@@ -322,7 +322,7 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
     attribute |= (0x1L << 10);  // set AF (access flag) [10] bit to true so we dont fault on access
     attribute |= (0x3L << 8);   // set sharability [9:8] to inner sharable across cores
 
-    attribute &= (~0xFFFFFFFFFF000L);  // zero out middle bits as sanity check
+    printf("CURR ATTR %x%x\n", attribute >> 32, attribute);
     return attribute;
 }
 

@@ -61,6 +61,7 @@ struct UserTCB : public TCB {
     cpu_context context;
     Function<void()> w;
     alignas(16) uint64_t stack[2048];  // Ensure proper 16-byte alignment
+    bool use_pt = false;
     template <typename lambda>
     UserTCB(lambda w) : w(w) {
         context.x19 = 0;
