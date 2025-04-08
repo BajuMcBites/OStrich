@@ -8,7 +8,6 @@ void handle_udp(usb_session *session, PacketBufferParser *buffer_parser) {
     PacketParser<EthernetFrame, IPv4Packet, TCPPacket> parser(buffer_parser->get_packet_base(),
                                                               buffer_parser->get_length());
 
-    auto eth_frame = parser.get<EthernetFrame>();
     auto ip_packet = parser.get<IPv4Packet>();
     auto udp_datagram = buffer_parser->pop<UDPDatagram>();
 

@@ -119,7 +119,7 @@ void dhcp_handle_offer(PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCP
                 }
                 break;
             }
-            case DHCP_OPTION_MESSAGE_TYPE: { 
+            case DHCP_OPTION_MESSAGE_TYPE: {
                 uint8_t message_type = dhcp_pckt->options[i + 1];
                 printf("DHCP Message Type: %d\n", message_type);
                 break;
@@ -164,16 +164,14 @@ void dhcp_discover(usb_session* session) {
     ethernet_header* frame;
     frame =
         ETHFrameBuilder{get_mac_address(), (uint8_t[6]){0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, 0x0800}
-            .encapsulate(
-                &IPv4Builder()
-                     .with_src_address(0x00000000)
-                     .with_dst_address(0xFFFFFFFF)
-                     .with_protocol(IP_UDP)
-                     .encapsulate(
-                         &UDPBuilder{68, 67}
-                              .with_pseduo_header(0x00000000, 0xFFFFFFFF)
-                              .encapsulate(
-                                  PacketBufferBuilder{(uint8_t*)&dhcp_packet, packet_len}.ptr())))
+            .encapsulate(IPv4Builder()
+                             .with_src_address(0x00000000)
+                             .with_dst_address(0xFFFFFFFF)
+                             .with_protocol(IP_UDP)
+                             .encapsulate(UDPBuilder{68, 67}
+                                              .with_pseduo_header(0x00000000, 0xFFFFFFFF)
+                                              .encapsulate(PayloadBuilder{(uint8_t*)&dhcp_packet,
+                                                                          packet_len})))
             .build(&len);
 
     send_packet(session, (uint8_t*)frame, len);

@@ -101,13 +101,6 @@ typedef struct {
 } __attribute__((packed)) udp_header;
 
 typedef struct {
-    uint8_t type;
-    uint8_t code;
-    net_uint16_t checksum;
-    net_uint32_t remainder;
-} __attribute__((packed)) icpm_header;
-
-typedef struct {
     net_uint16_t hardware_type;
     net_uint16_t protocol_type;
     uint8_t hardware_size;
@@ -118,6 +111,18 @@ typedef struct {
     uint8_t target_mac[6];
     uint8_t target_ip[4];
 } __attribute__((packed)) arp_packet;
+
+typedef struct {
+    uint8_t type;
+    uint8_t code;
+    net_uint16_t checksum;
+    union remainder_t {
+        struct echo_t {
+            net_uint16_t identifier;
+            net_uint16_t seq_number;
+        } __attribute__((packed)) echo;
+    } __attribute__((packed)) remainder;
+} __attribute__((packed)) icmp_header;
 
 typedef struct {
     uint8_t ihl : 4;
@@ -194,12 +199,13 @@ class PacketBuilder {
     }
 
     template <typename J>
-    PacketBuilder& encapsulate(PacketBuilder<J>* other) {
-        this->encapsulated = reinterpret_cast<PacketBuilder<void>*>(other);
-
-        length = sizeof(T) + (other != nullptr ? this->encapsulated->get_size() : 0);
+    PacketBuilder& encapsulate(const PacketBuilder<J>& other) {
+        this->encapsulated =
+            const_cast<PacketBuilder<void>*>(reinterpret_cast<const PacketBuilder<void>*>(&other));
+        length = sizeof(T) + (this->encapsulated ? this->encapsulated->get_size() : 0);
         return *this;
     }
+
     virtual void build_at(void*) = 0;
     size_t get_size() {
         return this->length;
@@ -220,18 +226,14 @@ class PacketBuilder {
     PacketBuilder<void>* encapsulated;
 };
 
-class PacketBufferBuilder : public PacketBuilder<uint8_t> {
+class PayloadBuilder : public PacketBuilder<uint8_t> {
    public:
-    PacketBufferBuilder(uint8_t* buffer, size_t length) : buffer(buffer) {
+    PayloadBuilder(uint8_t* buffer, size_t length) : buffer(buffer) {
         this->length = length;
     };
 
     size_t get_size() {
         return length;
-    }
-
-    PacketBufferBuilder* ptr() {
-        return this;
     }
 
     const uint8_t* get_buffer() {
@@ -240,7 +242,7 @@ class PacketBufferBuilder : public PacketBuilder<uint8_t> {
 
    protected:
     void build_at(void* addr) {
-        memcpy(addr, buffer, length);
+        if (buffer != nullptr && length > 0) memcpy(addr, buffer, length);
     }
 
    private:
@@ -321,6 +323,22 @@ class UDPBuilder : public PacketBuilder<udp_header> {
     void build_at(void*);
 };
 
+class ICMPBuilder : public PacketBuilder<icmp_header> {
+   public:
+    ICMPBuilder(uint8_t type, uint8_t code) {
+        this->internal->type = type;
+        this->internal->code = code;
+    }
+
+    ICMPBuilder& with_remainder(const icmp_header::remainder_t&& header) {
+        this->internal->remainder = std::move(header);
+        return *this;
+    }
+
+   protected:
+    void build_at(void*);
+};
+
 class IPv4Builder : public PacketBuilder<ipv4_header> {
    public:
     IPv4Builder() {
@@ -375,9 +393,9 @@ class TCPPacket : public Packet<tcp_header> {
 typedef Packet<ethernet_header> EthernetFrame;
 typedef Packet<arp_packet> ARPPacket;
 typedef Packet<udp_header> UDPDatagram;
-typedef Packet<icpm_header> ICMPPacket;
+typedef Packet<icmp_header> ICMPPacket;
 typedef Packet<dhcp_packet> DHCPPacket;
-typedef Packet<uint8_t*> PacketBuffer;
+typedef Packet<uint8_t*> Payload;
 
 class PacketBufferParser {
    private:

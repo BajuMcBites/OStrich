@@ -167,3 +167,14 @@ void TCPBuilder::build_at(void* addr) {
     ((tcp_header*)addr)->checksum =
         calc_checksum(&this->pseudo, addr, sizeof(this->pseudo), this->pseudo.length.get());
 }
+
+void ICMPBuilder::build_at(void* addr) {
+    if (this->encapsulated) {
+        this->encapsulated->build_at(addr + sizeof(icmp_header));
+    }
+
+    this->internal->checksum = 0;
+    memcpy(addr, this->internal, sizeof(*this->internal));
+
+    ((icmp_header*)addr)->checksum = calc_checksum(nullptr, addr, 0, this->get_size());
+}
