@@ -10,8 +10,6 @@
 #include "libk.h"
 #include "net_stack.h"
 #include "printf.h"
-#include "rndis.h"
-#include "timer.h"
 
 // Variables to store bulk endpoints
 uint8_t control_interface;
