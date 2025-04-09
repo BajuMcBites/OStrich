@@ -176,7 +176,6 @@ void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl) {
         if (tcb->use_pt) {
             pcb->page_table->use_page_table();
         }
-        printf("%x this is the instruction currently.\n", *(uint32_t*)0x400000);
         cpu_switch_to(coreContext[me], context);
     }
     // ASSERT(Interrupts::isDisabled());

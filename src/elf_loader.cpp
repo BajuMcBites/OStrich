@@ -461,7 +461,6 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb, Semaphore* sema) {
     off_t mem_offset = phdr->p_offset;
     size_t file_size = phdr->p_filesz;
     void *vaddr = (void *)(phdr->p_vaddr);
-    printf("%x%x, memoff\n", mem_offset >> 32, mem_offset);
     // Ensure page alignment for mmap
     off_t page_offset = (uint64_t)vaddr % PAGE_SIZE;
     void* aligned_vaddr = (void*)((uint64_t)vaddr - page_offset);
@@ -472,10 +471,8 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb, Semaphore* sema) {
     if (phdr->p_flags & PF_R) prot |= PROT_READ;
     if (phdr->p_flags & PF_W) prot |= PROT_WRITE;
     if (phdr->p_flags & PF_X) prot |= PROT_EXEC;
-	printf("vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
 	uint64_t to = (uint64_t)aligned_vaddr + page_offset;
 	uint64_t from = (uint64_t)mem + mem_offset;
-	printf("mapping 0x%x%x, from memory 0x%x%x\n", to >> 32, to, from >> 32, from);
 	uint64_t end = from + file_size;
 	sema->down([=]() {
 		mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
@@ -511,7 +508,6 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb, Semaphore* sema) {
 					});
 				}	
 				mmap_sema->down([=]{
-					printf("all done\n");
 					sema->up();
 				});
 			}

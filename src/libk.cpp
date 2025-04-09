@@ -76,7 +76,6 @@ extern "C" void* memcpy(void* dest, const void* src, size_t n) {
 void* K::memcpy(void* dest, const void* src, int n) {
     void* d = dest;
     void* s = (void*)src;
-    printf("0x%x dest and 0x%x%x src for len %d\n", dest, (uint64_t)src >> 32, src, n);
     while ((((uint64_t)d) % 8 == 0) && (((uint64_t)s) % 8 == 0) && n >= 8) {
         *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<uint64_t*>(s);
         n -= 8;
@@ -88,7 +87,6 @@ void* K::memcpy(void* dest, const void* src, int n) {
         *reinterpret_cast<char*>(d++) = *reinterpret_cast<char*>(s++);
     }
 
-    printf("0x%x dest and 0x%x%x src for len %d end\n", dest, (uint64_t)src >> 32, src, n);
     return dest;
 }
 

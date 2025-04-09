@@ -322,7 +322,6 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
     attribute |= (0x1L << 10);  // set AF (access flag) [10] bit to true so we dont fault on access
     attribute |= (0x3L << 8);   // set sharability [9:8] to inner sharable across cores
 
-    printf("CURR ATTR %x%x\n", attribute >> 32, attribute);
     return attribute;
 }
 
