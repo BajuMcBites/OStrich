@@ -556,7 +556,7 @@ void blocking_atomic_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("user_prog.elf");
+    int elf_index = get_ramfs_index("sort.elf");
     PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
     // const int sz = 1440;

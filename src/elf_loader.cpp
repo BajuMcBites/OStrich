@@ -578,7 +578,6 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, PCB* pcb, Semaphore* sema) {
 				// unnecessary..?
 				break;
 			case PT_PHDR: 
-				// load_segment_mem((void*) hdr, prog, pcb);
 				break;
 			default:
 				ERROR("unsupported program header type.\n");
