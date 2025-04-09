@@ -559,10 +559,8 @@ void elf_load_test() {
     int elf_index = get_ramfs_index("sort.elf");
     PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
-    // const int sz = 1440;
     char buffer[sz];
     ramfs_read(buffer, 0, sz, elf_index);
-    printf("%x%x  where buffer is\n", (uint64_t)buffer >> 32, buffer);
     Semaphore* sema = new Semaphore(1);
     void* new_pc = elf_load((void*)buffer, pcb, sema);
     UserTCB* tcb = new UserTCB([=](){
@@ -613,8 +611,6 @@ void elf_load_test() {
     tcb->pcb = pcb;
     tcb->context.pc = (uint64_t)new_pc;
     tcb->use_pt = true;
-    printf("0x%x this is the tcb pc\n", tcb->context.pc);
-    printf("0x%x%x THIS IS THE TCB:\n", (uint64_t)tcb>>32,(uint64_t)tcb);
     sema->down([=]() {
         readyQueue.forCPU(1).queues[1].add(tcb);
         printf("end elf_load tests\n");
