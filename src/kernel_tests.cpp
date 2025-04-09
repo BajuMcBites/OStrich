@@ -569,8 +569,9 @@ void elf_load_test() {
         K::assert(false, "This is not called");
     });
     uint64_t sp = 0x0000fffffffff000;
+    // only doing this because no eviction
     sema->down([=]() {
-        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, 0x1000, 
+        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, PAGE_SIZE, 
 			[=]() {
 				load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
                     pcb->page_table->use_page_table();
@@ -579,9 +580,38 @@ void elf_load_test() {
                 });
             });
     });
+    sema->down([=]() {
+        pcb->page_table->use_page_table();
+        uint64_t sp = 0x0000fffffffff000;
+        int argc = 0;
+        const char *argv[0];
+        uint64_t addrs[argc];
+        for (int i = argc - 1; i >= 0; --i)
+        {
+            int len = K::strlen(argv[i]) + 1;
+            sp -= len;
+            addrs[i] = sp;
+            K::memcpy((void *)sp, argv[i], len);
+        }
+        sp -= 8;
+        *(uint64_t *)sp = 0;
+        for (int i = argc - 1; i >= 0; --i)
+        {
+            sp -= 8;
+            *(uint64_t *)sp = addrs[i];
+        }
+        // save &argv
+        sp -= 8;
+        *(uint64_t *)sp = sp + 8;
+
+        // save argc
+        sp -= 8;
+        *(uint64_t *)sp = argc;
+        tcb->context.sp = sp;
+        sema->up();
+    });
     tcb->pcb = pcb;
     tcb->context.pc = (uint64_t)new_pc;
-    tcb->context.sp = sp;
     tcb->use_pt = true;
     printf("0x%x this is the tcb pc\n", tcb->context.pc);
     printf("0x%x%x THIS IS THE TCB:\n", (uint64_t)tcb>>32,(uint64_t)tcb);
