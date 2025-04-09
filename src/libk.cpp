@@ -88,6 +88,7 @@ void* K::memcpy(void* dest, const void* src, int n) {
         *reinterpret_cast<char*>(d++) = *reinterpret_cast<char*>(s++);
     }
 
+    printf("0x%x dest and 0x%x%x src for len %d end\n", dest, (uint64_t)src >> 32, src, n);
     return dest;
 }
 

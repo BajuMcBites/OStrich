@@ -156,46 +156,6 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 	}
 }
 
-void *load_section(void* mem, Elf64_Shdr *shdr, PCB* pcb) {
-    size_t sect_size = shdr->sh_size;
-    off_t sect_offset = shdr->sh_offset;
-    void *vaddr = (void *)(shdr->sh_addr);
-    
-    // Ensure page alignment for mmap
-    off_t page_offset = (uint64_t)vaddr % PAGE_SIZE;
-    void* aligned_vaddr = (void*)((uint64_t)vaddr - page_offset);
-    size_t aligned_size = sect_size + page_offset;
-
-    // mmap the memory region with the correct protections
-    int prot = 0;
-    if (shdr->sh_flags & SHF_WRITE) prot |= PROT_WRITE;
-    if (shdr->sh_flags & SHF_EXECINSTR) prot |= PROT_EXEC;
-	// printf("section vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
-	uint64_t to = (uint64_t)aligned_vaddr + page_offset;
-	uint64_t from = (uint64_t)mem + sect_offset;
-	uint64_t end = from + sect_size;
-	// printf("section mapping 0x%x, from memory 0x%x\n", to, from);
-	
-    // mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
-	// 	[=]() {
-	// 		load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
-	// 			pcb->page_table->use_page_table();
-	// 			void* page_to = aligned_vaddr;
-	// 			if (page_to < (void*)to) {
-	// 				page_to = (void*)to;
-	// 			}
-	// 			void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
-	// 			size_t cpy_size = PAGE_SIZE;
-	// 			if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
-	// 				cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
-	// 			}
-	// 			K::memcpy(page_to, page_from, cpy_size);
-	// 		});
-	// 	}
-	// );
-    return (void*)vaddr;
-}
-
 static int elf_load_stage1(Elf64_Ehdr *hdr, PCB* pcb) {
 	Elf64_Shdr *shdr = elf_sheader(hdr);
 
@@ -207,7 +167,6 @@ static int elf_load_stage1(Elf64_Ehdr *hdr, PCB* pcb) {
 			case SHT_NULL:
 				break;
 			case SHT_PROGBITS:
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_SYMTAB:
 				// LINKING STUFF
@@ -216,41 +175,23 @@ static int elf_load_stage1(Elf64_Ehdr *hdr, PCB* pcb) {
 				// not here
 				break;
 			case SHT_HASH: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_DYNAMIC: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_NOTE: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_NOBITS: 
-				// Skip if it the section is empty
-				if(!section->sh_size) continue;
-				// If the section should appear in memory
-				if(section->sh_flags & SHF_ALLOC) {
-					// Allocate and zero some memory
-					void *mem = kmalloc(section->sh_size);
-					// memset(mem, 0, section->sh_size);
-					// Assign the memory offset to the section offset
-					section->sh_offset = (uint64_t)mem - (uint64_t)hdr;
-				}
 				break;
 			case SHT_REL: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_SHLIB: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_STRTAB:
 			case SHT_DYNSYM: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_INIT_ARRAY: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_FINI_ARRAY: 
-				load_section((void*)hdr, section, pcb);
 				break;
 			case SHT_GROUP: 
 				// do something
@@ -531,27 +472,46 @@ void *load_segment_mem(void* mem, Elf64_Phdr *phdr, PCB* pcb, Semaphore* sema) {
     if (phdr->p_flags & PF_R) prot |= PROT_READ;
     if (phdr->p_flags & PF_W) prot |= PROT_WRITE;
     if (phdr->p_flags & PF_X) prot |= PROT_EXEC;
-	prot |= PROT_WRITE; // add this for now, make sure to turn it off later
 	printf("vaddr: %x, size: %x\n", (uint64_t)aligned_vaddr, aligned_size);
 	uint64_t to = (uint64_t)aligned_vaddr + page_offset;
 	uint64_t from = (uint64_t)mem + mem_offset;
 	printf("mapping 0x%x%x, from memory 0x%x%x\n", to >> 32, to, from >> 32, from);
-	uint64_t end = from + mem_size;
+	uint64_t end = from + file_size;
 	sema->down([=]() {
 		mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, aligned_size, 
 			[=]() {
-				load_mmapped_page(pcb, (uint64_t)aligned_vaddr, [=](uint64_t kvaddr) {
-					pcb->page_table->use_page_table();
-					void* page_to = aligned_vaddr;
-					if (page_to < (void*)to) {
-						page_to = (void*)to;
-					}
-					void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem;
-					size_t cpy_size = PAGE_SIZE;
-					if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
-						cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
-					}
-					K::memcpy(page_to, page_from, cpy_size);
+				Semaphore* mmap_sema = new Semaphore(1);
+				for (uint64_t next_vaddr = (uint64_t)aligned_vaddr; next_vaddr < (uint64_t)vaddr + mem_size; next_vaddr += PAGE_SIZE) {
+					mmap_sema->down([=]() {
+						load_mmapped_page(pcb, next_vaddr, [=](uint64_t kvaddr) {
+							pcb->page_table->use_page_table();
+							void* page_to = (void*)next_vaddr;
+							if (page_to < (void*)to) {
+								page_to = (void*)to;
+							}
+							void* page_from = ((uint64_t)page_to - (uint64_t)to) + mem + mem_offset;
+							size_t cpy_size = next_vaddr + PAGE_SIZE - (uint64_t)page_to;
+							if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
+								cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
+							}
+							K::memcpy(page_to, page_from, cpy_size);
+							if (mem_size > file_size && next_vaddr + PAGE_SIZE > (uint64_t)vaddr + file_size) {
+								uint64_t memset_start = next_vaddr;
+								if ((uint64_t)vaddr + file_size > memset_start) {
+									memset_start = (uint64_t)vaddr + file_size;
+								}
+								uint64_t memset_end = next_vaddr + PAGE_SIZE; 
+								if ((uint64_t)vaddr + mem_size < memset_end) {
+									memset_end = (uint64_t)vaddr + mem_size;
+								}
+								K::memset((void*)memset_start, 0, memset_end - memset_start);
+							}
+							mmap_sema->up();
+						});
+					});
+				}	
+				mmap_sema->down([=]{
+					printf("all done\n");
 					sema->up();
 				});
 			}

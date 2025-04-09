@@ -556,19 +556,32 @@ void blocking_atomic_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("inf_loop.elf");
+    int elf_index = get_ramfs_index("user_prog.elf");
     PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
     // const int sz = 1440;
     char buffer[sz];
     ramfs_read(buffer, 0, sz, elf_index);
+    printf("%x%x  where buffer is\n", (uint64_t)buffer >> 32, buffer);
     Semaphore* sema = new Semaphore(1);
     void* new_pc = elf_load((void*)buffer, pcb, sema);
     UserTCB* tcb = new UserTCB([=](){
         K::assert(false, "This is not called");
     });
+    uint64_t sp = 0x0000fffffffff000;
+    sema->down([=]() {
+        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, 0x1000, 
+			[=]() {
+				load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
+                    pcb->page_table->use_page_table();
+					K::memset((void*)(sp - PAGE_SIZE), 0, PAGE_SIZE);
+                    sema->up();
+                });
+            });
+    });
     tcb->pcb = pcb;
     tcb->context.pc = (uint64_t)new_pc;
+    tcb->context.sp = sp;
     tcb->use_pt = true;
     printf("0x%x this is the tcb pc\n", tcb->context.pc);
     printf("0x%x%x THIS IS THE TCB:\n", (uint64_t)tcb>>32,(uint64_t)tcb);
