@@ -556,7 +556,7 @@ void blocking_atomic_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("sort.elf");
+    int elf_index = get_ramfs_index("user_prog.elf");
     PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
     char buffer[sz];
@@ -610,6 +610,7 @@ void elf_load_test() {
     });
     tcb->pcb = pcb;
     tcb->context.pc = (uint64_t)new_pc;
+    printf("%x this is pc\n", tcb->context.pc);
     tcb->use_pt = true;
     sema->down([=]() {
         readyQueue.forCPU(1).queues[1].add(tcb);

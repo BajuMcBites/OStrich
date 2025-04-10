@@ -65,13 +65,13 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 
 # define ELF_RELOC_ERR -1
 
-Elf64_Shdr *find_section(Elf64_Ehdr* hdr, char* name) {
+Elf64_Shdr *find_section(Elf64_Ehdr* hdr, const char* name) {
 	Elf64_Shdr *shdr = elf_sheader(hdr);
 	for(int i = 0; i < hdr->e_shnum; i++) {
 		
 		Elf64_Shdr *section = &shdr[i];
 		Elf64_Shdr *shstrndx = elf_section(hdr, hdr->e_shstrndx);
-		char *cname = (char *)hdr + shstrndx->sh_offset + section->sh_name;
+		const char *cname = (const char *)hdr + shstrndx->sh_offset + section->sh_name;
 		if (K::strcmp(name, cname) == 0) {
 			return section;
 		}
@@ -79,40 +79,26 @@ Elf64_Shdr *find_section(Elf64_Ehdr* hdr, char* name) {
 	return nullptr;
 }
 
-
-void* elf_lookup_symbol_internal (Elf64_Ehdr* hdr, const char* name) { 
+void* elf_lookup_symbol (Elf64_Ehdr* hdr, const char* name) { 
 	Elf64_Shdr *dynsym = find_section(hdr, ".dynsym");
 	Elf64_Shdr *dynstr = find_section(hdr, ".dynstr");
 
 	if (!dynsym || !dynstr) {
 		ERROR("Symbol or string table not found!");
-		return nullptr;
+		return (void*)ELF_RELOC_ERR;
 	}
 
 	uint64_t dynsym_entries = dynsym->sh_size / dynsym->sh_entsize;
 	uint64_t symaddr = (uint64_t)hdr + dynsym->sh_offset;
 	for (int i = 0; i < dynsym_entries; i++) {
 		Elf64_Sym *symbol = &((Elf64_Sym *)symaddr)[i];
-		char *cname = (char*)((uint64_t)hdr + dynstr->sh_offset + symbol->st_name);
+		const char *cname = (const char*)((uint64_t)hdr + dynstr->sh_offset + symbol->st_name);
 		if (K::strcmp(name, cname) == 0) {
 			printf("WE FOUND %s, returning %x\n", cname, symbol->st_value);
 			return (void*)symbol->st_value;
 		}
 	}
-	return nullptr;
-}
-
-void* elf_lookup_symbol(Elf64_Ehdr* hdr, const char* name) {
-    // 1. Search the current ELF's dynamic symbols
-    void *sym = elf_lookup_symbol_internal(hdr, name);
-    if (sym) return sym;
-
-    // 2. Search all loaded libraries
-    for (LoadedLibrary *lib = g_loaded_libs; lib; lib = lib->next) {
-        sym = elf_lookup_symbol_internal(lib->ehdr, name);
-        if (sym) return sym;
-    }
-    return nullptr;
+	return (void*)ELF_RELOC_ERR;
 }
 
 static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
@@ -133,16 +119,10 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
 		const char *name = (const char *)hdr + strtab->sh_offset + symbol->st_name;
 
 		void *target = elf_lookup_symbol(hdr, name);
-
-		if(target == nullptr) {
-			// Extern symbol not found
-			if(ELF64_ST_BIND(symbol->st_info) & STB_WEAK) {
-				// Weak symbol initialized as 0
-				return 0;
-			} else {
-				ERROR("Undefined External Symbol : %s.\n", name);
-				return ELF_RELOC_ERR;
-			}
+		if ((long)target == -1) {
+			return ELF_RELOC_ERR;
+		} else if(target == nullptr) {
+			return 0;
 		} else {
 			return (uint64_t)target;
 		}
@@ -384,36 +364,6 @@ static int elf_do_dynamic_reloc(Elf64_Ehdr *hdr, Elf64_Rela *rel, Elf64_Shdr *re
 
     return 0;
 }
-
-static uint64_t elf_do_rel(Elf64_Ehdr *hdr, Elf64_Rel *rel, Elf64_Shdr *reltab) {
-    Elf64_Shdr *target = elf_section(hdr, reltab->sh_info);
-    uint64_t addr = (uint64_t)hdr + target->sh_offset;
-    uint64_t *ref = (uint64_t*)(addr + rel->r_offset);
-    uint64_t addend = *ref;
-
-    uint64_t symval = 0;
-    if (ELF64_R_SYM(rel->r_info) != SHN_UNDEF) {
-        symval = elf_get_symval(hdr, reltab->sh_link, ELF64_R_SYM(rel->r_info));
-        if (symval == ELF_RELOC_ERR) return ELF_RELOC_ERR;
-    }
-
-    switch (ELF64_R_TYPE(rel->r_info)) {
-        case R_AARCH64_ABS64:
-            *ref = symval + addend;
-            break;
-        case R_AARCH64_RELATIVE: 
-            *ref = (uint64_t)hdr + addend;
-            break;
-        case R_AARCH64_JUMP_SLOT:
-            *ref = symval; 
-            break;
-        default:
-            ERROR("Unsupported SHT_REL relocation type: %d\n", ELF64_R_TYPE(rel->r_info));
-            return ELF_RELOC_ERR;
-    }
-    return symval;
-}
-
 # define ELF_PHDR_ERR -2
 
 
@@ -428,10 +378,10 @@ static int elf_load_stage2(Elf64_Ehdr *hdr) {
 				const char *secname = elf_section_name(hdr, section);
 				if (K::strcmp(secname, ".rela.dyn") == 0 || 
 					K::strcmp(secname, ".rela.plt") == 0) {
-					printf("Processing dynamic relocations in %s\n", secname);
 					for (unsigned int idx = 0; idx < section->sh_size / section->sh_entsize; idx++) {
-						Elf64_Rela *rel = (Elf64_Rela*)((uint64_t)hdr + section->sh_offset + idx * sizeof(Elf64_Rela));
-						if (elf_do_dynamic_reloc(hdr, rel, section) == ELF_RELOC_ERR) {
+						Elf64_Rela *reltab = &((Elf64_Rela *)((uint64_t)hdr + section->sh_offset))[idx];
+						printf("off: %x info: %x addend: %x\n", reltab->r_offset, reltab->r_info, reltab->r_addend);
+						if (elf_do_reloc(hdr, reltab, section) == ELF_RELOC_ERR) {
 							ERROR("Failed to apply dynamic relocation\n");
 							return ELF_RELOC_ERR;
 						}
@@ -590,17 +540,21 @@ static inline void *elf_load_rel(Elf64_Ehdr *hdr, PCB* pcb, Semaphore* sema) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
 	}
+	printf("STAGE 1 DONE\n");
 	result = elf_load_stage2(hdr);
 	if(result == ELF_RELOC_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
 	}
+	printf("STAGE 2 DONE\n");
 	// Parse the program header (if present)
 	result = elf_load_stage3(hdr, pcb, sema);
 	if (result == ELF_PHDR_ERR) {
 		ERROR("Unable to load ELF file.\n");
 		return nullptr;
 	}
+	
+	printf("STAGE 3 DONE\n");
 	return (void *)hdr->e_entry;
 }
 
