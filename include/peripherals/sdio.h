@@ -2,8 +2,9 @@
 #define _D_SDIO_H
 
 #include "../gpio.h"
+#include "../vm.h"
 
-#define SDIO_BASE 0x3F300000
+#define SDIO_BASE 0x3F300000 | VA_START
 
 #define SD_BLKSIZECNT ((volatile unsigned int *)(MMIO_BASE + 0x00300004))
 #define SD_ARG_REG (volatile int *)(SDIO_BASE + 0x008)

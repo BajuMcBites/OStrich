@@ -13,5 +13,7 @@ void hash_test();
 void ramfs_tests();
 void blocking_atomic_tests();
 void ring_buffer_tests();
+void bitmap_tests();
+void swap_tests();
 
 #endif /*_KERNEL_TESTS_H */

@@ -246,8 +246,7 @@ void* kmalloc(size_t size) {
 }
 
 /**
- * kcalloc -  allocates size bytes and returns a pointer to the allocated
- * memory, fills in bytes with val.
+ * kcalloc -  count amount of size objects all zeroed.
  */
 void* kcalloc(size_t count, size_t size) {
     void* block = kmalloc(count * size);

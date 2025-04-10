@@ -3,7 +3,7 @@
 
 #include "peripherals/base.h"
 
-#define VA_START 0xffff000000000000
+#define VA_START 0xFFFF000000000000
 
 #define PAGE_SHIFT 12
 #define TABLE_SHIFT 9
