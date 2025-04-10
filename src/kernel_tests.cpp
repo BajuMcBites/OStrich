@@ -556,7 +556,7 @@ void blocking_atomic_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("user_prog2");
+    int elf_index = get_ramfs_index("user_prog");
     PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
     char* buffer = (char*)kmalloc(sz);
