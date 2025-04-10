@@ -1,4 +1,4 @@
-#include "system_calls.h"
+#include "sys.h"
 
 /*---------------------------------------------------------
  This file does not do much. This puts the system call type into 

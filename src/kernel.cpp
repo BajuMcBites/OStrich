@@ -22,6 +22,7 @@
 #include "sdio_tests.h"
 #include "snake.h"
 #include "stdint.h"
+#include "sys.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
@@ -89,6 +90,7 @@ extern "C" void kernel_main() {
     sdioTests();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.
+    invoke_handler(420);
 }
 
 extern char __heap_start[];
@@ -159,6 +161,8 @@ void mergeCores() {
         create_event([] { kernel_main(); });
 
         user_thread([] { printf("i do nothing2\n"); });
+
+        user_thread([] {});
     }
 
     // Uncomment to run snake

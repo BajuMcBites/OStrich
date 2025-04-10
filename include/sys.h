@@ -22,4 +22,6 @@
 
 extern "C" void syscall_handler(void* syscall_frame);
 
+void invoke_handler(int opcode);
+
 #endif
