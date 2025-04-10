@@ -10,9 +10,12 @@
 // --- Process Control ---
 // exit -- Exit a program without cleaning up files
 void _exit(int val) {
-    unsigned int reset = 256;
-    void (*func_ptr)(unsigned int) = (void (*)(unsigned int))0x00100068;
-    func_ptr(reset);
+    // unsigned int reset = 256;
+    // void (*func_ptr)(unsigned int) = (void (*)(unsigned int))0x00100068;
+    // func_ptr(reset);
+    while (1) {
+        val += 1;
+    }
     // trap to kernel and call syscall number 5
 }
 
