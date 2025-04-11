@@ -37,7 +37,6 @@ _fstat:
     svc #0
     ret
 
-
 .global _getpid
 _getpid:
     mov x8, #NEWLIB_GETPID
