@@ -11,6 +11,7 @@
 #define ERROR(msg...) printf(msg);
 
 #define MAP_FAILED (void*)-1
+#define ELF_RELOC_ERR -1
 
 LoadedLibrary *g_loaded_libs = nullptr;
 
@@ -50,7 +51,7 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 	}
 	if(hdr->e_machine != EM_ARM) {
 		ERROR("Unsupported ELF File target.\n");
-		//return false;
+		return false;
 	}
 	if(hdr->e_ident[EI_VERSION] != EV_CURRENT) {
 		ERROR("Unsupported ELF File version.\n");
@@ -62,8 +63,6 @@ bool elf_check_supported(Elf64_Ehdr *hdr) {
 	}
 	return true;
 }
-
-# define ELF_RELOC_ERR -1
 
 Elf64_Shdr *find_section(Elf64_Ehdr* hdr, const char* name) {
 	Elf64_Shdr *shdr = elf_sheader(hdr);
