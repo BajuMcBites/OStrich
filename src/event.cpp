@@ -127,7 +127,8 @@ void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl) {
         }
         if (nextThread == nullptr)  // no other threads. I can keep working/spinning
         {
-            // printf("running thread is 0x%x%x\n", (uint64_t)runningThreads[me]>>32, (uint64_t)runningThreads);
+            // printf("running thread is 0x%x%x\n", (uint64_t)runningThreads[me]>>32,
+            // (uint64_t)runningThreads);
             if (isl) {
                 isl->unlock();
             }
@@ -170,9 +171,9 @@ void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl) {
     } else  // kernel to user
     {
         printf("kernel to user\n");
-        UserTCB* tcb = ((UserTCB *)nextThread);
-        cpu_context* context = &(tcb)->context;
-        PCB* pcb = tcb->pcb;
+        UserTCB *tcb = ((UserTCB *)nextThread);
+        cpu_context *context = &(tcb)->context;
+        PCB *pcb = tcb->pcb;
         if (tcb->use_pt) {
             pcb->page_table->use_page_table();
         }
