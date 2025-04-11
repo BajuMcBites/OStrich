@@ -5,6 +5,17 @@
 #include "stdint.h"
 #include "vm.h"
 
+// SyscallFrame structure.
+// X[0] - return value
+struct SyscallFrame {
+    union {
+        /* X[0] ... X[5] - arguments
+        once function is called, X[0] will be the return value.
+        */
+        uint64_t X[30];
+    };
+};
+
 // Function prototypes
 void newlib_handle_exit(SyscallFrame* frame);
 int newlib_handle_close(SyscallFrame* frame);
@@ -23,18 +34,7 @@ int newlib_handle_unlink(SyscallFrame* frame);
 int newlib_handle_wait(SyscallFrame* frame);
 int newlib_handle_write(SyscallFrame* frame);
 int newlib_handle_time(SyscallFrame* frame);
-void handle_linux_syscall(int opcode, SyscallFrame* frame);
-
-// SyscallFrame structure.
-// X[0] - return value
-struct SyscallFrame {
-    union {
-        /* X[0] ... X[5] - arguments
-        once function is called, X[0] will be the return value.
-        */
-        uint64_t X[30];
-    };
-};
+void handle_newlib_syscall(int opcode, SyscallFrame* frame);
 
 void syscall_handler(void* syscall_frame) {
     auto* frame = (SyscallFrame*)(syscall_frame);
