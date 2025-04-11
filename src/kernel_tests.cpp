@@ -1,6 +1,7 @@
 #include "kernel_tests.h"
 
 #include "atomic.h"
+#include "elf_loader.h"
 #include "event.h"
 #include "frame.h"
 #include "hash.h"
@@ -16,7 +17,6 @@
 #include "sched.h"
 #include "stdint.h"
 #include "vm.h"
-#include "elf_loader.h"
 
 #define NUM_TIMES 1000
 
@@ -563,48 +563,44 @@ void elf_load_test() {
     ramfs_read(buffer, 0, sz, elf_index);
     Semaphore* sema = new Semaphore(1);
     void* new_pc = elf_load((void*)buffer, pcb, sema);
-    UserTCB* tcb = new UserTCB([=](){
-        K::assert(false, "This is not called");
-    });
+    UserTCB* tcb = new UserTCB([=]() { K::assert(false, "This is not called"); });
     uint64_t sp = 0x0000fffffffff000;
     // only doing this because no eviction
     sema->down([=]() {
-        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr, 0, PAGE_SIZE, 
-			[=]() {
-				load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
-                    pcb->page_table->use_page_table();
-					K::memset((void*)(sp - PAGE_SIZE), 0, PAGE_SIZE);
-                    sema->up();
-                });
-            });
+        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
+             0, PAGE_SIZE, [=]() {
+                 load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
+                     pcb->page_table->use_page_table();
+                     K::memset((void*)(sp - PAGE_SIZE), 0, PAGE_SIZE);
+                     sema->up();
+                 });
+             });
     });
     sema->down([=]() {
         pcb->page_table->use_page_table();
         uint64_t sp = 0x0000fffffffff000;
         int argc = 0;
-        const char *argv[0];
+        const char* argv[0];
         uint64_t addrs[argc];
-        for (int i = argc - 1; i >= 0; --i)
-        {
+        for (int i = argc - 1; i >= 0; --i) {
             int len = K::strlen(argv[i]) + 1;
             sp -= len;
             addrs[i] = sp;
-            K::memcpy((void *)sp, argv[i], len);
+            K::memcpy((void*)sp, argv[i], len);
         }
         sp -= 8;
-        *(uint64_t *)sp = 0;
-        for (int i = argc - 1; i >= 0; --i)
-        {
+        *(uint64_t*)sp = 0;
+        for (int i = argc - 1; i >= 0; --i) {
             sp -= 8;
-            *(uint64_t *)sp = addrs[i];
+            *(uint64_t*)sp = addrs[i];
         }
         // save &argv
         sp -= 8;
-        *(uint64_t *)sp = sp + 8;
+        *(uint64_t*)sp = sp + 8;
 
         // save argc
         sp -= 8;
-        *(uint64_t *)sp = argc;
+        *(uint64_t*)sp = argc;
         tcb->context.sp = sp;
         sema->up();
     });
