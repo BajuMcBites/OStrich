@@ -1,3 +1,5 @@
+#include "../filesystem/filesys/FileSystem.h"
+#include "../filesystem/interface/BlockManager.h"
 #include "core.h"
 #include "dcache.h"
 #include "dwc.h"
@@ -90,6 +92,9 @@ extern "C" void kernel_main() {
     elf_load_test();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.
+    auto blockManager = new fs::BlockManager(1024);
+    auto fs = fs::FileSystem::getInstance(blockManager);  // first time
+    // FILESYSTEM WORKS
 }
 
 extern char __heap_start[];
