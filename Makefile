@@ -32,14 +32,12 @@ ASM_SRC = $(wildcard $(SRC_DIR)/*.S)
 C_SRC = $(wildcard $(SRC_DIR)/*.c)
 CPP_SRC = $(wildcard $(SRC_DIR)/*.cpp)
 FS_FILESYS_SRC = $(wildcard $(FS_DIR)/filesys/*.cpp)
-FS_INTERFACE_SRC = $(wildcard $(FS_DIR)/interface/*.cpp)
 
 # Object files
 ASM_OBJ = $(ASM_SRC:$(SRC_DIR)/%.S=$(BUILD_DIR)/%_S.o)
 C_OBJ = $(C_SRC:$(SRC_DIR)/%.c=$(BUILD_DIR)/%_c.o)
 CPP_OBJ = $(CPP_SRC:$(SRC_DIR)/%.cpp=$(BUILD_DIR)/%_cpp.o)
 FS_FILESYS_OBJ = $(FS_FILESYS_SRC:$(FS_DIR)/filesys/%.cpp=$(BUILD_DIR)/fs_filesys_%_cpp.o)
-FS_INTERFACE_OBJ = $(FS_INTERFACE_SRC:$(FS_DIR)/interface/%.cpp=$(BUILD_DIR)/fs_interface_%_cpp.o)
 RAMFS_OBJ = $(BUILD_DIR)/ramfs.o
 
 # Output files
@@ -75,10 +73,6 @@ $(CPP_OBJ): $(BUILD_DIR)/%_cpp.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 $(FS_FILESYS_OBJ): $(BUILD_DIR)/fs_filesys_%_cpp.o : $(FS_DIR)/filesys/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
-# Compile the interface C++ source files
-$(FS_INTERFACE_OBJ): $(BUILD_DIR)/fs_interface_%_cpp.o : $(FS_DIR)/interface/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CFLAGS) -c $< -o $@
-
 $(RAMFS_IMG) : $(BUILD_DIR)
 	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
 	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | $(XARGS) -d '\n' -t ../../$(BUILD_DIR)/build_ramfs
@@ -89,8 +83,8 @@ $(RAMFS_OBJ) : $(RAMFS_IMG)
 	$(OBJCOPY) --input binary -O elf64-littleaarch64 --binary-architecture aarch64 --set-section-alignment .data=16 $(RAMFS_IMG) $(RAMFS_OBJ)
 
 # Link the object files into the kernel ELF
-$(KERNEL_ELF): $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(FS_FILESYS_OBJ) $(FS_INTERFACE_OBJ) $(RAMFS_OBJ)
-	$(LD) $(LDFLAGS) -o $(KERNEL_ELF) $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(FS_FILESYS_OBJ) $(FS_INTERFACE_OBJ) $(RAMFS_OBJ)
+$(KERNEL_ELF): $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(FS_FILESYS_OBJ) $(RAMFS_OBJ)
+	$(LD) $(LDFLAGS) -o $(KERNEL_ELF) $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(FS_FILESYS_OBJ) $(RAMFS_OBJ)
 
 # Convert the ELF to a binary image
 $(KERNEL_IMG): $(KERNEL_ELF)
