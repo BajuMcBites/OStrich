@@ -3,6 +3,6 @@
 
 #include "libk.h"
 
-#define assert(cond) K::assert(cond, "assert failed.");
+#define assertm(cond, msg) K::assert(cond, msg)
 
 #endif
