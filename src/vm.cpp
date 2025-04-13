@@ -312,9 +312,9 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
     if ((local->perm & WRITE_PERM) != 0 && (local->perm & EXEC_PERM) == 0) {
         attribute |= (0x1L << 6);
     } else if ((local->perm & WRITE_PERM) != 0 && (local->perm & EXEC_PERM) != 0) {
-        attribute |= (0x0L << 6);
+        attribute |= (0x01L << 6);
     } else {
-        attribute |= (0x0L << 6);
+        attribute |= (0x01L << 6);
     }
 
     attribute |= (0x2L << 2);   // 2nd index in mair
