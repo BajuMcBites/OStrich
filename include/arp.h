@@ -2,21 +2,20 @@
 #define _ARP_H
 #include <stdint.h>
 
+#include "function.h"
 #include "dwc.h"
 #include "hash.h"
 #include "net_stack.h"
 
-typedef struct {
-    net_uint16_t id;
-    net_uint16_t flags;
-    net_uint16_t qdCount;
-    net_uint16_t anCount;
-    net_uint16_t nsCount;
-    net_uint16_t arCount;
-} __attribute__((packed)) dns_query_header;
+#define ARP_ETHERNET_TYPE 0x01
+#define ARP_REQUEST_OPCODE 0x01
+#define ARP_REPLY_OPCODE 0x02
 
-extern HashMap<uint8_t[6]> arp_cache;
+HashMap<uint64_t, uint8_t*> &get_arp_cache();
 
+bool arp_has_resolved(uint32_t dst_ip);
+
+void arp_resolve_mac(usb_session *session, uint32_t dst_ip, Function<void(uint8_t *)>&& consumer);
 int handle_arp_packet(usb_session *session, PacketBufferParser *parser);
 
 #endif

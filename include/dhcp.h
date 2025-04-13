@@ -2,6 +2,7 @@
 #define _DHCP_H
 
 #include "dwc.h"
+#include "function.h"
 #include "net_stack.h"
 
 /*
@@ -17,16 +18,21 @@
 #define DHCP_OPTION_DNS_SERVER 5
 #define DHCP_OPTION_IMPRESS_SERVER 10
 #define DHCP_OPTION_MESSAGE_TYPE 53
-#define DHCP_OPTION_SERVER_ID 54 
+#define DHCP_OPTION_SERVER_ID 54
 
 #define DHCP_MAX_TIME_SERVERS 4
 #define DHCP_MAX_DNS_SERVERS 10
 
-template <size_t Max>
 struct server_group {
     uint8_t count;
-    uint32_t ips[Max];
+    uint32_t ips[10];
+
+    void for_each(Function<void(uint32_t)> func) {
+        uint8_t n = count;
+        while (n--) func(ips[n]);
+    }
 } __attribute__((packed));
+
 
 typedef struct {
     uint32_t subnet_mask;
@@ -34,12 +40,15 @@ typedef struct {
     uint32_t my_ip;
     uint32_t dhcp_server_ip;
 
-    server_group<DHCP_MAX_DNS_SERVERS> dns_servers;
-    server_group<DHCP_MAX_TIME_SERVERS> time_servers;
+    server_group dns_servers;
+    server_group time_servers;
 
 } __attribute__((packed)) dhcp_state_t;
 
-void dhcp_handle_offer(PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCPPacket>* parser);
+void print_server_group(const char* name, server_group* group);
+
+void dhcp_handle_offer(usb_session* session,
+                       PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCPPacket>* parser);
 void dhcp_discover(usb_session* session);
 
 extern dhcp_state_t dhcp_state;

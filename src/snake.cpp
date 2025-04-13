@@ -125,14 +125,14 @@ void init() {
                    .prior_direction = 0};
     state.food = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}};
 
-    state.key_listener = {.handler = (void (*)(key_event *))&snake_on_key_press, .next = nullptr};
+    // state.key_listener = {.handler = (void (*)(key_event *))&snake_on_key_press, .next = nullptr};
 
-    event_handler->register_listener(KEYBOARD_EVENT, &state.key_listener);
+    // get_event_handler().register_listener(KEYBOARD_EVENT, &state.key_listener);
     fb_clear(0xFFFFFFFF);
 }
 
 void reset() {
-    event_handler->unregister_listener(KEYBOARD_EVENT, state.key_listener._id);
+    // get_event_handler().unregister_listener(KEYBOARD_EVENT, state.key_listener._id);
     fb_clear(0xFFFFFFFF);
     init_snake();
 }
