@@ -34,8 +34,7 @@ bool dhci_is_valid_server_ip(uint32_t ip) {
     return true;
 }
 
-template <size_t T>
-void print_server_group(const char* name, server_group<T>* group) {
+void print_server_group(const char* name, server_group* group) {
     printf("\t%s\n", name);
     for (uint8_t i = 0; i < group->count; i++) {
         printf("\t\t%d: ", i + 1);
@@ -61,7 +60,17 @@ void dhcp_print_state() {
     print_server_group("Time Servers:", &dhcp_state.time_servers);
 }
 
-void dhcp_handle_offer(PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCPPacket>* parser) {
+#include "arp.h"
+
+void dhcp_resolve(usb_session* session) {
+    dhcp_state.dns_servers.for_each([&session](uint32_t dst_ip) {
+        if (arp_has_resolved(dst_ip)) return;
+        arp_resolve_mac(session, dst_ip, [](uint8_t* ignored){});
+    });
+}
+
+void dhcp_handle_offer(usb_session* session,
+                       PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCPPacket>* parser) {
     auto udp_packet = parser->get<UDPDatagram>();
     auto ipv4 = parser->get<IPv4Packet>();
 
@@ -92,38 +101,30 @@ void dhcp_handle_offer(PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCP
             }
 
             case DHCP_OPTION_TIME_SERVER: {
-                uint8_t count = dhcp_pckt->options[i + 1] >> 2;
-                dhcp_state.time_servers.count = 0;
+                uint8_t count = dhcp_pckt->options[i + 1] / 4;
                 for (int j = 0; j < count && dhcp_state.time_servers.count < DHCP_MAX_TIME_SERVERS;
                      j++) {
-                    uint32_t dns_ip = i32(*((uint32_t*)(dhcp_pckt->options + i + 2 + (j * 4))));
-                    if (!dhci_is_valid_server_ip(dns_ip)) {
-                        continue;
-                    }
+                    uint32_t dns_ip = i32(*((uint32_t*)(dhcp_pckt->options + i + 1 + (j * 4))));
                     dhcp_state.time_servers.ips[dhcp_state.time_servers.count] = dns_ip;
                     dhcp_state.time_servers.count += 1;
                 }
                 break;
             }
             case DHCP_OPTION_DNS_SERVER: {
-                uint8_t count = dhcp_pckt->options[i + 1] >> 2;
-                dhcp_state.dns_servers.count = 0;
+                uint8_t count = dhcp_pckt->options[i + 1] / 4;
                 for (int j = 0; j < count && dhcp_state.dns_servers.count < DHCP_MAX_DNS_SERVERS;
                      j++) {
-                    uint32_t dns_ip = i32(*((uint32_t*)(dhcp_pckt->options + i + 2 + (j * 4))));
-                    if (!dhci_is_valid_server_ip(dns_ip)) {
-                        continue;
-                    }
+                    uint32_t dns_ip = i32(*((uint32_t*)(dhcp_pckt->options + i + 1 + (j * 4))));
+
                     dhcp_state.dns_servers.ips[dhcp_state.dns_servers.count] = dns_ip;
                     dhcp_state.dns_servers.count += 1;
                 }
                 break;
             }
-            case DHCP_OPTION_MESSAGE_TYPE: {
-                uint8_t message_type = dhcp_pckt->options[i + 1];
-                printf("DHCP Message Type: %d\n", message_type);
-                break;
-            }
+            // case DHCP_OPTION_MESSAGE_TYPE: {
+            //     uint8_t message_type = dhcp_pckt->options[i + 1];
+            //     break;
+            // }
             case DHCP_OPTION_SERVER_ID: {
                 uint32_t server_id = i32(*((uint32_t*)(dhcp_pckt->options + i + 2)));
                 print_ip(server_id);
@@ -136,6 +137,7 @@ void dhcp_handle_offer(PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCP
     }
 
     dhcp_print_state();
+    dhcp_resolve(session);
 }
 
 void dhcp_discover(usb_session* session) {
@@ -164,7 +166,7 @@ void dhcp_discover(usb_session* session) {
     ethernet_header* frame;
     frame =
         ETHFrameBuilder{get_mac_address(), (uint8_t[6]){0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, 0x0800}
-            .encapsulate(IPv4Builder()
+            .encapsulate(IPv4Builder{}
                              .with_src_address(0x00000000)
                              .with_dst_address(0xFFFFFFFF)
                              .with_protocol(IP_UDP)

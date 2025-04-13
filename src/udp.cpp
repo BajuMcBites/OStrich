@@ -1,10 +1,15 @@
 #include "udp.h"
 
+#include <stdint.h>
+
+#include "arp.h"
 #include "dhcp.h"
 #include "net_stack.h"
+#include "network_card.h"
 #include "printf.h"
+#include "dns.h"
 
-void handle_udp(usb_session *session, PacketBufferParser *buffer_parser) {
+void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
     PacketParser<EthernetFrame, IPv4Packet, TCPPacket> parser(buffer_parser->get_packet_base(),
                                                               buffer_parser->get_length());
 
@@ -33,7 +38,18 @@ void handle_udp(usb_session *session, PacketBufferParser *buffer_parser) {
         case 68: {  // DHCP
             PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCPPacket> parser(
                 buffer_parser->get_packet_base(), buffer_parser->get_length());
-            dhcp_handle_offer(&parser);
+            dhcp_handle_offer(session, &parser);
+            break;
+        }
+        case 22: {  // DNS
+            PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, Packet<dns_query_header>, Payload>
+                parser(buffer_parser->get_packet_base(), buffer_parser->get_length());
+
+            handle_dns_response(session, &parser);
+
+            // printf("type = 0x%x, _class = 0x%x, ttl = 0x%x, rdlength = 0x%x, rdata = 0x%x\n",
+            //        ptr->type.get(), ptr->_class.get(), ptr->ttl.get(),
+            //        ptr->rdlength.get(), ptr->rdata);
             break;
         }
         default:

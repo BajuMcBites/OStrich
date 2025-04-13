@@ -162,6 +162,25 @@ int cdc_ecm_init(usb_session *session) {
            cdc_ecm_set_filter(session);
 }
 
+usb_session *network_usb_session(usb_session *update) {
+    static usb_session session;
+    if (update != nullptr) session = *update;
+    return &session;
+}
+
+void network_loop() {
+    usb_session *session = network_usb_session(nullptr);
+    create_event([=]() {
+        dhcp_discover(session);
+        while (1) {
+            int res = receive_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
+            if (res == 0x10 || res == 0x00) {
+                process_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
+            }
+        }
+    });
+}
+
 void initialize_network_card(usb_session *session, usb_device_descriptor_t *device,
                              usb_device_config_t *config) {
     if (cdc_ecm_init(session)) {
@@ -197,13 +216,5 @@ void initialize_network_card(usb_session *session, usb_device_descriptor_t *devi
     session->out_toggle = 0;
 
     printf("\n[ethernet-driver] network card initialized, attempting dhcp discovery...\n");
-
-    dhcp_discover(session);
-
-    while (1) {
-        int res = receive_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
-        if (res == 0x10 || res == 0x00) {
-            process_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
-        }
-    }
+    network_usb_session(session);
 }

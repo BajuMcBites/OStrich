@@ -6,7 +6,6 @@
 #include "printf.h"
 
 void cleanup_connection(uint16_t port_id) {
-    printf("cleaning up connection on port %d\n\n", port_id);
     release_port(port_id);
 }
 
@@ -111,7 +110,6 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
         memcpy(print_buffer, receive_buffer, bytes_received);
         print_buffer[bytes_received] = '\0';
 
-        printf("received payload (%d): %s\n", bytes_received, print_buffer);
         response_payload = "Hello from server!";
         response_length = 19;
     }
