@@ -118,6 +118,8 @@ void dns_query(usb_session* session, const char* domain, Function<void(server_gr
 
         send_packet(session, (uint8_t*)frame, len);
 
+        delete frame;
+
         get_event_handler().register_listener(
             DNS_RESOLVED_EVENT | (string_hash(domain) & 0xFFFFFFFF),
             new Listener<server_group*>(std::move(consumer)));
