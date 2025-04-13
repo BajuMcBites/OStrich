@@ -107,9 +107,9 @@ typedef struct {
     uint8_t protocol_size;
     net_uint16_t opcode;
     uint8_t sender_mac[6];
-    uint8_t sender_ip[4];
+    net_uint32_t sender_ip;
     uint8_t target_mac[6];
-    uint8_t target_ip[4];
+    net_uint32_t target_ip;
 } __attribute__((packed)) arp_packet;
 
 typedef struct {
@@ -367,7 +367,6 @@ template <typename T>
 class Packet {
    public:
     using HeaderType = T;
-    using Builder = PacketBuilder<T>;
 
     virtual size_t get_next_offset(const uint8_t* data, size_t length) {
         return sizeof(HeaderType);
@@ -395,7 +394,7 @@ typedef Packet<arp_packet> ARPPacket;
 typedef Packet<udp_header> UDPDatagram;
 typedef Packet<icmp_header> ICMPPacket;
 typedef Packet<dhcp_packet> DHCPPacket;
-typedef Packet<uint8_t*> Payload;
+typedef Packet<uint8_t> Payload;
 
 class PacketBufferParser {
    private:
@@ -471,7 +470,7 @@ class PacketParser {
     }
 };
 
-extern HashMap<void*> ports;
+HashMap<uint64_t, void*>& get_ports();
 
 port_status* obtain_port(uint16_t port);
 void release_port(uint16_t port);

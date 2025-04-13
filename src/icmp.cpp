@@ -1,8 +1,12 @@
 #include "icmp.h"
 
+#include "arp.h"
+#include "dhcp.h"
+#include "listener.h"
 #include "net_stack.h"
 #include "network_card.h"
 #include "printf.h"
+#include "timer.h"
 
 void handle_icmp_echo(usb_session *session,
                       PacketParser<EthernetFrame, IPv4Packet, ICMPPacket, Payload> *parser) {
@@ -27,13 +31,45 @@ void handle_icmp_echo(usb_session *session,
                         ICMPBuilder{ICMP_ECHO_REQUEST_TYPE, 0}
                             .with_remainder(
                                 {.echo = {.identifier = icmp_packet->remainder.echo.identifier,
-                                          .seq_number = icmp_packet->remainder.echo.seq_number}})
+                                          .seq_number =
+                                              icmp_packet->remainder.echo.seq_number.get() +
+                                              (icmp_packet->type == ICMP_ECHO_REPLY_TYPE ? 1 : 0)}})
                             .encapsulate(PayloadBuilder{(uint8_t *)payload, payload_length})))
             .build(&len);
 
     send_packet(session, (uint8_t *)frame, len);
 
     delete frame;
+
+    PacketParser<ICMPPacket, Payload> event_parser((const uint8_t *)icmp_packet,
+                                                   payload_length + sizeof(icmp_header));
+    printf("ping\n");
+    get_event_handler().handle_event(ICMP_PING_EVENT | ipv4_packet->src_address.get(),
+                                     &event_parser);
+}
+
+void icmp_ping(usb_session *session, uint32_t ip,
+               Function<void(PacketParser<ICMPPacket, Payload> *)> &&callback) {
+    size_t len;
+    ethernet_header *frame;
+    frame =
+        ETHFrameBuilder{get_mac_address(), get_arp_cache().get(dhcp_state.dhcp_server_ip), 0x0800}
+            .encapsulate(IPv4Builder{}
+                             .with_src_address(dhcp_state.my_ip)
+                             .with_dst_address(ip)
+                             .with_protocol(IP_ICMP)
+                             .encapsulate(ICMPBuilder{ICMP_ECHO_REQUEST_TYPE, 0}.with_remainder(
+                                 {.echo = {.identifier = 22, .seq_number = 1}})))
+            .build(&len);
+
+    send_packet(session, (uint8_t *)frame, len);
+
+    delete frame;
+
+    get_event_handler().register_listener(ICMP_PING_EVENT | ip, new Listener(std::move(callback)));
+    printf("sent ping to %x\n", ip);
+    uint8_t *ptr = get_arp_cache().get(dhcp_state.dhcp_server_ip);
+    printf("mac sent to = %x:%x:%x:%x:%x:%x\n", ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
 }
 
 void handle_icmp(usb_session *session, PacketBufferParser *buffer_parser) {
@@ -41,9 +77,12 @@ void handle_icmp(usb_session *session, PacketBufferParser *buffer_parser) {
     PacketParser<EthernetFrame, IPv4Packet, ICMPPacket, Payload> parser(
         buffer_parser->get_packet_base(), buffer_parser->get_length());
 
+    printf("received something\n");
     switch (icmp_packet->type) {
-        case ICMP_ECHO_REQUEST_TYPE:
+        case ICMP_ECHO_REPLY_TYPE:
+        case ICMP_ECHO_REQUEST_TYPE: {
             handle_icmp_echo(session, &parser);
             break;
+        }
     }
 }

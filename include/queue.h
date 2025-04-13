@@ -4,7 +4,6 @@
 #include "atomic.h"
 #include "function.h"
 #include "heap.h"
-
 template <typename T>
 class Queue {
     T *volatile first = nullptr;
@@ -22,6 +21,7 @@ class Queue {
         if (first == nullptr) {
             first = t;
         } else {
+            
             last->next = t;
         }
         last = t;
@@ -53,7 +53,7 @@ class Queue {
         return size;
     }
 
-    void for_each(Function<void(T *t)> consumer) {
+    void for_each(Function<void(T *t)>&& consumer) {
         if (first == nullptr) return;
 
         T *it = first;
