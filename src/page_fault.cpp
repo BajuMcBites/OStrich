@@ -10,6 +10,10 @@
 // #define ACCESS_FLAG_FAULT 2
 // #define PERMISSION_FAULT 3
 
+#include "event.h"
+#include "printf.h"
+#include "trap_frame.h"
+
 // void handle_page_fault(int fault_el, int type, int table_level,  unsigned long far, UserTCB* tcb)
 // {
 
@@ -95,3 +99,10 @@
 //     });
 //     return;
 // }
+
+extern "C" void page_fault_handler(trap_frame* trap_frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    save_user_context(tcb, &trap_frame->X[0]);
+
+    printf("in data abort handler\n");
+}

@@ -139,7 +139,7 @@ void test_event(void* arg) {
 template <typename T>
 void test_function(T work) {
     int x = 10;
-    user_thread([=] { work(x); });
+    create_event([=] { work(x); });
 }
 
 void foo() {
@@ -159,7 +159,6 @@ void heapTests() {
 
     printf("All tests completed.\n");
     printf("foo test\n");
-    foo();
 }
 
 void test_ref_lambda() {
@@ -169,16 +168,13 @@ void test_ref_lambda() {
         printf("%d current a\n", a);
     };
     for (int i = 0; i < 10; i++) {
-        // create_event(lambda, 1);
-        // user_thread(lambda);
         create_event(lambda);
     }
 }
 void test_val_lambda() {
     int a = 2;
     Function<void()> lambda = [=]() { printf("%d should print 2\n", a); };
-    // create_event(lambda, 1);
-    // user_thread(lambda);
+    create_event(lambda, 1);
     create_event(lambda);
 }
 
@@ -186,32 +182,6 @@ void event_loop_tests() {
     printf("Testing the event_loop..\n");
     test_ref_lambda();
     test_val_lambda();
-    printf("All tests completed.\n");
-}
-
-void queue1() {
-    // Queue<int>* q = (queue<int>*)kmalloc(sizeof(queue<int>));
-    // q->push(5);
-    // q->push(3);
-    // q->push(2);
-    // q->push(1);
-    // printf("size %d\n", q->size());  // 4
-    // printf("%d ", q->top());         // 5
-    // q->pop();
-    // printf("%d ", q->top());  // 3
-    // q->pop();
-    // printf("%d ", q->top());  // 2
-    // q->pop();
-    // printf("%d\n", q->top());  // 1
-    // q->pop();
-    // printf("size %d\n", q->size());       // 0
-    // printf("empty is %d\n", q->empty());  // 1
-    // kfree(q);
-}
-
-void queue_test() {
-    printf("Testing the queue implementation..\n");
-    queue1();
     printf("All tests completed.\n");
 }
 
@@ -503,6 +473,7 @@ void semaphore_tests() {
     Function<void()> check_func = [sema, finish_sema, shared_value]() {
         finish_sema->down([sema, finish_sema, shared_value]() {
             printf("sema test shared value is %d\n", *shared_value);
+            printf("sema test finished with val\n");
             K::assert(*shared_value == 300, "race condition in semaphore test\n");
             delete sema;
             delete finish_sema;
@@ -556,14 +527,14 @@ void blocking_atomic_tests() {
 
 void elf_load_test() {
     printf("start elf_load tests\n");
-    int elf_index = get_ramfs_index("user_prog");
+    int elf_index = get_ramfs_index("temp.elf");
     PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
     char* buffer = (char*)kmalloc(sz);
     ramfs_read(buffer, 0, sz, elf_index);
     Semaphore* sema = new Semaphore(1);
     void* new_pc = elf_load((void*)buffer, pcb, sema);
-    UserTCB* tcb = new UserTCB([=]() { K::assert(false, "This is not called"); });
+    UserTCB* tcb = new UserTCB();
     uint64_t sp = 0x0000fffffffff000;
     // only doing this because no eviction
     sema->down([=]() {

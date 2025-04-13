@@ -8,41 +8,21 @@
 #include "queue.h"
 #include "stdint.h"
 #include "utils.h"
-// ------------
-// event.cpp --
-// ------------
 
-extern "C" void cpu_switch_to(cpu_context *prevTCB, cpu_context *nextTCB);
-extern "C" void load_context(cpu_context *prevTCB, cpu_context *nextTCB);
-extern "C" void save_context(cpu_context *prevTCB, cpu_context *nextTCB);
+extern "C" void load_user_context(cpu_context* context);
+extern "C" uint64_t pickKernelStack(void);
+extern "C" uint64_t get_sp_el0();
+extern "C" uint64_t get_elr_el1();
+extern "C" uint64_t get_spsr_el1();
 
 // queue of TCBs ready to run
 PerCPU<CPU_Queues> readyQueue;
 
-// Queue of threads ready to be deleted
-LockedQueue<TCB, SpinLock> zombieQ{};  // Queue of threads ready to be deleted
-
 // use an array for multiple cores, index with getCoreId
-TCB *runningThreads[CORE_COUNT] = {nullptr};
+UserTCB* runningUserTCB[CORE_COUNT] = {nullptr};
 
-// save the oldThread before context switching
-TCB *oldThreads[CORE_COUNT] = {nullptr};
-
-// cpu context for events per core. will be needed for interrupts
-cpu_context *coreContext[CORE_COUNT] = {nullptr};
-
-// save the queue I want to be added to before context change
-LockedQueue<TCB, SpinLock> *addMeHere[CORE_COUNT];
-
-// save the isl of the thread
-/*ISL*/ SpinLock *myLock[CORE_COUNT];
-
-// save interrupt state. not sure if this is needed. I think it will be for handling interrupts
-bool oldState[CORE_COUNT];
-
-// get next event off of the ready queue
-TCB *getNextEvent(int core) {
-    auto &ready = readyQueue.forCPU(core);
+TCB* getNextEvent(int core) {
+    auto& ready = readyQueue.forCPU(core);
     for (int i = 0; i < PRIORITY_LEVELS; i++) {
         auto next = ready.queues[i].remove();
         if (next != nullptr) {
@@ -52,181 +32,107 @@ TCB *getNextEvent(int core) {
     return nullptr;
 }
 
-// temp struct to fill into oldThreads so that we have something to switch from for initial context
-// switch
-struct DummyThread : public TCB {
-    DummyThread() {
-        kernel_event = true;
-    }
-    void run() override {
-        // PANIC("should never go here");
-    }
-};
+/**
+ * This function is the main event loop. It runs in a loop, checking for events
+ * to run. If there are no events, it will check the next core for events.
+ * If there are still no events, it will continue to spin.
+ */
+void run_events() {
+    TCB* nextThread;
+    int me = getCoreID();
 
-// function to call run and initialize state before starting a task
-void entry() {
-    // ASSERT(Interrupts::isDisabled());
-    auto me = getCoreID();
-    auto thread = runningThreads[me];
-    K::assert(thread != nullptr, "null pointer in entry");
-    thread->wasDisabled = false;
-    restoreState();
-    thread->run();
-    stop();
-}
-
-// place to put any intialization logic for events
-void threadsInit() {
-    for (int i = 0; i < CORE_COUNT; i++) {
-        runningThreads[i] = new DummyThread();
-        coreContext[i] = new cpu_context();
-    }
-}
-
-// forces an event to change context.
-void yield() {
-    auto me = getCoreID();
-    // safety. a kernel event should not be forced to yield.
-    if (runningThreads[me]->kernel_event) {
-        // if handling an interrupt maybe create a function scheduleInterrupt().
-        // you context switch to interrupt context and stack, schedule interrupt event, switch back
-        // to kernel event.
-        return;
-    }
-    // Get the current core's ready queue
-    // per-core access
-    auto &ready = readyQueue.forCPU(getCoreID());  // Use getCoreID() for per-core access
-
-    // Retrieve the queue with a specific priority (1 in this case)
-    auto theQueue = &ready.queues[1];  // Use address of the queue
-
-    event_loop(theQueue, nullptr);
-}
-
-// called after an event completes its task. Kills any dead TCBs and loops event loop until work is
-// picked up
-void stop() {
-    clearZombies();
     while (true) {
-        event_loop(&zombieQ, nullptr);
-    }
-    // PANIC("Should not go here. We should be in Event Loop\n");
-}
+        nextThread = getNextEvent(me);
 
-// event loop handles switching between user and kernel tasks
-void event_loop(LockedQueue<TCB, SpinLock> *q, /*ISL*/ SpinLock *isl) {
-    int me = getCoreID();
-    // bool was = Interrupts::disable();
-    auto nextThread = getNextEvent(me);
-    if (nextThread == nullptr)  // try to steal work
-    {
-        int nextCore = (me + 1) % CORE_COUNT;
-        while (nextCore != me && nextThread == nullptr) {
-            nextThread = getNextEvent(nextCore);
-            nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
-        }
-        if (nextThread == nullptr)  // no other threads. I can keep working/spinning
-        {
-            // printf("running thread is 0x%x%x\n", (uint64_t)runningThreads[me]>>32,
-            // (uint64_t)runningThreads);
-            if (isl) {
-                isl->unlock();
+        if (nextThread == nullptr) {
+            int nextCore = (me + 1) % CORE_COUNT;
+            while (nextCore != me && nextThread == nullptr) {
+                nextThread = getNextEvent(nextCore);
+                nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
             }
-            // Interrupts::restore(was);
-            return;
+
+            if (nextThread == nullptr)  // no other threads. I can keep working/spinning
+            {
+                continue;
+            }
         }
-    }
-    K::assert(runningThreads[me] != nullptr, "null pointer trying to run as event");
 
-    oldThreads[me] = runningThreads[me];  // save the old thread
-    // oldThreads[me]->wasDisabled = was;      // save the interrupt state prior
-    // to block oldState[me] = was;               // save the interrupt state
-    // prior to block
-    addMeHere[me] = q;  // save the queue to add me on
-    myLock[me] = isl;   // save my lock
-
-    runningThreads[me] = nextThread;  // This is a lie, only observable by the core. its ok ?
-
-    // cases: kernel to user, user to kernel, kernel to kernel. user to user
-    if (oldThreads[me]->kernel_event && nextThread->kernel_event)  // kernel to kernel
-    {
-        // printf("kernel to kernel\n");
-        entry();
-        printf(
-            "PANIC i should not go back into event loop after calling entry on "
-            "a kernel event\n");                                            // should never print
-    } else if (!oldThreads[me]->kernel_event && !nextThread->kernel_event)  // user to user
-    {
-        printf("user to user\n");
-        cpu_switch_to(&((UserTCB *)oldThreads[me])->context, &((UserTCB *)nextThread)->context);
-    } else if (!oldThreads[me]->kernel_event && nextThread->kernel_event)  // user to kernel
-    {
-        printf("user to kernel\n");
-        save_context(&((UserTCB *)oldThreads[me])->context,
-                     nullptr);                   // save the state of the user
-        coreContext[me]->pc = (uint64_t)&entry;  // I want to go to entry to start running event
-                                                 // after context switch
-        load_context(nullptr, coreContext[me]);  // switch to kernel task
-        // printf("PANIC post user to kernel\n");  // this should never print
-    } else  // kernel to user
-    {
-        printf("kernel to user\n");
-        UserTCB *tcb = ((UserTCB *)nextThread);
-        cpu_context *context = &(tcb)->context;
-        PCB *pcb = tcb->pcb;
-        if (tcb->use_pt) {
-            pcb->page_table->use_page_table();
+        nextThread->run();
+        if (!nextThread->kernel_event) {
+            K::assert(false, "user event returned to event loop");
         }
-        cpu_switch_to(coreContext[me], context);
-    }
-    // ASSERT(Interrupts::isDisabled());
-    restoreState();
-}
 
-void restoreState() {
-    // ASSERT(Interrupts::isDisabled());
-    int me = getCoreID();
-    auto prev = oldThreads[me];
-    // auto running = runningThreads[me];
-    // was someone running before me?
-    if (prev) {
-        // add previous thread on to desired queue
-        if (addMeHere[me] != nullptr) {
-            addMeHere[me]->add(prev);
-        }
-        // I have successfully added my prev to desired queue,
-        // I can unlock the lock if I was given one
-        if (myLock[me] != nullptr) {
-            myLock[me]->unlock();
-            // Interrupts::restore(oldThreads[me]->wasDisabled);
-        }
-        // Interrupts::restore(prev->wasDisabled);
-    }
-    // TODO:
-    // --- set state based on what kind of TCB I am ---- //
-
-    // if (running->wasDisabled)
-    // {
-    //     cli(); // disable
-    // }
-    // else
-    // {
-    //     Interrupts::restore(running->wasDisabled);
-    // }
-}
-
-void clearZombies()  // function to delete completed events
-{
-    auto killMe = zombieQ.remove();
-    while (killMe) {
-        //  bool was = Interrupts::disable();
-        // printf("addr to delete 0x%x\n", killMe);
-        delete killMe;
-        //  Interrupts::restore(was);
-        killMe = zombieQ.remove();
+        delete nextThread; /* only kernel events so UserTCB's shouldn't be deleted*/
     }
 }
 
-TCB *currentTCB(int core) {
-    return runningThreads[core];
+/**
+ * This function should reset the stack pointer and then jump to the event loop
+ * -> can be called anywhere without being recursive since the stack pointer is reset
+ */
+void event_loop() {
+    uint64_t sp = pickKernelStack();
+    set_sp_and_jump(sp - 0x20, run_events);
+}
+
+/**
+ * This function is called from the kernel to enter user space. It loads the
+ * before loading the user context of the tcb and eret-ing
+ */
+void enter_user_space(UserTCB* tcb) {
+    tcb->pcb->page_table->use_page_table();
+    runningUserTCB[getCoreID()] = tcb;
+    load_user_context(&tcb->context);
+}
+
+/**
+ * This function is called from the user space to save the context of the user
+ * thread. It saves the registers and the stack pointer, program counter, and
+ * spsr, these registers should be saved immidiatly upon entering kernel space
+ * so call this function at the start of the saved register memory.
+ */
+void save_user_context(UserTCB* tcb, uint64_t* regs) {
+    tcb->context.x0 = regs[0];
+    tcb->context.x1 = regs[1];
+    tcb->context.x2 = regs[2];
+    tcb->context.x3 = regs[3];
+    tcb->context.x4 = regs[4];
+    tcb->context.x5 = regs[5];
+    tcb->context.x6 = regs[6];
+    tcb->context.x7 = regs[7];
+    tcb->context.x8 = regs[8];
+    tcb->context.x9 = regs[9];
+    tcb->context.x10 = regs[10];
+    tcb->context.x11 = regs[11];
+    tcb->context.x12 = regs[12];
+    tcb->context.x13 = regs[13];
+    tcb->context.x14 = regs[14];
+    tcb->context.x15 = regs[15];
+    tcb->context.x16 = regs[16];
+    tcb->context.x17 = regs[17];
+    tcb->context.x18 = regs[18];
+    tcb->context.x19 = regs[19];
+    tcb->context.x20 = regs[20];
+    tcb->context.x21 = regs[21];
+    tcb->context.x22 = regs[22];
+    tcb->context.x23 = regs[23];
+    tcb->context.x24 = regs[24];
+    tcb->context.x25 = regs[25];
+    tcb->context.x26 = regs[26];
+    tcb->context.x27 = regs[27];
+    tcb->context.x28 = regs[28];
+    tcb->context.x29 = regs[29];
+    tcb->context.x30 = regs[30];
+
+    tcb->context.sp = get_sp_el0();
+    tcb->context.pc = get_elr_el1();
+    tcb->context.spsr = get_spsr_el1();
+}
+
+void set_return_value(UserTCB* tcb, uint64_t ret_val) {
+    tcb->context.x0 = ret_val;
+}
+
+UserTCB* get_running_user_tcb(int core) {
+    return runningUserTCB[core];
 }

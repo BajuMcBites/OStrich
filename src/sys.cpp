@@ -4,6 +4,7 @@
 #include "printf.h"
 #include "stdint.h"
 #include "vm.h"
+// #include "trap_frame.h"
 
 // SyscallFrame structure.
 // X[0] - return value
@@ -12,7 +13,7 @@ struct SyscallFrame {
         /* X[0] ... X[5] - arguments
         once function is called, X[0] will be the return value.
         */
-        uint64_t X[30];
+        uint64_t X[31];  // 0 ... 30
     };
 };
 
