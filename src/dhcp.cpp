@@ -174,7 +174,7 @@ void dhcp_discover(usb_session* session) {
                                               .with_pseduo_header(0x00000000, 0xFFFFFFFF)
                                               .encapsulate(PayloadBuilder{(uint8_t*)&dhcp_packet,
                                                                           packet_len})))
-            .build(&len);
+            .build(nullptr, &len);
 
     send_packet(session, (uint8_t*)frame, len);
 

@@ -195,6 +195,9 @@ extern "C" void primary_kernel_init() {
     mergeCores();
 }
 
+#include "function.h"
+#include "socket.h"
+
 void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);

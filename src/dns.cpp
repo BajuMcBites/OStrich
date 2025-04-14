@@ -114,7 +114,7 @@ void dns_query(usb_session* session, const char* domain, Function<void(server_gr
                                      .with_protocol(IP_UDP)
                                      .encapsulate(UDPBuilder{22, 53}.encapsulate(
                                          PayloadBuilder{packet, end - packet})))
-                    .build(&len);
+                    .build(nullptr, &len);
 
         send_packet(session, (uint8_t*)frame, len);
 

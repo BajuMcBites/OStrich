@@ -162,7 +162,7 @@ int cdc_ecm_init(usb_session *session) {
            cdc_ecm_set_filter(session);
 }
 
-usb_session *network_usb_session(usb_session *update) {
+usb_session *network_usb_session(usb_session *update = nullptr) {
     static usb_session session;
     if (update != nullptr) session = *update;
     return &session;

@@ -42,6 +42,18 @@ static bool uint64_t_equals(uint64_t elem1, uint64_t elem2) {
     return elem1 == elem2;
 }
 
+static uint64_t uint16_t_hash(uint16_t elem) {
+    uint32_t temp = (uint32_t)elem;
+    temp = ((temp >> 8) ^ temp) * 0x45d9f3b;
+    temp = ((temp >> 8) ^ temp) * 0x45d9f3b;
+    temp = (temp >> 8) ^ temp;
+    return (uint64_t)temp;
+}
+
+static bool uint16_t_equals(uint16_t elem1, uint16_t elem2) {
+    return elem1 == elem2;
+}
+
 /*
 static uint64_t string_hash(char* str) {
     unsigned long long hash = FNV_OFFSET_BASIS;
