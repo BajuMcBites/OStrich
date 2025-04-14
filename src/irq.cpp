@@ -17,9 +17,17 @@ https://jsandler18.github.io/extra/interrupts.html
 https://developer.arm.com/documentation/102909/0100/The-Generic-Interrupt-Controller
 
 */
+// #define GICD_BASE 0x3F001000
+// #define GICC_BASE 0x3F002000
 
 void enable_interrupt_controller() {
     put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
+    // uint32_t *GICD_ISENABLER = (uint32_t *)(GICD_BASE + 0x100);
+//     *GICD_ISENABLER |= (1 << 29); // Enable interrupt ID 29 (Local Timer)
+
+//     // Configure CPU Interface
+//     uint32_t *GICC_CTLR = (uint32_t *)(GICC_BASE + 0x0);
+//     *GICC_CTLR |= 1; // Enable CPU interface
 }
 
 extern "C" void handle_irq(void) {
