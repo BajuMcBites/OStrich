@@ -1,6 +1,8 @@
 #include "kernel_tests.h"
 
 #include "atomic.h"
+#include "dns.h"
+#include "dwc.h"
 #include "elf_loader.h"
 #include "event.h"
 #include "frame.h"
@@ -9,6 +11,8 @@
 #include "libk.h"
 #include "locked_queue.h"
 #include "mmap.h"
+#include "net_stack.h"
+#include "network_card.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
@@ -611,5 +615,15 @@ void elf_load_test() {
     sema->down([=]() {
         readyQueue.forCPU(1).queues[1].add(tcb);
         printf("end elf_load tests\n");
+    });
+}
+void network_tests() {
+    usb_session* session = network_usb_session(nullptr);
+    dns_query(session, "google.com", [&session](server_group* group) {
+        printf("Got %d ips for \"google.com\"\n", group->count);
+        group->for_each([&session](uint32_t ip) {
+            printf("\t- %d.%d.%d.%d\n", (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF,
+                   (ip >> 0) & 0xFF);
+        });
     });
 }

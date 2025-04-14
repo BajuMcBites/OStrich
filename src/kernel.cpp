@@ -1,5 +1,7 @@
+#include "arp.h"
 #include "core.h"
 #include "dcache.h"
+#include "dhcp.h"
 #include "dwc.h"
 #include "event.h"
 #include "fork.h"
@@ -12,6 +14,7 @@
 #include "libk.h"
 #include "listener.h"
 #include "mm.h"
+#include "network_card.h"
 #include "partition_tests.h"
 #include "percpu.h"
 #include "printf.h"
@@ -106,9 +109,10 @@ void mergeCores();
 
 extern "C" void secondary_kernel_init() {
     init_mmu();
-    event_listener_init();
     mergeCores();
 }
+
+#include "dns.h"
 
 extern "C" void primary_kernel_init() {
     create_page_tables();
@@ -139,7 +143,6 @@ extern "C" void primary_kernel_init() {
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
     uinit((void *)HEAP_START, HEAP_SIZE);
-    event_listener_init();
 
     usb_initialize();
 
@@ -163,12 +166,16 @@ void mergeCores() {
         user_thread([] { printf("i do nothing2\n"); });
     }
 
-    // Uncomment to run snake
-    // if(getCoreID() == 0){
-    //     printf("init_snake() + keyboard_loop();\n");
-    //     user_thread(init_snake);
-    //     user_thread(keyboard_loop);
-    // }
+    if (getCoreID() == 0) {
+        network_loop();
+        
+        create_event([](){
+            // wait for dhcp to init
+            wait_msec(100000);
+            network_tests();
+        });
+
+    }
     stop();
     printf("PANIC I should not go here\n");
 }

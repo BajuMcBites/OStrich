@@ -20,7 +20,7 @@
      (1 << 1) |   /* A, Alignment check enable bit */             \
      (1 << 11) |  /* Enable program flow prediction */            \
      (1 << 0))    /* M, enable MMU */
-
+     
 #define SCTLR_VALUE_MMU_DISABLED                                                                 \
     (SCTLR_RESERVED | SCTLR_EE_LITTLE_ENDIAN | SCTLR_I_CACHE_DISABLED | SCTLR_D_CACHE_DISABLED | \
      SCTLR_MMU_DISABLED)
