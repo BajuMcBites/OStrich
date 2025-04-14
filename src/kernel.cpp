@@ -119,6 +119,8 @@ extern char __heap_end[];
 
 static Atomic<int> coresAwake(0);
 
+Atomic<int> curr_interrupt(0);
+
 extern "C" void kernel_init() {
     if (getCoreID() == 0) {
         create_page_tables();
@@ -137,6 +139,8 @@ extern "C" void kernel_init() {
         smpInitDone = true;
         threadsInit();
         enable_irq();
+        
+        curr_interrupt = 0;
 
         QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;  // Start with Core 0
         QA7->TimerControlStatus.ReloadValue = 2000000;        // Set timer interval (e.g., 2M cycles)
@@ -172,7 +176,7 @@ extern "C" void kernel_init() {
         // QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
         // printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
         // printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
-
+        init_core_timer();
         wake_up_cores();
         // printf("waking\n");
         //  kernel_main();

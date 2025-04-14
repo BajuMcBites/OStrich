@@ -5,6 +5,7 @@
 #include "printf.h"
 #include "timer.h"
 #include "utils.h"
+#include "atomic.h"
 
 /*
 https://developer.arm.com/documentation/ddi0500/j/Generic-Interrupt-Controller-CPU-Interface/GIC-programmers-model/CPU-interface-register-summary
@@ -27,9 +28,11 @@ extern "C" void handle_irq(void) {
     uint8_t current_core = getCoreID();
     
     // timer is triggered
-    if (QA7->Core0IRQSource.Timer_Int) {
+    if (QA7->Core0IRQSource.Timer_Int && current_core == curr_interrupt) {
         
+
         int next_core = (current_core + 1) % 4;
+        curr_interrupt = next_core;
         QA7->TimerRouting.Routing = static_cast<local_timer_route_num_t>(next_core);
         
         // clear interrupt and reload timer at the same time
