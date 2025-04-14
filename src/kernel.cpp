@@ -137,33 +137,41 @@ extern "C" void kernel_init() {
         smpInitDone = true;
         threadsInit();
         enable_irq();
-        printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
-        printf("Setting up Local Timer Irq to Core0\n");
-        QA7->TimerRouting.Routing =
-            LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0 // Ensure the
-        printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
-        printf("TimerRouting adr:0x%x\n", (void *)&QA7->TimerRouting.Raw32);
 
-        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
-        QA7->TimerControlStatus.ReloadValue = 500000;  // Timer period set
-        QA7->TimerControlStatus.TimerEnable = 1;       // Timer enabled
-        QA7->TimerControlStatus.IntEnable = 1;         // Timer IRQ enabled
-        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
-        printf("TimerControlStatus ard: 0x%x\n", (void *)&QA7->TimerControlStatus.Raw32);
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;  // Start with Core 0
+        QA7->TimerControlStatus.ReloadValue = 2000000;        // Set timer interval (e.g., 2M cycles)
+        QA7->TimerControlStatus.TimerEnable = 1;              // Enable timer
+        QA7->TimerControlStatus.IntEnable = 1;                // Enable interrupts
+        QA7->TimerClearReload.Raw32 = (1 << 31) | (1 << 30);  // Clear + Reload
 
-        printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
-        QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-        QA7->TimerClearReload.Reload = 1;    // Reload now
-        printf("TimerClearReload: 0x%x\n",
-               QA7->TimerClearReload.Raw32);  // This should read 0 but is not??
-        printf("TimerClearReload adr: 0x%x\n", (void *)&QA7->TimerClearReload.Raw32);
 
-        printf("Core3TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
-        QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ =
-            1;  // We are in NS EL1 so enable IRQ to core0 that level
-        QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
-        printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
-        printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
+        // printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
+        // printf("Setting up Local Timer Irq to Core0\n");
+        // QA7->TimerRouting.Routing =
+        //     LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0 // Ensure the
+        // printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
+        // printf("TimerRouting adr:0x%x\n", (void *)&QA7->TimerRouting.Raw32);
+
+        // printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
+        // QA7->TimerControlStatus.ReloadValue = 500000;  // Timer period set
+        // QA7->TimerControlStatus.TimerEnable = 1;       // Timer enabled
+        // QA7->TimerControlStatus.IntEnable = 1;         // Timer IRQ enabled
+        // printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
+        // printf("TimerControlStatus ard: 0x%x\n", (void *)&QA7->TimerControlStatus.Raw32);
+
+        // printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
+        // QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+        // QA7->TimerClearReload.Reload = 1;    // Reload now
+        // printf("TimerClearReload: 0x%x\n",
+        //        QA7->TimerClearReload.Raw32);  // This should read 0 but is not??
+        // printf("TimerClearReload adr: 0x%x\n", (void *)&QA7->TimerClearReload.Raw32);
+
+        // printf("Core3TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
+        // QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ =
+        //     1;  // We are in NS EL1 so enable IRQ to core0 that level
+        // QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
+        // printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
+        // printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
 
         wake_up_cores();
         // printf("waking\n");
@@ -171,6 +179,7 @@ extern "C" void kernel_init() {
     } else {
         init_mmu();
         enable_irq();
+        init_core_timer();
         // while (1) {
         //     // printf("Hi, I'm core %d\n", getCoreID());
         // }

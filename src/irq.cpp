@@ -23,6 +23,19 @@ void enable_interrupt_controller() {
 
 extern "C" void handle_irq(void) {
     printf("core %d is irq handle?\n", getCoreID());
+
+    uint8_t current_core = getCoreID();
+    
+    // timer is triggered
+    if (QA7->Core0IRQSource.Timer_Int) {
+        
+        int next_core = (current_core + 1) % 4;
+        QA7->TimerRouting.Routing = static_cast<local_timer_route_num_t>(next_core);
+        
+        // clear interrupt and reload timer at the same time
+        QA7->TimerClearReload.Raw32 = (1 << 31) | (1 << 30); 
+    }
+
     // unsigned int irq = get32(IRQ_PENDING_1);
     // // unsigned int irq = get32(GIC_CPU_BASE + 0x0C);
     // // unsigned int irq = get32(GIC_CPU_BASE + 0x0C);  // GICC_IAR
@@ -37,8 +50,8 @@ extern "C" void handle_irq(void) {
     //     default:
     //         printf("Unknown pending irq: %x\r\n", irq);
     // }
-    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;    // Reload now
+    // QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+    // QA7->TimerClearReload.Reload = 1;    // Reload now
 
     // Step 3: Acknowledge the interrupt in the GIC by writing to the End of Interrupt Register
     // (ICC_EOI)
