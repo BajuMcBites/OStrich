@@ -588,11 +588,12 @@ void elf_load_test() {
         printf("end elf_load tests\n");
     });
 }
+
 void network_tests() {
     usb_session* session = network_usb_session(nullptr);
     dns_query(session, "google.com", [&session](server_group* group) {
         printf("Got %d ips for \"google.com\"\n", group->count);
-        group->for_each([&session](uint32_t ip) {
+        group->for_each([](uint32_t ip) {
             printf("\t- %d.%d.%d.%d\n", (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF,
                    (ip >> 0) & 0xFF);
         });

@@ -159,6 +159,9 @@ extern "C" void primary_kernel_init() {
     mergeCores();
 }
 
+#include "function.h"
+#include "socket.h"
+
 void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
@@ -171,13 +174,32 @@ void mergeCores() {
 
     if (getCoreID() == 0) {
         network_loop();
-        
-        create_event([](){
-            // wait for dhcp to init
-            wait_msec(100000);
-            network_tests();
-        });
 
+        create_event([]() {
+            // wait for dhcp to init
+            wait_msec(1000000);
+            // network_tests();
+            Socket socket(22);
+            socket.on_recv([&socket](size_t length) {
+                char print_buffer[length + 1];
+                memcpy(print_buffer, socket.get_recv_buffer(), length);
+                print_buffer[length] = '\0';
+
+                printf("[network] received: %s\n", socket.get_recv_buffer());
+
+                uint8_t buffer[7 + length + 3];
+                memcpy(buffer, "Hello \"", 7);
+                memcpy(buffer + 7, socket.get_recv_buffer(), length);
+                memcpy(buffer + 7 + length, "\"!\0", 3);
+
+                socket.send((uint8_t *)buffer, length + 10);
+            });
+
+            while (1) {
+            }
+
+            printf("socket no longer active!\n");
+        });
     }
     stop();
     printf("PANIC I should not go here\n");
