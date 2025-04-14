@@ -1,6 +1,8 @@
 #ifndef _TCP_H
 #define _TCP_H
 
+#include "hash.h"
+
 #include "dwc.h"
 #include "net_stack.h"
 

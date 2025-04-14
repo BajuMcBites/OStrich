@@ -53,7 +53,7 @@ void arp_resolve_mac(usb_session *session, uint32_t dst_ip, Function<void(uint8_
     ethernet_header *frame;
     frame = ETHFrameBuilder{packet.sender_mac, packet.target_mac, 0x0806}
                 .encapsulate(PayloadBuilder{(uint8_t *)&packet, sizeof(packet)})
-                .build(&length);
+                .build(nullptr, &length);
 
     send_packet(session, (uint8_t *)frame, length);
 
@@ -79,7 +79,7 @@ void send_arp_response(usb_session *session, arp_packet *request) {
     ethernet_header *frame =
         ETHFrameBuilder{get_mac_address(), ((arp_packet *)request)->sender_mac, 0x0806}
             .encapsulate(PayloadBuilder{(uint8_t *)&packet, sizeof(packet)})
-            .build(&len);
+            .build(nullptr, &len);
 
     send_packet(session, (uint8_t *)frame, len);
 

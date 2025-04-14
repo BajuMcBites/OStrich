@@ -166,6 +166,7 @@ typedef union {
     struct tcp_fields {
         uint32_t ack_number;
         uint32_t seq_number;
+        bool alive : 1 = true;
     } __attribute__((packed)) tcp;
 } __attribute__((packed)) port_status;
 
@@ -211,12 +212,12 @@ class PacketBuilder {
         return this->length;
     }
 
-    T* build(size_t* len_store = nullptr) {
+    T* build(void* buffer, size_t* len_store = nullptr) {
         // TODO: allow for passing in of a buffer to build the packet to?
         if (len_store) *len_store = this->get_size();
-        void* packet = kmalloc(this->get_size());
-        build_at(packet);
-        return (T*)packet;
+        if (buffer == nullptr) buffer = kmalloc(this->get_size());
+        build_at(buffer);
+        return (T*)buffer;
     };
     void send();
 
