@@ -1,11 +1,14 @@
 #include "tcp.h"
 
-#include "hash.h"
-#include "net_stack.h"
+#include "event.h"
 #include "network_card.h"
 #include "printf.h"
+#include "socket.h"
 
 void cleanup_connection(uint16_t port_id) {
+    if (auto socket = get_open_sockets().get(port_id)) {
+        socket->close();
+    }
     release_port(port_id);
 }
 
@@ -60,10 +63,11 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
     }
 
     uint16_t flags = tcp_packet->data_offset_reserved_flags.get_flags();
+    uint16_t src_port_id = tcp_packet->src_port.get();
     uint16_t port_id = tcp_packet->dst_port.get();
 
     uint32_t bytes_received =
-        header.length.get() - tcp_packet->data_offset_reserved_flags.get_data_offset() * 4;
+        header.length.get() - (tcp_packet->data_offset_reserved_flags.get_data_offset() * 4);
 
     if (flags & TCP_FLAG_RST) {
         cleanup_connection(port_id);
@@ -80,10 +84,10 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
 
     if (flags & TCP_FLAG_SYN) {
         respond_flags |= TCP_FLAG_SYN | TCP_FLAG_ACK;
-        if (status == nullptr && (status = obtain_port(port_id)) == nullptr) {
-            // port is already in use and doesn't belong to me :/
-            return;
-        }
+        // if (status == nullptr && (status = obtain_port(port_id)) == nullptr) {
+        // port is already in use and doesn't belong to me :/
+        // return;
+        // }
     }
 
     if (flags & TCP_FLAG_ACK) {
@@ -106,12 +110,10 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
     if (bytes_received > 0) {
         auto receive_buffer = buffer_parser->pop<Payload>();
 
-        char print_buffer[bytes_received + 1];
-        memcpy(print_buffer, receive_buffer, bytes_received);
-        print_buffer[bytes_received] = '\0';
-
-        response_payload = "Hello from server!";
-        response_length = 19;
+        if (auto socket = get_open_sockets().get(port_id)) {
+            memcpy(socket->get_recv_buffer(), receive_buffer, bytes_received);
+            socket->recv(eth_frame, ip_packet, tcp_packet, bytes_received);
+        }
     }
 
     size_t packet_length;
@@ -124,18 +126,18 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
                     .with_src_address(ip_packet->dst_address.get())
                     .with_dst_address(ip_packet->src_address.get())
                     .with_protocol(IP_TCP)
-                    .encapsulate(
-                        TCPBuilder{tcp_packet->dst_port.get(), tcp_packet->src_port.get()}
-                            .with_seq_number(status->tcp.seq_number)
-                            .with_ack_number(status->tcp.ack_number)
-                            .with_flags(respond_flags)
-                            .with_data_offset(5)
-                            .with_window_size(0xFFFF)
-                            .with_urgent_pointer(0)
-                            .with_pseduo_header(ip_packet->src_address.get(),
-                                                ip_packet->dst_address.get())
-                            .encapsulate(PayloadBuilder{(uint8_t*)response_payload, response_length})))
-            .build(&packet_length);
+                    .encapsulate(TCPBuilder{tcp_packet->dst_port.get(), tcp_packet->src_port.get()}
+                                     .with_seq_number(status->tcp.seq_number)
+                                     .with_ack_number(status->tcp.ack_number)
+                                     .with_flags(respond_flags)
+                                     .with_data_offset(5)
+                                     .with_window_size(0xFFFF)
+                                     .with_urgent_pointer(0)
+                                     .with_pseduo_header(ip_packet->src_address.get(),
+                                                         ip_packet->dst_address.get())
+                                     .encapsulate(PayloadBuilder{(uint8_t *)response_payload,
+                                                                 response_length})))
+            .build(nullptr, &packet_length);
 
     send_packet(session, (uint8_t *)response, packet_length);
 

@@ -6,6 +6,8 @@
 uint8_t port_bitmap[(1 << 16) >> 3];
 SpinLock bitmap_lock;
 
+#include "printf.h"
+
 HashMap<uint64_t, void*>& get_ports() {
     static HashMap<uint64_t, void*> ports(uint64_t_hash, uint64_t_equals, 30);
     return ports;
@@ -24,7 +26,7 @@ port_status* obtain_port(uint16_t port) {
     port_bitmap[port >> 3] |= (1 << (port & 0x7));
     bitmap_lock.unlock();
 
-    port_status* status = (port_status*)kcalloc(0, sizeof(port_status));
+    port_status* status = (port_status*)kcalloc(1, sizeof(port_status));
     get_ports().put(port, status);
     return status;
 }
@@ -32,7 +34,6 @@ port_status* obtain_port(uint16_t port) {
 // lot of trust in this :)
 void release_port(uint16_t port) {
     port_status* status = (port_status*)get_ports().get(port);
-
     if (get_ports().remove(port)) {
         delete status;
         port_bitmap[port >> 3] &= ~(1 << (port & 0x7));
