@@ -176,8 +176,8 @@ extern "C" void kernel_init() {
         // QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
         // printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
         // printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
-        init_core_timer();
         wake_up_cores();
+        enable_interrupt_controller();
         // printf("waking\n");
         //  kernel_main();
     } else {

@@ -170,6 +170,8 @@ setup_el1_for_secondary:
 	.endm
 
 secondary_kernel_main:
+    bl enable_irq           // Enable interrupts
+    // bl init_core_timer      // Initialize core-specific timer
     bl kernel_init
     b proc_hang
 
