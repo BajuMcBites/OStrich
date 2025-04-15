@@ -579,7 +579,6 @@ void elf_load_test() {
     tcb->context.pc = (uint64_t)new_pc;
     tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
     printf("%x this is pc\n", tcb->context.pc);
-    tcb->use_pt = true;
     sema->down([=]() {
         readyQueue.forCPU(1).queues[1].add(tcb);
         printf("end elf_load tests\n");
