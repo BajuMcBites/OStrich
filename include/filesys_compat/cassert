@@ -4,5 +4,6 @@
 #include "libk.h"
 
 #define assertm(cond, msg) K::assert(cond, msg)
+#define assert(cond) K::assert(cond, "Assertion failed.")
 
 #endif
