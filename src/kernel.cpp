@@ -94,7 +94,7 @@ extern "C" void kernel_main() {
     // it out.
     auto blockManager = new fs::BlockManager(1024);
     auto fs = fs::FileSystem::getInstance(blockManager);  // first time
-    // FILESYSTEM WORKS
+                                                          // FILESYSTEM WORKS
 }
 
 extern char __heap_start[];
