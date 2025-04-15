@@ -3,4 +3,10 @@ build/
 copy_kernel.sh
 Makefile
 gdb_start.sh
-.vscode/
+.vscode/*
+*.img
+*.dtb
+*.dts
+*.qcow2
+*.dd
+!sdcard.dd

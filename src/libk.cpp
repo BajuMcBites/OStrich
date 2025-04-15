@@ -27,6 +27,19 @@ bool K::streq(const char* a, const char* b) {
     }
 }
 
+int K::strcmp(const char* stra, const char* strb) {
+    int index = 0;
+    while (1) {
+        if (stra[index] == '\0' && strb[index] == '\0')
+            return 0;
+        else if (stra[index] < strb[index])
+            return -1;
+        else if (stra[index] > strb[index])
+            return 1;
+        index++;
+    }
+}
+
 int K::strncmp(const char* stra, const char* strb, int n) {
     int index = 0;
     while (index < n && stra[index] != '\0' && strb[index] != '\0') {
@@ -59,12 +72,22 @@ int K::strncpy(char* dest, char* src, int n) {
     return index + 1;
 }
 
+extern "C" void* memcpy(void* dest, const void* src, size_t n) {
+    return K::memcpy(dest, src, n);
+}
+
 void* K::memcpy(void* dest, const void* src, int n) {
-    unsigned char* d = (unsigned char*)dest;
-    const unsigned char* s = (const unsigned char*)src;
+    void* d = dest;
+    void* s = (void*)src;
+    while ((((uint64_t)d) % 8 == 0) && (((uint64_t)s) % 8 == 0) && n >= 8) {
+        *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<uint64_t*>(s);
+        n -= 8;
+        d += 8;
+        s += 8;
+    }
 
     while (n--) {
-        *d++ = *s++;
+        *reinterpret_cast<char*>(d++) = *reinterpret_cast<char*>(s++);
     }
 
     return dest;
@@ -112,4 +135,45 @@ bool K::check_stack() {
     }
 
     return sp > stack_end;
+}
+
+/**
+ * NOTE: not the same as linux strntok, returns the start of the next token
+ *
+ * Tokenizes strings, but not the same as linux strntok, this is stateless,
+ * takes in a string, returns null if no instance of the char c in n characters
+ * or we encounter a '\0' first. returns the start of the next token if there
+ * is an occurance.
+ */
+char* K::strntok(char* str, char c, int n) {
+    char* cpy = str;
+    int count = 0;
+
+    while (*cpy != '\0' && *cpy != c && count < n) {
+        cpy++;
+        count++;
+    }
+
+    if (*cpy == c) {
+        *cpy = '\0';
+        cpy++;
+        return cpy;
+    }
+
+    return nullptr;
+}
+
+/**
+ * returns the min of length of the string not including the null terminator and n
+ */
+int K::strnlen(char* str, int n) {
+    char* cpy = str;
+    int len = 0;
+
+    while (*cpy != '\0' && len < n) {
+        cpy++;
+        len++;
+    }
+
+    return len;
 }

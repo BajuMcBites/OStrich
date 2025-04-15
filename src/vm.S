@@ -116,14 +116,19 @@
 .macro init_pmd_table_entries_device start_addr, entry_num, temp1, temp2
     movz    \entry_num, #0
 1:
-    lsl     \temp1, \entry_num, #21   // Compute block base.
-    movz    \temp2, #0x401           // Device memory attribute.
-    orr     \temp1, \temp1, \temp2
+    lsl     \temp1, \entry_num, #21    // Compute block offset (entry_num << 21)
+    // Load constant 0x40000000 into temp2
+    movz    \temp2, #0x4000, lsl #16    // 0x4000 << 16 == 0x40000000
+    add     \temp1, \temp1, \temp2       // Add base address to the offset
+    // Now load device memory attribute constant into temp2
+    movz    \temp2, #0x401              // Device memory attribute.
+    orr     \temp1, \temp1, \temp2       // OR in attribute bits.
     str     \temp1, [\start_addr, \entry_num, lsl #3]
     add     \entry_num, \entry_num, #1
     cmp     \entry_num, #512
     blt     1b
 .endm
+
 
 //---------------------------------------------------------
 // Global: create_page_tables
@@ -162,8 +167,9 @@ create_page_tables:
     init_pmd_table_entries x0, x1, x2, x3
 
     // Set up upper PMD table (for addresses >= 0x40000000) with device mapping.
-    adr     x0, PMD
+    adr     x0, PMD_arm   // Use the dedicated PMD_arm table here.
     init_pmd_table_entries_device x0, x1, x2, x3
+
 
     mov     x30, x28
     ret

@@ -1,23 +1,34 @@
 #include "core.h"
+#include "dcache.h"
+#include "dwc.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
+#include "framebuffer.h"
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
+#include "keyboard.h"
 #include "libk.h"
+#include "listener.h"
 #include "mm.h"
+#include "partition_tests.h"
 #include "percpu.h"
-#include "peripherals/arm_devices.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
+#include "sdio.h"
+#include "sdio_tests.h"
+#include "snake.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
+#include "peripherals/arm_devices.h"
+
+void mergeCores();
 
 struct __attribute__((__packed__, aligned(4))) SystemTimerRegisters {
     uint32_t ControlStatus;  // 0x00
@@ -52,7 +63,7 @@ void timer_wait(uint64_t us) {
 }
 
 struct Stack {
-    static constexpr int BYTES = CORE_STACK_SIZE;
+    static constexpr int BYTES = 16384;
     uint64_t bytes[BYTES] __attribute__((aligned(16)));
 };
 
@@ -99,15 +110,19 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    // queue_test();
     printf("All tests passed\n");
-    // heapTests();
-    // event_loop_tests();
-    // hash_test();
-    // frame_alloc_tests();
-    // user_paging_tests();
-    // blocking_atomic_tests();
-    // ramfs_tests();
+    heapTests();
+    event_loop_tests();
+    hash_test();
+    frame_alloc_tests();
+    user_paging_tests();
+    blocking_atomic_tests();
+    ramfs_tests();
+    sdioTests();
+    ring_buffer_tests();
+    elf_load_test();
+    // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
+    // it out.
 }
 
 extern char __heap_start[];
@@ -119,77 +134,112 @@ extern char __heap_end[];
 
 static Atomic<int> coresAwake(0);
 
-extern "C" void kernel_init() {
-    if (getCoreID() == 0) {
-        create_page_tables();
-        patch_page_tables();
-        init_mmu();
-        uart_init();
-        init_printf(nullptr, uart_putc_wrapper);
-        printf("printf initialized!!!\n");
-        init_ramfs();
-        create_frame_table(frame_table_start,
-                           0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
-        printf("frame table initialized! \n");
-        breakpoint();
-        print_ascii_art();
-        uinit((void *)HEAP_START, HEAP_SIZE);
-        smpInitDone = true;
-        threadsInit();
-        enable_irq();
-        printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
-        printf("Setting up Local Timer Irq to Core0\n");
-        QA7->TimerRouting.Routing =
-            LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0 // Ensure the
-        printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
-        printf("TimerRouting adr:0x%x\n", (void *)&QA7->TimerRouting.Raw32);
+void mergeCores();
 
-        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
-        QA7->TimerControlStatus.ReloadValue = 500000;  // Timer period set
-        QA7->TimerControlStatus.TimerEnable = 1;       // Timer enabled
-        QA7->TimerControlStatus.IntEnable = 1;         // Timer IRQ enabled
-        printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
-        printf("TimerControlStatus ard: 0x%x\n", (void *)&QA7->TimerControlStatus.Raw32);
+extern "C" void secondary_kernel_init() {
+    init_mmu();
+    enable_irq();
+    event_listener_init();
+    while(1);
+    mergeCores();
+}
 
-        printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
-        QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-        QA7->TimerClearReload.Reload = 1;    // Reload now
-        printf("TimerClearReload: 0x%x\n",
-               QA7->TimerClearReload.Raw32);  // This should read 0 but is not??
-        printf("TimerClearReload adr: 0x%x\n", (void *)&QA7->TimerClearReload.Raw32);
+void timerInit(){
+    printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
+    printf("Setting up Local Timer Irq to Core0\n");
+    QA7->TimerRouting.Routing =
+        LOCALTIMER_TO_CORE3_IRQ;  // Route local timer IRQ to Core0 // Ensure the
+    printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
+    printf("TimerRouting adr:0x%x\n", (void *)&QA7->TimerRouting.Raw32);
 
-        printf("Core3TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
-        QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ =
-            1;  // We are in NS EL1 so enable IRQ to core0 that level
-        QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
-        printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
-        printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
+    printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
+    QA7->TimerControlStatus.ReloadValue = 20000000;  // Timer period set
+    QA7->TimerControlStatus.TimerEnable = 1;       // Timer enabled
+    QA7->TimerControlStatus.IntEnable = 1;         // Timer IRQ enabled
+    printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
+    printf("TimerContraolStatus ard: 0x%x\n", (void *)&QA7->TimerControlStatus.Raw32);
 
-        wake_up_cores();
-        // printf("waking\n");
-        //  kernel_main();
+    printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
+    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+    QA7->TimerClearReload.Reload = 1;    // Reload now
+    printf("TimerClearReload: 0x%x\n",
+            QA7->TimerClearReload.Raw32);  
+    printf("TimerClearReload adr: 0x%x\n", (void *)&QA7->TimerClearReload.Raw32);
+
+    printf("Core3TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
+    QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ =
+        1;  // We are in NS EL1 so enable IRQ to core0 that level
+    QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
+    printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
+    printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
+}
+
+extern "C" void primary_kernel_init() {
+    create_page_tables();
+    patch_page_tables();
+    init_mmu();
+    uart_init();
+    init_printf(nullptr, uart_putc_wrapper);
+    // timer_init();
+    // enable_interrupt_controller();
+    // enable_irq();
+    printf("printf initialized!!!\n");
+    if (fb_init()) {
+        printf("Framebuffer initialization successful!\n");
     } else {
-        init_mmu();
-        enable_irq();
-        // while (1) {
-        //     // printf("Hi, I'm core %d\n", getCoreID());
-        // }
+        printf("Framebuffer initialization failed!\n");
     }
 
+    if (sd_init() == 0) {
+        printf("SD card initialized successfully!\n");
+    } else {
+        printf("SD card initialization failed!\n");
+    }
+    // The Alignment check enable bit in the SCTLR_EL1 register will make an error ocurr here.
+    // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
+    // of 0x96000021)
+    init_ramfs();
+
+    enable_irq();
+
+    timerInit();
+    
+    create_frame_table(frame_table_start,
+                       0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
+    printf("frame table initialized! \n");
+    uinit((void *)HEAP_START, HEAP_SIZE);
+    event_listener_init();
+
+    usb_initialize();
+
+    smpInitDone = true;
+    // with data cache on, we must write the boolean back to memory to allow other cores to see it.
+    clean_dcache_line(&smpInitDone);
+    init_page_cache();
+    wake_up_cores();
+    mergeCores();
+}
+
+void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
-    //  K::check_stack();
+    K::check_stack();
 
-    if (number_awake == CORE_COUNT) {
-        create_event([] { kernel_main(); });
+    // if (number_awake == CORE_COUNT) {
+        // create_event([] { kernel_main(); });
         while (1) {
             printf("timer tick %d\n", timer_getTickCount64());
             timer_wait(500000);
         }
-        // user_thread([]
-        //             { printf("i do nothing2\n"); });
-    }
-    stop();
+    // }
+
+    // Uncomment to run snake
+    // if(getCoreID() == 0){
+    //     printf("init_snake() + keyboard_loop();\n");
+    //     create_event(init_snake);
+    //     create_event(keyboard_loop);
+    // }
+    event_loop();
     printf("PANIC I should not go here\n");
 }

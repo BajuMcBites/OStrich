@@ -1,5 +1,6 @@
 #include "peripherals/irq.h"
 
+#include "dwc.h"
 #include "peripherals/arm_devices.h"
 #include "peripherals/timer.h"
 #include "printf.h"

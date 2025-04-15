@@ -17,4 +17,6 @@
 #define TIMER_CS_M2 (1 << 2)
 #define TIMER_CS_M3 (1 << 3)
 
+#define SYSTEM_CLOCK_FREQ 1200000000  // 1.2 GHz
+
 #endif /*_P_TIMER_H */
