@@ -11,7 +11,7 @@
 
 #define ERROR(msg...) printf(msg);
 
-#define MAP_FAILED (void*)-1
+#define MAP_FAILED (void *)-1
 #define ELF_RELOC_ERR -1
 
 LoadedLibrary *g_loaded_libs = nullptr;
@@ -38,45 +38,44 @@ bool elf_check_file(Elf64_Ehdr *hdr) {
 }
 
 bool elf_check_supported(Elf64_Ehdr *hdr) {
-	if(!elf_check_file(hdr)) {
-		ERROR("Invalid ELF File.\n");
-		return false;
-	}
-	if(hdr->e_ident[EI_CLASS] != ELFCLASS64) {
-		ERROR("Unsupported ELF File Class.\n");
-		return false;
-	}
-	if(hdr->e_ident[EI_DATA] != ELFDATA2LSB) {
-		ERROR("Unsupported ELF File byte order.\n");
-		return false;
-	}
-	if(hdr->e_machine != EM_ARM) {
-		ERROR("Unsupported ELF File target.\n");
-		return false;
-	}
-	if(hdr->e_ident[EI_VERSION] != EV_CURRENT) {
-		ERROR("Unsupported ELF File version.\n");
-		return false;
-	}
-	if(hdr->e_type != ET_REL && hdr->e_type != ET_EXEC && hdr->e_type != ET_DYN) {
-		ERROR("Unsupported ELF File type. %d\n", hdr->e_type);
-		return false;
-	}
-	return true;
+    if (!elf_check_file(hdr)) {
+        ERROR("Invalid ELF File.\n");
+        return false;
+    }
+    if (hdr->e_ident[EI_CLASS] != ELFCLASS64) {
+        ERROR("Unsupported ELF File Class.\n");
+        return false;
+    }
+    if (hdr->e_ident[EI_DATA] != ELFDATA2LSB) {
+        ERROR("Unsupported ELF File byte order.\n");
+        return false;
+    }
+    if (hdr->e_machine != EM_ARM) {
+        ERROR("Unsupported ELF File target.\n");
+        return false;
+    }
+    if (hdr->e_ident[EI_VERSION] != EV_CURRENT) {
+        ERROR("Unsupported ELF File version.\n");
+        return false;
+    }
+    if (hdr->e_type != ET_REL && hdr->e_type != ET_EXEC && hdr->e_type != ET_DYN) {
+        ERROR("Unsupported ELF File type. %d\n", hdr->e_type);
+        return false;
+    }
+    return true;
 }
 
-Elf64_Shdr *find_section(Elf64_Ehdr* hdr, const char* name) {
-	Elf64_Shdr *shdr = elf_sheader(hdr);
-	for(int i = 0; i < hdr->e_shnum; i++) {
-		
-		Elf64_Shdr *section = &shdr[i];
-		Elf64_Shdr *shstrndx = elf_section(hdr, hdr->e_shstrndx);
-		const char *cname = (const char *)hdr + shstrndx->sh_offset + section->sh_name;
-		if (K::strcmp(name, cname) == 0) {
-			return section;
-		}
-	}
-	return nullptr;
+Elf64_Shdr *find_section(Elf64_Ehdr *hdr, const char *name) {
+    Elf64_Shdr *shdr = elf_sheader(hdr);
+    for (int i = 0; i < hdr->e_shnum; i++) {
+        Elf64_Shdr *section = &shdr[i];
+        Elf64_Shdr *shstrndx = elf_section(hdr, hdr->e_shstrndx);
+        const char *cname = (const char *)hdr + shstrndx->sh_offset + section->sh_name;
+        if (K::strcmp(name, cname) == 0) {
+            return section;
+        }
+    }
+    return nullptr;
 }
 
 void *elf_lookup_symbol(Elf64_Ehdr *hdr, const char *name) {
