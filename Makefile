@@ -1,17 +1,29 @@
 # Cross compiler and tools
 # aarch64-linux-gnu- for windows, aarch64-elf- for mac
-CROSS_COMPILE = aarch64-elf-
+CURRENT_OS = $(strip $(shell uname -s)	) # semi portable ig.
+ifeq ($(findstring Darwin,$(CURRENT_OS)),Darwin) # MACOS
+    CROSS_COMPILE = aarch64-elf-
+else
+    CROSS_COMPILE = aarch64-linux-gnu-
+endif
+
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
 CXX = $(CROSS_COMPILE)g++
 LD = $(CROSS_COMPILE)ld
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
+ifeq ($(findstring Darwin,$(CURRENT_OS)),Darwin) # MACOS
+    XARGS = gxargs
+else
+    XARGS = xargs
+endif
+
 # Directories
-BUILD_DIR = build
-SRC_DIR = src
-INCLUDE_DIR = include
-RAMFS_DIR = ramfs
+BUILD_DIR=build
+SRC_DIR=src
+INCLUDE_DIR=include
+RAMFS_DIR=ramfs
 
 # Automatically find all source files
 ASM_SRC = $(wildcard $(SRC_DIR)/*.S)
@@ -55,13 +67,12 @@ $(CPP_OBJ): $(BUILD_DIR)/%_cpp.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 
 $(RAMFS_IMG) : $(BUILD_DIR)
 	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
-	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | xargs ../../$(BUILD_DIR)/build_ramfs
+	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | $(XARGS) -d '\n' -t ../../$(BUILD_DIR)/build_ramfs
 	mv $(RAMFS_DIR)/ramfs.img $(BUILD_DIR)
 
 # Compile ramfs into source file
 $(RAMFS_OBJ) : $(RAMFS_IMG)
 	$(OBJCOPY) --input binary -O elf64-littleaarch64 --binary-architecture aarch64 --set-section-alignment .data=16 $(RAMFS_IMG) $(RAMFS_OBJ)
-
 
 # Link the object files into the kernel ELF
 $(KERNEL_ELF): $(ASM_OBJ) $(C_OBJ) $(CPP_OBJ) $(RAMFS_OBJ)
@@ -81,7 +92,5 @@ debug:
 	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
 
 .PHONY: ramfs
-ramfs:
-	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
-	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | xargs ../../$(BUILD_DIR)/build_ramfs
-	mv $(RAMFS_DIR)/ramfs.img $(BUILD_DIR)
+ramfs: $(RAMFS_IMG)
+	echo "ramfs.img created"

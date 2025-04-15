@@ -27,6 +27,19 @@ bool K::streq(const char* a, const char* b) {
     }
 }
 
+int K::strcmp(const char* stra, const char* strb) {
+    int index = 0;
+    while (1) {
+        if (stra[index] == '\0' && strb[index] == '\0')
+            return 0;
+        else if (stra[index] < strb[index])
+            return -1;
+        else if (stra[index] > strb[index])
+            return 1;
+        index++;
+    }
+}
+
 int K::strncmp(const char* stra, const char* strb, int n) {
     int index = 0;
     while (index < n && stra[index] != '\0' && strb[index] != '\0') {
@@ -66,7 +79,6 @@ extern "C" void* memcpy(void* dest, const void* src, size_t n) {
 void* K::memcpy(void* dest, const void* src, int n) {
     void* d = dest;
     void* s = (void*)src;
-
     while ((((uint64_t)d) % 8 == 0) && (((uint64_t)s) % 8 == 0) && n >= 8) {
         *reinterpret_cast<uint64_t*>(d) = *reinterpret_cast<uint64_t*>(s);
         n -= 8;
