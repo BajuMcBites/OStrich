@@ -116,7 +116,7 @@
 .macro init_pmd_table_entries_device start_addr, entry_num, temp1, temp2
     movz    \entry_num, #0
 1:
-    lsl     \temp1, \entry_num, #21    // Compute block offset (entry_num << 21)
+    lsl     \temp1, \entry_num, #21    
     // Load constant 0x40000000 into temp2
     movz    \temp2, #0x4000, lsl #16    // 0x4000 << 16 == 0x40000000
     add     \temp1, \temp1, \temp2       // Add base address to the offset
