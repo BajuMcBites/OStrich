@@ -1,6 +1,7 @@
 #include "peripherals/irq.h"
 
 #include "dwc.h"
+#include "irq.h"
 #include "peripherals/arm_devices.h"
 #include "peripherals/timer.h"
 #include "printf.h"
@@ -22,34 +23,53 @@ void enable_interrupt_controller() {
     put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
 }
 
+/*
+    core_int_source_reg_t Core0IRQSource;               // 0x60
+    core_int_source_reg_t Core1IRQSource;               // 0x64
+    core_int_source_reg_t Core2IRQSource;               // 0x68
+    core_int_source_reg_t Core3IRQSource;               // 0x6C
+
+*/
+
+Atomic<int> wait{0};
+
 extern "C" void handle_irq(void) {
-    printf("core %d is irq handle?\n", getCoreID());
-    // unsigned int irq = get32(IRQ_PENDING_1);
-    // // unsigned int irq = get32(GIC_CPU_BASE + 0x0C);
-    // // unsigned int irq = get32(GIC_CPU_BASE + 0x0C);  // GICC_IAR
-    // switch (irq) {
-    //     case (SYSTEM_TIMER_IRQ_1):
-    //         printf("timer go brr  on core %d irq=%x\n", getCoreID(), irq);
-    //         // printf("timer go brr irq=%x\n", irq);
-    //         handle_timer_irq();
-    //         // volatile uint32_t *LOCAL_TIMER_CLR = (uint32_t *)(0x4000003C + VA_START);
-    //         // *LOCAL_TIMER_CLR = 1;  // Clear the timer interrupt
-    //         break;
-    //     default:
-    //         printf("Unknown pending irq: %x\r\n", irq);
-    // }
-    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;    // Reload now
+    auto me = getCoreID();
+    core_int_source_reg_t irq_source;
+    if (me == 0) {
+        irq_source.Raw32 = QA7->Core0IRQSource.Raw32;
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+    } else if (me == 1) {
+        irq_source.Raw32 = QA7->Core1IRQSource.Raw32;
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+        //  disable_irq();
 
-    // Step 3: Acknowledge the interrupt in the GIC by writing to the End of Interrupt Register
-    // (ICC_EOI)
-    // put32(GIC_CPU_BASE + 0x10, irq);  // Write the IRQ number to ICC_EOI (End of Interrupt)
+    } else if (me == 2) {
+        irq_source.Raw32 = QA7->Core2IRQSource.Raw32;
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+    } else {
+        irq_source.Raw32 = QA7->Core3IRQSource.Raw32;
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+    }
 
-    // irq = get32(IRQ_PENDING_1);
-    // printf("is it gone irq: %x\r\n", irq);
+    uint32_t interrupt_source = 0;
+    if (me == 0)
+        interrupt_source = QA7->Core0IRQSource.Raw32;
+    else if (me == 1)
+        interrupt_source = QA7->Core1IRQSource.Raw32;
+    else if (me == 2)
+        interrupt_source = QA7->Core2IRQSource.Raw32;
+    else
+        interrupt_source = QA7->Core3IRQSource.Raw32;
+
+    // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
+    if (irq_source.Timer_Int) {
+        // handle timer irq
+        printf("Core %d in timer irq\n", getCoreID());
+
+        QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+        QA7->TimerClearReload.Reload = 1;    // Reload now
+    } else {
+        printf("UNKNOWN irq: %d,  Core %d in irq\n", interrupt_source, getCoreID());
+    }
 }
-
-// void gic_init(void) {
-//     // Enable interrupt in GIC Distributor (GICD_ISENABLER0)
-//     return;
-// }
