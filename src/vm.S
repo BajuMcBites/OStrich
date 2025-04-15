@@ -167,7 +167,7 @@ create_page_tables:
     init_pmd_table_entries x0, x1, x2, x3
 
     // Set up upper PMD table (for addresses >= 0x40000000) with device mapping.
-    adr     x0, PMD_arm   // Use the dedicated PMD_arm table here.
+    adr     x0, PMD_arm
     init_pmd_table_entries_device x0, x1, x2, x3
 
 
