@@ -221,8 +221,8 @@ int newlib_handle_fstat(SyscallFrame* frame) {
 }
 
 int newlib_handle_getpid(SyscallFrame* frame) {
-    // TODO: Implement getpid.
-    return 0;
+    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    return tcb->pcb->pid;
 }
 
 int newlib_handle_isatty(SyscallFrame* frame) {
