@@ -4,6 +4,12 @@
 #include "printf.h"
 #include "stdint.h"
 #include "vm.h"
+#include "utils.h"
+#include "event.h"
+#include "elf_loader.h"
+#include "atomic.h"
+#include "ramfs.h"
+#include "mmap.h"
 // #include "trap_frame.h"
 
 // SyscallFrame structure.
@@ -117,7 +123,10 @@ void handle_linux_syscall(int opcode, SyscallFrame* frame) {
 // frame[0] ... frame[5] would be where the first 6 arguments are.
 // See https://sourceware.org/newlib/libc.html#Stubs for the specific arguments for each call.
 void newlib_handle_exit(SyscallFrame* frame) {
-    // TODO: Implement exit.
+    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    printf("we are here\n");
+    tcb->state = TASK_KILLED;
+    event_loop();
 }
 
 int newlib_handle_close(SyscallFrame* frame) {
@@ -126,13 +135,84 @@ int newlib_handle_close(SyscallFrame* frame) {
 }
 
 int newlib_handle_exec(SyscallFrame* frame) {
-    // TODO: Implement exec.
+    printf("GOT TO EXEC!!\n");
+    char* pathname = (char*)frame->X[0];
+    char** argv = (char**)frame->X[1];
+    int elf_index = get_ramfs_index("user_prog");
+    if (elf_index == nullptr) {
+        printf("invalid file name!\n");
+        return 1;
+    }
+    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    PCB* pcb = tcb->pcb;
+    const int sz = ramfs_size(elf_index);
+    char* buffer = (char*)kmalloc(sz);
+    ramfs_read(buffer, 0, sz, elf_index);
+    Semaphore* sema = new Semaphore(1);
+    void* new_pc = elf_load((void*)buffer, pcb, sema);
+    uint64_t sp = 0x0000fffffffff000;
+    // only doing this because no eviction
+    sema->down([=]() {
+        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
+             0, PAGE_SIZE, [=]() {
+                 load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
+                     pcb->page_table->use_page_table();
+                     K::memset((void*)(sp - PAGE_SIZE), 0, PAGE_SIZE);
+                     sema->up();
+                 });
+             });
+    });
+    int argc = 0;
+    for (; argv[argc] != "\0"; argc++);
+    sema->down([=]() {
+        pcb->page_table->use_page_table();
+        uint64_t sp = 0x0000fffffffff000;
+        uint64_t addrs[argc];
+        for (int i = argc - 1; i >= 0; --i) {
+            int len = K::strlen(argv[i]) + 1;
+            sp -= len;
+            addrs[i] = sp;
+            K::memcpy((void*)sp, argv[i], len);
+        }
+        sp -= 8;
+        *(uint64_t*)sp = 0;
+        for (int i = argc - 1; i >= 0; --i) {
+            sp -= 8;
+            *(uint64_t*)sp = addrs[i];
+        }
+        // save &argv
+        sp -= 8;
+        *(uint64_t*)sp = sp + 8;
+
+        // save argc
+        sp -= 8;
+        *(uint64_t*)sp = argc;
+        tcb->context.sp = sp;
+        sema->up();
+    });
+    tcb->pcb = pcb;
+    tcb->context.pc = (uint64_t)new_pc;
+    tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
+    printf("%x this is pc\n", tcb->context.pc);
+    sema->down([=]() {
+        tcb->state = TASK_RUNNING;
+    });
     return 0;
 }
 
 int newlib_handle_fork(SyscallFrame* frame) {
-    // TODO: Implement fork.
-    return 0;
+    printf("GOT TO FORK!!\n");
+    UserTCB* curr_tcb = get_running_user_tcb(getCoreID()); 
+    UserTCB* new_tcb = new UserTCB();
+    K::memcpy((void*)new_tcb, (void*)curr_tcb, sizeof(UserTCB));
+    PCB* pcb = new PCB();
+    // TODO: make a different copy of the page table that does copy on write?
+    pcb->page_table = curr_tcb->pcb->page_table;
+    pcb->supp_page_table = curr_tcb->pcb->supp_page_table;
+    new_tcb->pcb = pcb;
+    set_return_value(new_tcb, 0);
+    queue_user_tcb(new_tcb);
+    return pcb->pid;
 }
 
 int newlib_handle_fstat(SyscallFrame* frame) {

@@ -2,6 +2,12 @@
 #define _PROCESS_H_
 
 #include "vm.h"
+#include "printf.h"
+
+#define NR_TASKS 256
+
+extern struct PCB* task[NR_TASKS];
+extern int curr_task;
 
 struct PCB {
     int pid;
@@ -9,7 +15,10 @@ struct PCB {
     SupplementalPageTable* supp_page_table;
 
     PCB() {
-        pid = -1;
+        while (task[curr_task] != nullptr) {
+            curr_task = (curr_task + 1) % NR_TASKS;
+        }
+        pid = curr_task;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
     }

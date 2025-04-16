@@ -17,7 +17,6 @@
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
-#include "sched.h"
 #include "sdio.h"
 #include "sdio_tests.h"
 #include "snake.h"

@@ -14,7 +14,6 @@
 #include "ramfs.h"
 #include "rand.h"
 #include "ring_buffer.h"
-#include "sched.h"
 #include "stdint.h"
 #include "vm.h"
 
@@ -528,7 +527,7 @@ void blocking_atomic_tests() {
 void elf_load_test() {
     printf("start elf_load tests\n");
     int elf_index = get_ramfs_index("user_prog");
-    PCB* pcb = new PCB;
+    PCB* pcb = new PCB();
     const int sz = ramfs_size(elf_index);
     char* buffer = (char*)kmalloc(sz);
     ramfs_read(buffer, 0, sz, elf_index);
@@ -580,7 +579,7 @@ void elf_load_test() {
     tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
     printf("%x this is pc\n", tcb->context.pc);
     sema->down([=]() {
-        readyQueue.forCPU(1).queues[1].add(tcb);
-        printf("end elf_load tests\n");
+        tcb->state = TASK_RUNNING;
+        queue_user_tcb(tcb);
     });
 }
