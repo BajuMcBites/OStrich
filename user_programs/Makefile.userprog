@@ -25,11 +25,11 @@ all: user_prog
 user_prog.o: user_prog.c
 	$(CC) $(CFLAGS) -c user_prog.c -o user_prog.o
 
-my_syscalls.o: my_syscalls.c
-	$(CC) $(CFLAGS) -c my_syscalls.c -o my_syscalls.o	
+newlib_stubs.o: newlib_stubs.S
+	$(CC) $(CFLAGS) -c newlib_stubs.S -o newlib_stubs.o	
 
-user_prog: $(LIB_DIR)/crt0.o user_prog.o my_syscalls.o
-	$(LD) $(LDFLAGS) -o user_prog $(LIB_DIR)/crt0.o user_prog.o my_syscalls.o -lc --verbose
+user_prog: $(LIB_DIR)/crt0.o user_prog.o newlib_stubs.o
+	$(LD) $(LDFLAGS) -o user_prog $(LIB_DIR)/crt0.o user_prog.o newlib_stubs.o -lc
 
 clean:
 	rm -f user_prog.o user_prog 

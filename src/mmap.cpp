@@ -58,6 +58,7 @@ void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* 
                           uint64_t offset, uint64_t id, Function<void(void)> w) {
     pcb->supp_page_table->lock.lock([=]() {
         LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(uvaddr);
+        // if (local != nullptr) return;
         // K::assert(local == nullptr, "remapping an already mapped address");
 
         if (local != nullptr) {

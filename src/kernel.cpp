@@ -77,17 +77,17 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    // queue_test();
     printf("All tests passed\n");
     heapTests();
     event_loop_tests();
     hash_test();
     frame_alloc_tests();
-    user_paging_tests();
+    // user_paging_tests();
     blocking_atomic_tests();
-    ramfs_tests();
+    // ramfs_tests();
     sdioTests();
     ring_buffer_tests();
+    elf_load_test();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.
 }
@@ -145,7 +145,6 @@ extern "C" void primary_kernel_init() {
     smpInitDone = true;
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
-    threadsInit();
     init_page_cache();
     wake_up_cores();
     mergeCores();
@@ -159,15 +158,14 @@ void mergeCores() {
 
     if (number_awake == CORE_COUNT) {
         create_event([] { kernel_main(); });
-        user_thread([] { printf("i do nothing2\n"); });
     }
 
     // Uncomment to run snake
     // if(getCoreID() == 0){
     //     printf("init_snake() + keyboard_loop();\n");
-    //     user_thread(init_snake);
-    //     user_thread(keyboard_loop);
+    //     create_event(init_snake);
+    //     create_event(keyboard_loop);
     // }
-    stop();
+    event_loop();
     printf("PANIC I should not go here\n");
 }

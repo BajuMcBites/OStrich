@@ -33,7 +33,6 @@ getCoreID:
 
 .global memset
 .type memset, %function
-
 memset:
     // Arguments: x0 = ptr, x1 = value, x2 = num
     // Return value: x0 (same pointer as input)
@@ -51,3 +50,9 @@ memset_loop:
 
 memset_done:
     ret
+
+.global set_sp_and_jump
+.type set_sp_and_jump, %function
+set_sp_and_jump:
+    mov sp, x0     // Set stack pointer to first argument
+    br  x1         // Branch to function pointer (no return)
