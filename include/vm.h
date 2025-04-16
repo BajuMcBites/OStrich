@@ -314,6 +314,8 @@ uint64_t vaddr_to_paddr(uint64_t vaddr);
 
 uint64_t build_page_attributes(LocalPageLocation* local);
 
+void init_swap();
+
 #endif /*__ASSEMBLER__*/
 
 #endif /*_VM_H*/

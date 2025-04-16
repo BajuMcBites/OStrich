@@ -91,7 +91,7 @@ class HashMap {
             return equals_func(cur->key, key) ? cur->value : nullptr;
         }
 
-        return nullptr;
+        return not_found;
     }
 
     bool put(K key, T value) {
@@ -141,7 +141,12 @@ class HashMap {
         }
     }
 
+    void set_not_found(T value) {
+        not_found = value;
+    }
+
    private:
+    T not_found = nullptr;
     uint64_t (*hash_func)(K);
     bool (*equals_func)(K, K);
     unsigned long true_size;

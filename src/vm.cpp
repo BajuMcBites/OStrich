@@ -6,12 +6,14 @@
 #include "heap.h"
 #include "libk.h"
 #include "stdint.h"
+#include "swap.h"
 
 uint64_t PGD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PUD[512] __attribute__((aligned(4096), section(".paging")));
 uint64_t PMD[512] __attribute__((aligned(4096), section(".paging")));
 
 PageCache* page_cache;
+Swap* swap;
 
 /**
  * used for setting up kernel memory for devices
@@ -377,6 +379,7 @@ void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLo
     lock.lock([=]() {
         PCKey key(file, offset, id);
         PageLocation* location = map.get(key);
+
         if (location == nullptr) {
             location = new PageLocation;
             location->ref_count = 0;
@@ -429,6 +432,10 @@ void PageCache::remove(LocalPageLocation* local) {
 
 void init_page_cache() {
     page_cache = new PageCache;
+}
+
+void init_swap() {
+    swap = new Swap(4096);
 }
 
 PageLocation::~PageLocation() {

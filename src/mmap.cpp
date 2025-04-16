@@ -2,8 +2,10 @@
 
 #include "frame.h"
 #include "function.h"
+#include "swap.h"
 
 extern PageCache* page_cache;
+extern Swap* swap;
 
 static SpinLock unbacked_id_lock;
 static volatile int unbacked_id = 1;
@@ -26,16 +28,17 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
         K::memset(page_vaddr, 0, PAGE_SIZE);  // dont give none zero memory
 
         if (location->location_type == UNBACKED) { /* not backed page */
-
             location->present = true;
             location->paddr = paddr;
             create_event(w, paddr);
             return;
-
         } else if (location->location_type == SWAP) { /* backed page*/
-
-            K::assert(false, "swap location type not implemented");
-
+            swap->read_swap(location->location.swap->swap_id, page_vaddr, [=]() {
+                location->present = true;
+                location->paddr = paddr;
+                create_event(w, paddr);
+                return;
+            });
         } else if (location->location_type == FILESYSTEM) {
             FileLocation* file_location = location->location.filesystem;
             read(file_location->file, file_location->offset, (char*)page_vaddr, PAGE_SIZE,
@@ -115,7 +118,10 @@ void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint6
             create_local_mapping(pcb, uvaddr, prot, flags, file, offset, id, w);
             return;
         } else {
-            K::assert(false, "swap mmap is not a thing yet");
+            swap->get_swap_id([=](uint64_t swap_id) {
+                create_local_mapping(pcb, uvaddr, prot, flags, file, offset, swap_id, w);
+            });
+            return;
         }
     }
 }
@@ -132,7 +138,12 @@ void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
 
     pcb->supp_page_table->lock.lock([=]() {
         LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(uvaddr);
-        K::assert(local != nullptr, "page being loaded has not been mmapped.");
+        // K::assert(local != nullptr, "page being loaded has not been mmapped.");
+        if (local == nullptr) {
+            pcb->supp_page_table->lock.unlock();
+            create_event(w, (uint64_t)0);
+            return;
+        }
 
         PageLocation* location = local->location;
 

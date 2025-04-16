@@ -100,6 +100,12 @@ void handle_newlib_syscall(int opcode, SyscallFrame* frame) {
         case NEWLIB_TIME:
             frame->X[0] = newlib_handle_time(frame);
             break;
+        case 18:
+            printf("down call %X%X\n", frame->X[0] >> 32, frame->X[0]);
+            break;
+        case 19:
+            printf("up call %X%X\n", frame->X[0] >> 32, frame->X[0]);
+            break;
         default:
             break;
     }

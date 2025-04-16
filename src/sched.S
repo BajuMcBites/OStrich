@@ -100,3 +100,13 @@ get_elr_el1:
 get_spsr_el1:
 	mrs x0, spsr_el1
 	ret
+
+.globl get_far_el1
+get_far_el1:
+	mrs x0, far_el1
+	ret
+
+.global get_esr_el1
+get_esr_el1:
+	mrs x0, esr_el1
+	ret

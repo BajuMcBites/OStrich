@@ -14,7 +14,7 @@ class Bitmap {
         kfree(container);
     }
 
-    int scan_and_flip() {
+    long scan_and_flip() {
         char *cur = container;
         int i = 0;
         while (i < size) {

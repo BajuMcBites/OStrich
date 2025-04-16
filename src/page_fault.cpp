@@ -11,8 +11,18 @@
 // #define PERMISSION_FAULT 3
 
 #include "event.h"
+#include "frame.h"
+#include "mmap.h"
 #include "printf.h"
 #include "trap_frame.h"
+
+extern "C" uint64_t get_sp_el0();
+extern "C" uint64_t get_elr_el1();
+extern "C" uint64_t get_spsr_el1();
+extern "C" uint64_t get_far_el1();
+extern "C" uint64_t get_esr_el1();
+
+void handle_translation_fault(trap_frame* trap_frame, uint64_t esr);
 
 // void handle_page_fault(int fault_el, int type, int table_level,  unsigned long far, UserTCB* tcb)
 // {
@@ -100,9 +110,62 @@
 //     return;
 // }
 
-extern "C" void page_fault_handler(trap_frame* trap_frame) {
+extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     save_user_context(tcb, &trap_frame->X[0]);
 
+    switch ((esr >> 2) & 0x3) {
+        case 0:
+            printf_err("Address size fault");
+            K::assert(false, "Not handled yet\n");
+            break;
+        case 1:
+            printf_err("Translation fault\n");
+            handle_translation_fault(trap_frame, esr);
+            break;
+        case 3:
+            printf_err("Permission fault");
+            K::assert(false, "Not handled yet\n");
+            break;
+    }
+
     printf("in data abort handler\n");
+}
+
+void handle_translation_fault(trap_frame* trap_frame, uint64_t esr) {
+    printf("in translation fault handler, x30 is %X%X\n", trap_frame->X[30] >> 32,
+           trap_frame->X[30]);
+
+    uint64_t user_sp = get_sp_el0();
+    uint64_t spsr = get_spsr_el1();
+    uint64_t elr = get_elr_el1();
+    uint64_t far = get_far_el1();
+
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    save_user_context(tcb, &trap_frame->X[0]);
+
+    if (far == nullptr) {
+        K::assert(false, "Derefencing a null, kill user process\n");
+    }
+
+    load_mmapped_page(tcb->pcb, far & (~0xFFF), [=](uint64_t kvaddr) {
+        if (kvaddr == 0) {
+            // if (far >= user_sp || user_sp - far < 128) {
+            mmap_page(tcb->pcb, far & (~0xFFF), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE,
+                      nullptr, 0, 0, [=]() {
+                          load_mmapped_page(tcb->pcb, far & (~0xFFF), [=](uint64_t kvaddr) {
+                              unpin_frame(kvaddr);
+                              queue_user_tcb(tcb);
+                          });
+                      });
+            // } else {
+            // K::assert(false, "Need to kill process\n");
+            // }
+        } else {
+            unpin_frame(kvaddr);
+            queue_user_tcb(tcb);
+        }
+    });
+
+    event_loop();
 }
