@@ -58,16 +58,17 @@ void run_events() {
         nextThread = getNextEvent(me);
 
         if (nextThread == nullptr) {
-            int nextCore = (me + 1) % CORE_COUNT;
-            while (nextCore != me && nextThread == nullptr) {
-                nextThread = getNextEvent(nextCore);
-                nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
-            }
+            // int nextCore = (me + 1) % CORE_COUNT;
+            // while (nextCore != me && nextThread == nullptr) {
+            //     nextThread = getNextEvent(nextCore);
+            //     nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
+            // }
 
-            if (nextThread == nullptr)  // no other threads. I can keep working/spinning
-            {
-                continue;
-            }
+            // if (nextThread == nullptr)  // no other threads. I can keep working/spinning
+            // {
+            //     continue;
+            // }
+            continue;
         }
 
         nextThread->run();
@@ -93,7 +94,7 @@ void event_loop() {
  * before loading the user context of the tcb and eret-ing
  */
 void enter_user_space(UserTCB* tcb) {
-    printf("we went to user\n");
+    printf("we went to user, %d this is pid, %x this is pc\n", tcb->pcb->pid, tcb->context.pc);
     tcb->pcb->page_table->use_page_table();
     runningUserTCB[getCoreID()] = tcb;
     load_user_context(&tcb->context);

@@ -18,7 +18,14 @@ struct PCB {
         while (task[curr_task] != nullptr) {
             curr_task = (curr_task + 1) % NR_TASKS;
         }
+        task[curr_task] = this;
         pid = curr_task;
+        page_table = new PageTable;
+        supp_page_table = new SupplementalPageTable;
+    }
+    PCB(int id) {
+        task[pid] = this;
+        pid = id;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
     }

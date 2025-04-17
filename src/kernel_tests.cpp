@@ -581,5 +581,6 @@ void elf_load_test() {
     sema->down([=]() {
         tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
+        kfree(buffer);
     });
 }
