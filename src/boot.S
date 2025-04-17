@@ -293,6 +293,7 @@ not_data_abort:
 
 irq_el0: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
 	kernel_exit 
 
@@ -336,6 +337,7 @@ synchronous_el1:
 
 irq_el1: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
     // changed this from kernel_exit_el1 to just kernel_exit because you need eret to properly exit from an interrupt state
 	kernel_exit 
@@ -355,6 +357,7 @@ synchronous_el0_64:
 
 irq_el0_64: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
 	kernel_exit 
 
@@ -372,6 +375,7 @@ synchronous_el0_32:
 
 irq_el0_32: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
 	kernel_exit 
 
