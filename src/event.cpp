@@ -58,19 +58,29 @@ void run_events() {
         nextThread = getNextEvent(me);
 
         if (nextThread == nullptr) {
-            // int nextCore = (me + 1) % CORE_COUNT;
-            // while (nextCore != me && nextThread == nullptr) {
-            //     nextThread = getNextEvent(nextCore);
-            //     nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
-            // }
+            int nextCore = (me + 1) % CORE_COUNT;
+            while (nextCore != me && nextThread == nullptr) {
+                nextThread = getNextEvent(nextCore);
+                nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
+            }
 
-            // if (nextThread == nullptr)  // no other threads. I can keep working/spinning
-            // {
-            //     continue;
-            // }
+            if (nextThread == nullptr)  // no other threads. I can keep working/spinning
+            {
+                continue;
+            }
+        }
+        bool terminated = false;
+        if (!nextThread->kernel_event) {
+            Signal* sig;
+            while (sig = ((UserTCB*)nextThread)->pcb->sigs.remove()) {
+                if (sig->val == SIGKILL) {
+                    terminated = true;
+                }
+            }
+        }
+        if (terminated) {
             continue;
         }
-
         nextThread->run();
         if (!nextThread->kernel_event) {
             K::assert(false, "user event returned to event loop");

@@ -288,7 +288,22 @@ int newlib_handle_isatty(SyscallFrame* frame) {
 }
 
 int newlib_handle_kill(SyscallFrame* frame) {
-    // TODO: Implement kill.
+    int pid = frame->X[0];
+    int sig = frame->X[1];
+    if (pid < 1) {
+        printf("dont have process groups implemented\n");
+        return 1;
+    } else {
+        UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+        int curr_pid = tcb->pcb->pid;
+        PCB* target = task[pid];
+        if (target == nullptr) {
+            printf("invalid pid\n");
+            return 1;
+        }
+        Signal* s = new Signal(sig, curr_pid);
+        target->sigs.add(s);
+    }
     return 0;
 }
 
