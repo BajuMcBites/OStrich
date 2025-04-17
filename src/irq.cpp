@@ -5,6 +5,7 @@
 #include "peripherals/arm_devices.h"
 #include "peripherals/timer.h"
 #include "printf.h"
+#include "sys.h"
 #include "timer.h"
 #include "utils.h"
 
@@ -33,23 +34,40 @@ void enable_interrupt_controller() {
 
 Atomic<int> wait{0};
 
-extern "C" void handle_irq(void) {
+extern "C" void handle_irq(KernelEntryFrame* frame) {
+    disable_irq();
     auto me = getCoreID();
     core_int_source_reg_t irq_source;
     if (me == 0) {
         irq_source.Raw32 = QA7->Core0IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+        // QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+        // MAIL->mailboxSet.Core1Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core2Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core3Mailbox0Set = 2;
+        // put32(CORE1_MBOX0_SET, 1);
     } else if (me == 1) {
         irq_source.Raw32 = QA7->Core1IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
-        //  disable_irq();
+        // QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+        // //  disable_irq();
+        // MAIL->mailboxSet.Core0Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core2Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core3Mailbox0Set = 2;
 
     } else if (me == 2) {
         irq_source.Raw32 = QA7->Core2IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+        // QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+        // MAIL->mailboxSet.Core0Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core1Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core3Mailbox0Set = 2;
     } else {
         irq_source.Raw32 = QA7->Core3IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+        put32(CORE0_MBOX0_SET, 1);
+        put32(CORE1_MBOX0_SET, 1);
+        put32(CORE2_MBOX0_SET, 1);
+        // QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+        // MAIL->mailboxSet.Core0Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core1Mailbox0Set = 2;
+        // MAIL->mailboxSet.Core2Mailbox0Set = 2;
     }
 
     uint32_t interrupt_source = 0;
@@ -69,7 +87,40 @@ extern "C" void handle_irq(void) {
 
         QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
         QA7->TimerClearReload.Reload = 1;    // Reload now
+        // (uintptr_t)(0x40000024 + VA_START)
     } else {
-        printf("UNKNOWN irq: %d,  Core %d in irq\n", interrupt_source, getCoreID());
+        if (me == 0) {
+            printf("UNKNOWN irq: 0x%x,  Core %d in irq\n", interrupt_source, me);
+            printf("read %d\n", get32(CORE0_MBOX0_RDCLR));
+            printf("read %d\n", MAIL->mailboxClear.Core0Mailbox0Clr);
+            MAIL->mailboxClear.Core0Mailbox0Clr = 0;
+            put32(CORE0_MBOX0_RDCLR, 0);
+            put32(CORE0_MBOX0_SET, 0);
+        } else if (me == 1) {
+            printf("UNKNOWN irq: 0x%x,  Core %d in irq\n", interrupt_source, me);
+            printf("read %d\n", get32(CORE1_MBOX0_RDCLR));
+            printf("read %d\n", MAIL->mailboxClear.Core1Mailbox0Clr);
+            MAIL->mailboxClear.Core1Mailbox0Clr = 0;
+
+            put32(CORE1_MBOX0_RDCLR, 0);
+            put32(CORE1_MBOX0_SET, 0);
+
+        } else if (me == 2) {
+            printf("UNKNOWN irq: 0x%x,  Core %d in irq\n", interrupt_source, me);
+            printf("read %d\n", get32(CORE2_MBOX0_RDCLR));
+            printf("read %d\n", MAIL->mailboxClear.Core2Mailbox0Clr);
+            MAIL->mailboxClear.Core2Mailbox0Clr = 0;
+
+            put32(CORE2_MBOX0_SET, 0);
+            put32(CORE2_MBOX0_RDCLR, 0);
+        } else {
+            printf("UNKNOWN irq: 0x%x,  Core %d in irq\n", interrupt_source, me);
+            printf("read %d\n", get32(CORE3_MBOX0_RDCLR));
+            printf("read %d\n", MAIL->mailboxClear.Core3Mailbox0Clr);
+            MAIL->mailboxClear.Core3Mailbox0Clr = 0;
+            put32(CORE3_MBOX0_RDCLR, 0);
+            put32(CORE3_MBOX0_SET, 0);
+        }
     }
+    enable_irq();
 }
