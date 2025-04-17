@@ -464,7 +464,7 @@ int sd_read_block(unsigned int block_addr, unsigned char *buffer, unsigned int n
     int supports_ccs = sd_scr[0] & SCR_SUPP_CCS;
     int supports_set_blkcount = sd_scr[0] & SCR_SUPP_SET_BLKCNT;
     if (!supports_ccs) {
-        if (DEBUG) printf("We don't support a high capacity SD card....\n");
+        // if (DEBUG) printf("We don't support a high capacity SD card....\n");
         *SD_BLKSIZECNT = (1 << 16) | SD_BLK_SIZE;
     } else {
         if (num_blocks > 1 && supports_set_blkcount) {
@@ -527,7 +527,7 @@ int sd_write_block(unsigned char *buffer, unsigned int block_addr, unsigned int 
     int supports_ccs = sd_scr[0] & SCR_SUPP_CCS;
     int supports_set_blkcount = sd_scr[0] & SCR_SUPP_SET_BLKCNT;
     if (!supports_ccs) {
-        if (DEBUG) printf("sd_write_block(): We don't support a high capacity SD card....\n");
+        // if (DEBUG) printf("sd_write_block(): We don't support a high capacity SD card....\n");
         *SD_BLKSIZECNT = (1 << 16) | SD_BLK_SIZE;
     } else {
         if (num_blocks > 1 && supports_set_blkcount) {

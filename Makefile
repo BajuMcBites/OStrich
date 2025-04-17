@@ -49,6 +49,8 @@ RAMFS_IMG = $(BUILD_DIR)/ramfs.img
 CFLAGS = -Wall -Wextra -nostdlib -ffreestanding -I$(INCLUDE_DIR) -I$(FS_INCLUDE_DIR) -g -mcpu=cortex-a53 -march=armv8-a+crc -latomic -mstrict-align -mno-outline-atomics -fno-rtti -fno-exceptions -fno-rtti
 LDFLAGS = -T linker.ld  # Use the custom linker script
 
+QEMU_ARGS = -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
+
 # Build rules
 all: $(KERNEL_IMG)
 
@@ -94,10 +96,10 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
+	qemu-system-aarch64 $(QEMU_ARGS)
 
 debug:
-	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -S -gdb tcp::1234
+	qemu-system-aarch64 $(QEMU_ARGS) -S -gdb tcp::1234
 
 .PHONY: ramfs
 ramfs: $(RAMFS_IMG)

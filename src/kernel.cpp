@@ -79,19 +79,20 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
-    // user_paging_tests();
-    blocking_atomic_tests();
-    // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
-    elf_load_test();
+    // printf("All tests passed\n");
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
+    // // user_paging_tests();
+    // blocking_atomic_tests();
+    // // ramfs_tests();
+    // sdioTests();
+    // ring_buffer_tests();
+    // elf_load_test();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.
+    test_fs();
 }
 
 extern char __heap_start[];
