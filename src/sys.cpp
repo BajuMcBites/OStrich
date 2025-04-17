@@ -145,13 +145,10 @@ int newlib_handle_exec(SyscallFrame* frame) {
         printf("invalid file name!\n");
         return 1;
     }
-    UserTCB* old_tcb = get_running_user_tcb(getCoreID()); 
-    old_tcb->state = TASK_KILLED;
-    UserTCB* tcb = new UserTCB();
-    PCB* pcb = old_tcb->pcb;
+    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    tcb->state = TASK_STOPPED;
+    PCB* pcb = tcb->pcb;
     int pid = pcb->pid;
-    delete pcb;
-    PCB* new_pcb = new PCB(pid);
     printf("%x, argv[0]\n", *argv[0]);
     int argc = 0;
     for (; *argv[argc] != 0; argc++) {
@@ -166,48 +163,33 @@ int newlib_handle_exec(SyscallFrame* frame) {
     char* buffer = (char*)kmalloc(sz);
     ramfs_read(buffer, 0, sz, elf_index);
     Semaphore* sema = new Semaphore(1);
-    void* new_pc = elf_load((void*)buffer, new_pcb, sema);
+    void* new_pc = elf_load((void*)buffer, pcb, sema);
     
     uint64_t sp = 0x0000fffffffff000;
-    // only doing this because no eviction
-    sema->down([=]() {
-        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
-             0, PAGE_SIZE, [=]() {
-                 load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
-                     pcb->page_table->use_page_table();
-                     K::memset((void*)(sp - PAGE_SIZE), 0, PAGE_SIZE);
-                     sema->up();
-                 });
-             });
-    });
-    sema->down([=]() {
-        pcb->page_table->use_page_table();
-        uint64_t sp = 0x0000fffffffff000;
-        uint64_t addrs[argc];
-        printf("%d argc\n", argc);
-        for (int i = argc - 1; i >= 0; --i) {
-            int len = K::strlen(argv[i]) + 1;
-            sp -= len;
-            addrs[i] = sp;
-            K::memcpy((void*)sp, argv[i], len);
-        }
+    pcb->page_table->use_page_table();
+    K::memset((void*)(sp - PAGE_SIZE), 0, PAGE_SIZE);
+    uint64_t addrs[argc];
+    printf("%d argc\n", argc);
+    for (int i = argc - 1; i >= 0; --i) {
+        int len = K::strlen(argv[i]) + 1;
+        sp -= len;
+        addrs[i] = sp;
+        K::memcpy((void*)sp, argv[i], len);
+    }
+    sp -= 8;
+    *(uint64_t*)sp = 0;
+    for (int i = argc - 1; i >= 0; --i) {
         sp -= 8;
-        *(uint64_t*)sp = 0;
-        for (int i = argc - 1; i >= 0; --i) {
-            sp -= 8;
-            *(uint64_t*)sp = addrs[i];
-        }
-        // save &argv
-        sp -= 8;
-        *(uint64_t*)sp = sp + 8;
+        *(uint64_t*)sp = addrs[i];
+    }
+    // save &argv
+    sp -= 8;
+    *(uint64_t*)sp = sp + 8;
 
-        // save argc
-        sp -= 8;
-        *(uint64_t*)sp = argc;
-        tcb->context.sp = sp;
-        sema->up();
-    });
-    tcb->pcb = new_pcb;
+    // save argc
+    sp -= 8;
+    *(uint64_t*)sp = argc;
+    tcb->context.sp = sp;
     tcb->context.pc = (uint64_t)new_pc;
     tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
     
