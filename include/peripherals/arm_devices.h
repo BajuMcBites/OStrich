@@ -162,4 +162,100 @@ struct __attribute__((__packed__, aligned(4))) QA7Registers {
 
 #define QA7 ((volatile struct QA7Registers *)(uintptr_t)(0x40000024 + VA_START))
 
+/*--------------------------------------------------------------------------}
+{          Core Mailbox set and read - QA7_rev3.4.pdf page 15		        }
+{--------------------------------------------------------------------------*/
+
+typedef union {
+    struct {
+        unsigned Core0Mailbox0Set : 2;
+        unsigned Core0Mailbox1Set : 2;
+        unsigned Core0Mailbox2Set : 2;
+        unsigned Core0Mailbox3Set : 2;
+
+        unsigned Core1Mailbox0Set : 2;
+        unsigned Core1Mailbox1Set : 2;
+        unsigned Core1Mailbox2Set : 2;
+        unsigned Core1Mailbox3Set : 2;
+
+        unsigned Core2Mailbox0Set : 2;
+        unsigned Core2Mailbox1Set : 2;
+        unsigned Core2Mailbox2Set : 2;
+        unsigned Core2Mailbox3Set : 2;
+
+        unsigned Core3Mailbox0Set : 2;
+        unsigned Core3Mailbox1Set : 2;
+        unsigned Core3Mailbox2Set : 2;
+        unsigned Core3Mailbox3Set : 2;
+    };
+    uint32_t Raw32;  // Union to access all 32 bits as a uint32_t
+} core_mailbox_set_t;
+
+typedef union {
+    struct {
+        unsigned Core0Mailbox0Clr : 2;
+        unsigned Core0Mailbox1Clr : 2;
+        unsigned Core0Mailbox2Clr : 2;
+        unsigned Core0Mailbox3Clr : 2;
+
+        unsigned Core1Mailbox0Clr : 2;
+        unsigned Core1Mailbox1Clr : 2;
+        unsigned Core1Mailbox2Clr : 2;
+        unsigned Core1Mailbox3Clr : 2;
+
+        unsigned Core2Mailbox0Clr : 2;
+        unsigned Core2Mailbox1Clr : 2;
+        unsigned Core2Mailbox2Clr : 2;
+        unsigned Core2Mailbox3Clr : 2;
+
+        unsigned Core3Mailbox0Clr : 2;
+        unsigned Core3Mailbox1Clr : 2;
+        unsigned Core3Mailbox2Clr : 2;
+        unsigned Core3Mailbox3Clr : 2;
+    };
+    uint32_t Raw32;  // Union to access all 32 bits as a uint32_t
+} core_mailbox_clear_t;
+
+struct __attribute__((__packed__, aligned(4))) CoreMailboxes {
+    core_mailbox_set_t mailboxSet;      // 0x80
+    core_mailbox_clear_t mailboxClear;  // 0xC0
+};
+
+#define MAIL ((volatile struct CoreMailboxes *)(uintptr_t)(0x40000080 + VA_START))
+
+#define CORE0_MBOX0_SET (volatile unsigned int *)(0x40000080 + VA_START)
+#define CORE0_MBOX1_SET (volatile unsigned int *)(0x40000084 + VA_START)
+#define CORE0_MBOX2_SET (volatile unsigned int *)(0x40000088 + VA_START)
+#define CORE0_MBOX3_SET (volatile unsigned int *)(0x4000008C + VA_START)
+#define CORE1_MBOX0_SET (volatile unsigned int *)(0x40000090 + VA_START)
+#define CORE1_MBOX1_SET (volatile unsigned int *)(0x40000094 + VA_START)
+#define CORE1_MBOX2_SET (volatile unsigned int *)(0x40000098 + VA_START)
+#define CORE1_MBOX3_SET (volatile unsigned int *)(0x4000009C + VA_START)
+#define CORE2_MBOX0_SET (volatile unsigned int *)(0x400000A0 + VA_START)
+#define CORE2_MBOX1_SET (volatile unsigned int *)(0x400000A4 + VA_START)
+#define CORE2_MBOX2_SET (volatile unsigned int *)(0x400000A8 + VA_START)
+#define CORE2_MBOX3_SET (volatile unsigned int *)(0x400000AC + VA_START)
+#define CORE3_MBOX0_SET (volatile unsigned int *)(0x400000B0 + VA_START)
+#define CORE3_MBOX1_SET (volatile unsigned int *)(0x400000B4 + VA_START)
+#define CORE3_MBOX2_SET (volatile unsigned int *)(0x400000B8 + VA_START)
+#define CORE3_MBOX3_SET (volatile unsigned int *)(0x400000BC + VA_START)
+
+// Mailbox write-clear registers (Read & Write)
+#define CORE0_MBOX0_RDCLR (volatile unsigned int *)(0x400000C0 + VA_START)
+#define CORE0_MBOX1_RDCLR (volatile unsigned int *)(0x400000C4 + VA_START)
+#define CORE0_MBOX2_RDCLR (volatile unsigned int *)(0x400000C8 + VA_START)
+#define CORE0_MBOX3_RDCLR (volatile unsigned int *)(0x400000CC + VA_START)
+#define CORE1_MBOX0_RDCLR (volatile unsigned int *)(0x400000D0 + VA_START)
+#define CORE1_MBOX1_RDCLR (volatile unsigned int *)(0x400000D4 + VA_START)
+#define CORE1_MBOX2_RDCLR (volatile unsigned int *)(0x400000D8 + VA_START)
+#define CORE1_MBOX3_RDCLR (volatile unsigned int *)(0x400000DC + VA_START)
+#define CORE2_MBOX0_RDCLR (volatile unsigned int *)(0x400000E0 + VA_START)
+#define CORE2_MBOX1_RDCLR (volatile unsigned int *)(0x400000E4 + VA_START)
+#define CORE2_MBOX2_RDCLR (volatile unsigned int *)(0x400000E8 + VA_START)
+#define CORE2_MBOX3_RDCLR (volatile unsigned int *)(0x400000EC + VA_START)
+#define CORE3_MBOX0_RDCLR (volatile unsigned int *)(0x400000F0 + VA_START)
+#define CORE3_MBOX1_RDCLR (volatile unsigned int *)(0x400000F4 + VA_START)
+#define CORE3_MBOX2_RDCLR (volatile unsigned int *)(0x400000F8 + VA_START)
+#define CORE3_MBOX3_RDCLR (volatile unsigned int *)(0x400000FC + VA_START)
+
 #endif
