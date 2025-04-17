@@ -6,6 +6,7 @@
 
 namespace fs {
 
+// Hooks into filesystem interface written by Caleb and Ameya.
 // Blocks are 4096 bytes (logical), sectors are 512 bytes (physical).
 // FS thinks in terms of blocks, SD card thinks in terms of sectors (but SD terminology actually
 // calls it a block as well).
