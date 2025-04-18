@@ -27,19 +27,6 @@ bool K::streq(const char* a, const char* b) {
     }
 }
 
-int K::strcmp(const char* stra, const char* strb) {
-    int index = 0;
-    while (1) {
-        if (stra[index] == '\0' && strb[index] == '\0')
-            return 0;
-        else if (stra[index] < strb[index])
-            return -1;
-        else if (stra[index] > strb[index])
-            return 1;
-        index++;
-    }
-}
-
 int K::strncmp(const char* stra, const char* strb, int n) {
     int index = 0;
     while (index < n && stra[index] != '\0' && strb[index] != '\0') {
@@ -56,7 +43,18 @@ int K::strncmp(const char* stra, const char* strb, int n) {
     return stra[index] - strb[index];
 }
 
-int K::strncpy(char* dest, char* src, int n) {
+int K::strcmp(const char* stra, const char* strb) {
+    int index = 0;
+    while (stra[index] != '\0' && strb[index] != '\0') {
+        if (stra[index] != strb[index]) {
+            break;
+        }
+        index++;
+    }
+    return stra[index] - strb[index];
+}
+
+int K::strncpy(char* dest, const char* src, int n) {
     int index = 0;
     while (index < n && src[index] != '\0') {
         dest[index] = src[index];
@@ -70,6 +68,32 @@ int K::strncpy(char* dest, char* src, int n) {
 
     dest[index] = '\0';
     return index + 1;
+}
+
+char* K::strcpy(char* dest, const char* src) {
+    int index = 0;
+    while (src[index] != '\0') {
+        dest[index] = src[index];
+        index++;
+    }
+    dest[index] = '\0';
+    return dest;
+}
+
+char* K::strcat(char* dest, const char* src) {
+    int index = 0;
+    while (dest[index] != '\0') {
+        index++;
+    }
+
+    int src_index = 0;
+    while (src[src_index] != '\0') {
+        dest[index] = src[src_index];
+        index++;
+        src_index++;
+    }
+    dest[index] = '\0';
+    return dest;
 }
 
 extern "C" void* memcpy(void* dest, const void* src, size_t n) {
