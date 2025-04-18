@@ -2,7 +2,6 @@
 #include "printf.h"
 #include "sdio.h"
 
-#define TEST_PARTITION_START_SECTOR 2
 #define TEST_PARTITION_NUM_SECTORS 16
 #define TEST_PARTITION_SYSTEM_ID 0x83
 
