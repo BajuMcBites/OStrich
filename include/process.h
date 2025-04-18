@@ -3,6 +3,7 @@
 
 #include "vm.h"
 #include "printf.h"
+#include "atomic.h"
 
 #define NR_TASKS 256
 
@@ -59,6 +60,12 @@ struct PCB {
     PageTable* page_table;
     SupplementalPageTable* supp_page_table;
     LockedQueue<Signal, SpinLock> sigs;
+    Semaphore* waiting_parent;
+    PCB* parent;
+    PCB* child_start;
+    PCB* child_end;
+    PCB* next;
+    PCB* before;
 
     PCB() {
         while (task[curr_task] != nullptr) {
@@ -68,16 +75,37 @@ struct PCB {
         pid = curr_task;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
+        waiting_parent = nullptr;
     }
     PCB(int id) {
         task[pid] = this;
         pid = id;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
+        waiting_parent = nullptr;
+        child_start = child_end = next = nullptr;
     }
     
-    void raise_signal(Signal s) {
-        sigs.add(&s);
+    void raise_signal(Signal* s) {
+        sigs.add(s);
+    }
+
+    void add_waiting_parent(Semaphore* s, PCB* p) {
+        waiting_parent = s;
+        parent = p;
+    }
+
+    void add_child(PCB* child) {
+        if (child_start == nullptr) {
+            child_start = child_end = child;
+        } else {
+            child_end->next = child;
+            child->before = child_end;
+        }
+    }
+
+    void remove_child(PCB* child) {
+        child->before = child->next;
     }
 
     ~PCB() {

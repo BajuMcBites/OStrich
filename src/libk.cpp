@@ -56,7 +56,7 @@ int K::strncmp(const char* stra, const char* strb, int n) {
     return stra[index] - strb[index];
 }
 
-int K::strncpy(char* dest, char* src, int n) {
+int K::strncpy(char* dest, const char* src, int n) {
     int index = 0;
     while (index < n && src[index] != '\0') {
         dest[index] = src[index];

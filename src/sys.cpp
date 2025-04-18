@@ -125,6 +125,11 @@ void handle_linux_syscall(int opcode, SyscallFrame* frame) {
 void newlib_handle_exit(SyscallFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID()); 
     printf("exit has ran, returning %d\n", frame->X[0]);
+    if (tcb->pcb->waiting_parent != nullptr) {
+        Signal* s = new Signal(SIGCHLD, tcb->pcb->pid);
+        tcb->pcb->raise_signal(s);
+        tcb->pcb->waiting_parent->up();
+    }
     tcb->state = TASK_KILLED;
     event_loop();
 }
@@ -305,7 +310,36 @@ int newlib_handle_unlink(SyscallFrame* frame) {
 }
 
 int newlib_handle_wait(SyscallFrame* frame) {
-    // TODO: Implement wait.
+    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    tcb->state = TASK_STOPPED;
+    PCB* cur = tcb->pcb;
+    Semaphore* sema = new Semaphore();
+    for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
+        start->add_waiting_parent(sema, cur);
+    }
+    sema->down([=]{
+        Signal* sig;
+        int n_pid = -1;
+        bool terminated = false;
+        while (sig = (tcb->pcb->sigs.remove())) {
+            if (sig->val == SIGKILL) {
+                terminated = true;
+                break;
+            }
+            if (sig->val == SIGCHLD) {
+                n_pid = sig->from_pid;
+                break;
+            }
+        }
+        if (n_pid == -1) {
+            printf("no SIGCHLD signal - something's wrong\n");
+        }
+        tcb->context.pc = (uint64_t)frame->X[30];
+        tcb->context.sp = (uint64_t)frame->X[29];
+        set_return_value(tcb, n_pid);
+        queue_user_tcb(tcb);
+    });
+    event_loop();
     return 0;
 }
 
