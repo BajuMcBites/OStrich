@@ -104,7 +104,6 @@ void event_loop() {
  * before loading the user context of the tcb and eret-ing
  */
 void enter_user_space(UserTCB* tcb) {
-    printf("we went to user, %d this is pid, %x this is pc\n", tcb->pcb->pid, tcb->context.pc);
     tcb->pcb->page_table->use_page_table();
     runningUserTCB[getCoreID()] = tcb;
     load_user_context(&tcb->context);
