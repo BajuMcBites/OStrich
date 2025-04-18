@@ -12,6 +12,10 @@
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
 
+#define TASK_RUNNING 0 
+#define TASK_STOPPED 1
+#define TASK_KILLED 2
+
 //-------------
 // --event.h--
 //-------------
@@ -56,6 +60,7 @@ struct cpu_context {
 struct TCB {
     TCB* next = nullptr;
     bool kernel_event = true;
+    uint32_t state;
     virtual void run() = 0;  // Abstract/virtual function that must be overridden
     virtual ~TCB() {};       // Allows child classes to be deleted
 };
@@ -78,6 +83,7 @@ struct UserTCB : public TCB {
         context.sp = 0;
         context.pc = 0;
         kernel_event = false;
+        state = TASK_STOPPED;
     }
 
     void run() override {
@@ -90,6 +96,7 @@ struct Event : public TCB {
     template <typename lambda>
     Event(lambda w) : w(w) {
         kernel_event = true;
+        state = TASK_RUNNING;
     }
 
     void run() override {
@@ -104,6 +111,7 @@ struct EventValue : public TCB {
     template <typename lambda>
     EventValue(lambda w, T value) : w(w), value(value) {
         kernel_event = true;
+        state = TASK_RUNNING;
     }
 
     void run() override {

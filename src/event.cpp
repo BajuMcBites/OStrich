@@ -15,6 +15,10 @@ extern "C" uint64_t get_sp_el0();
 extern "C" uint64_t get_elr_el1();
 extern "C" uint64_t get_spsr_el1();
 
+
+struct PCB* task[NR_TASKS] = {nullptr};
+int curr_task = 0;
+
 // queue of TCBs ready to run
 PerCPU<CPU_Queues> readyQueue;
 
@@ -24,9 +28,18 @@ UserTCB* runningUserTCB[CORE_COUNT] = {nullptr};
 TCB* getNextEvent(int core) {
     auto& ready = readyQueue.forCPU(core);
     for (int i = 0; i < PRIORITY_LEVELS; i++) {
+        while (1) {
         auto next = ready.queues[i].remove();
-        if (next != nullptr) {
-            return next;
+            if (next != nullptr) {
+                if (next->state == TASK_RUNNING) 
+                    return next;
+                else if (next->state == TASK_STOPPED) {
+                    ready.queues[i].add(next);
+                } else if (next->state == TASK_KILLED) {
+                    delete next;
+                    continue;
+                }
+            } else break;
         }
     }
     return nullptr;
@@ -56,7 +69,18 @@ void run_events() {
                 continue;
             }
         }
-
+        bool terminated = false;
+        if (!nextThread->kernel_event) {
+            Signal* sig;
+            while (sig = ((UserTCB*)nextThread)->pcb->sigs.remove()) {
+                if (sig->val == SIGKILL) {
+                    terminated = true;
+                }
+            }
+        }
+        if (terminated) {
+            continue;
+        }
         nextThread->run();
         if (!nextThread->kernel_event) {
             K::assert(false, "user event returned to event loop");
