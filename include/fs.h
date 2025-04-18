@@ -14,20 +14,34 @@
 #include "function.h"
 #include "stdint.h"
 
-struct inode;
+class inode {
+   public:
+    inode(uint64_t inode_number, uint64_t refs) : inode_number(inode_number), refs(refs) {
+    }
+    void increment_ref_count_atomic(uint64_t delta) {
+        LockGuard<SpinLock> guard(lock);
+        refs += delta;
+    }
 
-struct file {
-    struct inode* inode;
-};
-
-struct inode {
     SpinLock lock;
     uint64_t inode_number;
     uint64_t refs;
 };
 
-struct inodeListNode {
-    struct inode* inode;
+class file {
+   public:
+    file() : inode(nullptr) {
+    }
+    inode* inode;
+};
+
+// Serves as a cache that maps from file name to inode.
+class inodeListNode {
+   public:
+    inodeListNode(inode* inode, char* file_name)
+        : inode(inode), file_name(file_name), next(nullptr) {
+    }
+    inode* inode;
     char* file_name;
     inodeListNode* next;
 };
