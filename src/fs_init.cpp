@@ -110,15 +110,7 @@ void fs_init() {
 }
 
 void test_fs() {
-    printf("test_fs(): Testing file system on core %d\n", getCoreID());
     auto* fileSystem = FileSystem::getInstance();
-
-    printf("File system ptr: 0x%x\n", fileSystem);
-    printf("Inode table ptr: 0x%x\n", fileSystem->inodeTable);
-    printf("Inode bitmap ptr: 0x%x\n", fileSystem->inodeBitmap);
-    printf("Block bitmap ptr: 0x%x\n", fileSystem->blockBitmap);
-    printf("Block manager ptr: 0x%x\n", fileSystem->blockManager);
-    printf("Log manager ptr: 0x%x\n", fileSystem->logManager);
 
     printf("Loading root directory\n");
     auto* rootDir = fileSystem->getRootDirectory();
