@@ -70,6 +70,32 @@ int K::strncpy(char* dest, const char* src, int n) {
     return index + 1;
 }
 
+char* K::strcpy(char* dest, const char* src) {
+    int index = 0;
+    while (src[index] != '\0') {
+        dest[index] = src[index];
+        index++;
+    }
+    dest[index] = '\0';
+    return dest;
+}
+
+char* K::strcat(char* dest, const char* src) {
+    int index = 0;
+    while (dest[index] != '\0') {
+        index++;
+    }
+
+    int src_index = 0;
+    while (src[src_index] != '\0') {
+        dest[index] = src[src_index];
+        index++;
+        src_index++;
+    }
+    dest[index] = '\0';
+    return dest;
+}
+
 extern "C" void* memcpy(void* dest, const void* src, size_t n) {
     return K::memcpy(dest, src, n);
 }

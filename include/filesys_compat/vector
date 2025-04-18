@@ -2,6 +2,7 @@
 #define __VECTOR_H
 
 #include "../libk.h"
+#include "../printf.h"
 
 namespace std {
     template <typename T>
@@ -17,12 +18,12 @@ namespace std {
             }
 
             T& operator[](int index) {
-                K::assert(index < 0 || index >= cur_size, "vector: index was out of bounds.");
+                K::assert(index >= 0 && index < cur_size, "vector: index was out of bounds.");
                 return data[index];
             }
 
             const T& operator[](int index) const {
-                K::assert(index < 0 || index >= cur_size, "vector: index was out of bounds.");
+                K::assert(index >= 0 && index < cur_size, "vector: index was out of bounds.");
                 return data[index];
             }
 

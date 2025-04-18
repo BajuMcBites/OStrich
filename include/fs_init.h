@@ -3,4 +3,5 @@
 
 void fs_init();
 void test_fs();
+void testSnapshot();
 #endif

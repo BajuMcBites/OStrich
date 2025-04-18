@@ -93,6 +93,7 @@ extern "C" void kernel_main() {
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.
     test_fs();
+    testSnapshot();
 }
 
 extern char __heap_start[];

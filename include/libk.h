@@ -15,6 +15,8 @@ class K {
     static int strncmp(const char* stra, const char* strb, int n);
     static int strnlen(char* str, int n);
     static int strncpy(char* dest, const char* src, int n);
+    static char* strcpy(char* dest, const char* src);
+    static char* strcat(char* dest, const char* src);
     static void* memcpy(void* dest, const void* src, int n);
     static void* memset(void* buf, unsigned char val, unsigned long n);
     static char* strntok(char* str, char c, int n);

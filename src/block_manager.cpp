@@ -42,7 +42,7 @@ bool BlockManager::readBlock(size_t blockIndex, uint8_t* buffer) {
         printf("Invalid block index %d, sector index %d\n", blockIndex, sectorIndex);
         return false;
     }
-    printf("Reading block %d, sector index %d\n", blockIndex, sectorIndex);
+    // printf("Reading block %d, sector index %d\n", blockIndex, sectorIndex);
     int result = sd_read_block(sectorIndex, (unsigned char*)buffer, sectorsPerBlock);
     return result > 0;
 }
@@ -53,7 +53,7 @@ bool BlockManager::writeBlock(size_t blockIndex, const uint8_t* buffer) {
         printf("Invalid block index %d, sector index %d\n", blockIndex, sectorIndex);
         return false;
     }
-    printf("Writing block %d, sector index %d\n", blockIndex, sectorIndex);
+    // printf("Writing block %d, sector index %d\n", blockIndex, sectorIndex);
     int result = sd_write_block((unsigned char*)buffer, sectorIndex, sectorsPerBlock);
     return result > 0;
 }

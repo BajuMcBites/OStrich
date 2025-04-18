@@ -38,6 +38,65 @@ void get_fs_partition_info(int& fs_start_sector, int& fs_nums_sectors) {
               "Failed to find filesystem partition.");
 }
 
+void displayTree(const Directory* dir, const char* curPath) {
+    const std::vector<char*> entries = dir->listDirectoryEntries();
+    for (const auto entry : entries) {
+        File* file = dir->getFile(entry);
+        if (file->isDirectory()) {
+            printf("%s%s (directory)\n", curPath, entry);
+            size_t newPathLen = K::strlen("    ") + K::strlen(curPath) + K::strlen(entry) + 1 +
+                                1;  // +1 for '/', +1 for '\0'
+            char* newPath = new char[newPathLen];
+            K::strcpy(newPath, "    ");
+            K::strcat(newPath, curPath);
+            K::strcat(newPath, entry);
+            K::strcat(newPath, "/");
+            displayTree((Directory*)file, newPath);
+
+            delete[] newPath;
+        } else {
+            if (file->getSize() > 0) {
+                int fs = file->getSize();
+                if (fs > 256) {
+                    fs = 256;
+                }
+
+                char* data = new char[fs];
+                file->read_at(0, reinterpret_cast<uint8_t*>(data), fs);
+                data[fs] = '\0';  // printf capped at 256 characters.
+                printf("%s%s (data: %s)\n", curPath, entry, data);
+                delete[] data;
+            } else {
+                printf("%s%s (empty file)\n", curPath, entry);
+            }
+        }
+        delete file;
+    }
+    for (auto entry : entries) {
+        delete[] entry;
+    }
+}
+
+void displayFilesystem() {
+    FileSystem* fileSystem = FileSystem::getInstance();
+    printf("Loading root directory...\n");
+    auto* rootDir = fileSystem->getRootDirectory();
+    displayTree(rootDir, "/");
+    FileSystem* snapshotFS = fileSystem->mountReadOnlySnapshot(2);
+    if (snapshotFS == nullptr) {
+        printf("Failed to mount read-only snapshot.\n");
+        return;
+    }
+    auto* snapRoot = snapshotFS->getRootDirectory();
+    printf("\nSnapshot filesystem (checkpoint 2):\n");
+    displayTree(snapRoot, "    /");
+
+    printf("Unmounting snapshot filesystem...\n");
+    delete snapRoot;
+    delete snapshotFS;
+    delete rootDir;
+}
+
 void fs_init() {
     int fs_start_sector = -1;
     int fs_nums_sectors = -1;
@@ -48,17 +107,10 @@ void fs_init() {
     FileSystem::getInstance(blockManager);
 
     auto* fileSystem = FileSystem::getInstance();
-    printf("File system initialized\n");
-    printf("File system ptr: 0x%x\n", fileSystem);
-    printf("Inode table ptr: 0x%x\n", fileSystem->inodeTable);
-    printf("Inode bitmap ptr: 0x%x\n", fileSystem->inodeBitmap);
-    printf("Block bitmap ptr: 0x%x\n", fileSystem->blockBitmap);
-    printf("Block manager ptr: 0x%x\n", fileSystem->blockManager);
-    printf("Log manager ptr: 0x%x\n", fileSystem->logManager);
 }
 
 void test_fs() {
-    printf("Testing file system on core %d\n", getCoreID());
+    printf("test_fs(): Testing file system on core %d\n", getCoreID());
     auto* fileSystem = FileSystem::getInstance();
 
     printf("File system ptr: 0x%x\n", fileSystem);
@@ -69,7 +121,6 @@ void test_fs() {
     printf("Log manager ptr: 0x%x\n", fileSystem->logManager);
 
     printf("Loading root directory\n");
-    void* log_mgr_ptr = fileSystem->logManager;
     auto* rootDir = fileSystem->getRootDirectory();
 
     printf("Creating new directory /dir1\n");
@@ -82,17 +133,23 @@ void test_fs() {
     const char* testData = "testing!";
     file1->write_at(0, (uint8_t*)testData, strlen(testData) + 1);
 
+    printf("\n");
+
     printf("Creating new directory /dir2\n");
     Directory* dir2 = rootDir->createDirectory("dir2");
 
     printf("Creating a new checkpoint\n");
     fileSystem->createCheckpoint();
 
+    printf("\n");
+
     printf("Creating new directory /dir2/dir3\n");
     Directory* dir3 = dir2->createDirectory("dir3");
 
     printf("Creating new file /dir2/dir3/file2\n");
     File* file2 = dir3->createFile("file2");
+
+    printf("\n");
 
     printf("Creating new file /dir2/tmpfile\n");
     File* tmpFile = dir2->createFile("tmpfile");
@@ -108,7 +165,6 @@ void test_fs() {
     }
     buffer[BUFFER_SIZE - 1] = '\0';
     largeFile->write_at(0, (uint8_t*)buffer, BUFFER_SIZE);
-    delete[] buffer;
 
     printf("Creating a new checkpoint\n");
     fileSystem->createCheckpoint();
@@ -120,6 +176,10 @@ void test_fs() {
 
     printf("Deleting /dir2/tmpfile\n");
     dir2->removeDirectoryEntry("tmpfile");
+
+    displayFilesystem();
+
+    delete[] buffer;
     delete tmpFile;
     delete file1;
     delete file2;
@@ -132,52 +192,51 @@ void test_fs() {
     printf("Filesystem test finished!\n");
 }
 
-// void testSnapshot()
-// {
-//     // Create live filesystem instance and display its state.
-//     FileSystem *liveFS = FileSystem::getInstance();
-//     std::cout << "FS pointer address is " << liveFS << std::endl;
-//     Directory* liveRoot = liveFS->getRootDirectory();
-//     std::cout << "Live filesystem:" << std::endl;
-//     displayTree(liveRoot, "    /");
-//     delete liveRoot;
+void testSnapshot() {
+    printf("FS SNAPSHOT TEST\n");
+    // Create live filesystem instance and display its state.
+    FileSystem* liveFS = FileSystem::getInstance();
+    Directory* liveRoot = liveFS->getRootDirectory();
+    printf("Live filesystem:\n");
+    displayTree(liveRoot, "/");
+    delete liveRoot;
 
-//     // Mount a read-only snapshot based on a checkpoint.
-//     // (Adjust the checkpointID as needed; here we use 2 as an example.)
-//     FileSystem* snapshotFS = liveFS->mountReadOnlySnapshot(2);
-//     if (snapshotFS == nullptr) {
-//         std::cerr << "Failed to mount read-only snapshot." << std::endl;
-//         return;
-//     }
-//     Directory* snapRoot = snapshotFS->getRootDirectory();
-//     std::cout << "\nRead-only snapshot (checkpoint 2):" << std::endl;
-//     displayTree(snapRoot, "    /");
-//     delete snapRoot;
+    // Mount a read-only snapshot based on a checkpoint.
+    // (Adjust the checkpointID as needed; here we use 2 as an example.)
+    FileSystem* snapshotFS = liveFS->mountReadOnlySnapshot(2);
+    if (snapshotFS == nullptr) {
+        printf("Failed to mount read-only snapshot.\n");
+        return;
+    }
 
-//     FileSystem* snapshotFS2 = liveFS->mountReadOnlySnapshot(3);
-//     if (snapshotFS2 == nullptr) {
-//         std::cerr << "Failed to mount read-only snapshot." << std::endl;
-//         return;
-//     }
-//     auto* snapRoot2 = snapshotFS2->getRootDirectory();
-//     std::cout << "\nRead0only snapshot (checkpoint 3):" << std::endl;
-//     displayTree(snapRoot2, "    /");
-//     delete snapRoot2;
+    Directory* snapRoot = snapshotFS->getRootDirectory();
+    printf("\nRead-only snapshot (checkpoint 2):\n");
+    displayTree(snapRoot, "/");
+    delete snapRoot;
 
-//     // Optionally, try a write operation on the snapshot to ensure it is read-only.
-//     // For example:
-//     // Directory* snapDir =
-//     dynamic_cast<Directory*>(snapshotFS->getRootDirectory()->getFile("dir1"));
-//     // if (snapDir) {
-//     //     if (!snapDir->createFile("illegalWrite")) {
-//     //         std::cout << "\nWrite operation correctly rejected in snapshot." << std::endl;
-//     //     } else {
-//     //         std::cerr << "\nError: Write operation succeeded in snapshot!" << std::endl;
-//     //     }
-//     //     delete snapDir;
-//     // }
+    FileSystem* snapshotFS2 = liveFS->mountReadOnlySnapshot(3);
+    if (snapshotFS2 == nullptr) {
+        printf("Failed to mount read-only snapshot.\n");
+        return;
+    }
+    auto* snapRoot2 = snapshotFS2->getRootDirectory();
+    printf("\nRead-only snapshot (checkpoint 3):\n");
+    displayTree(snapRoot2, "/");
+    delete snapRoot2;
 
-//     // Clean up the snapshot instance.
-//     delete snapshotFS;
-//     delete snapshotFS2;
-// }
+    // Optionally, try a write operation on the snapshot to ensure it is read-only.
+    // For example:
+    // Directory* snapDir = (Directory*)snapshotFS->getRootDirectory()->getFile("dir1");
+    // if (snapDir) {
+    //     if (!snapDir->createFile("illegalWrite")) {
+    //         printf("\nWrite operation correctly rejected in snapshot.\n");
+    //     } else {
+    //         printf("\nError: Write operation succeeded in snapshot!\n");
+    //     }
+    //     delete snapDir;
+    // }
+
+    // Clean up the snapshot instance.
+    delete snapshotFS;
+    delete snapshotFS2;
+}
