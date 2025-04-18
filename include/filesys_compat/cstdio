@@ -1,0 +1,6 @@
+#ifndef __CSTDIO_H
+#define __CSTDIO_H
+
+#include "printf.h"
+
+#endif

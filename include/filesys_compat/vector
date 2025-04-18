@@ -1,0 +1,59 @@
+#ifndef __VECTOR_H
+#define __VECTOR_H
+
+#include "../libk.h"
+#include "../printf.h"
+
+namespace std {
+    template <typename T>
+    class vector {
+        public:
+            vector() : data(nullptr), cur_size(0), capacity(0) {}
+            vector(int size) : cur_size(size), capacity(size) {
+                data = new T[size];
+            }
+
+            ~vector() {
+                delete[] data;
+            }
+
+            T& operator[](int index) {
+                K::assert(index >= 0 && index < cur_size, "vector: index was out of bounds.");
+                return data[index];
+            }
+
+            const T& operator[](int index) const {
+                K::assert(index >= 0 && index < cur_size, "vector: index was out of bounds.");
+                return data[index];
+            }
+
+            void push_back(const T& value) {
+                if (cur_size + 1 == capacity) {
+                    int newCapacity = capacity * 2;
+                    T* newData = new T[newCapacity];
+                    for (int i = 0; i < capacity; i++) {
+                        newData[i] = data[i];
+                    }
+                    capacity = newCapacity;
+                    delete[] data;
+                    data = newData;
+                }
+                data[++cur_size] = value;
+            } 
+
+            size_t size() const { return cur_size; }
+
+            // Allow range-based for-loops
+            const T* begin() const { return data; }
+            const T* end() const { return data + cur_size; }
+            T* begin() { return data; }
+            T* end() { return data + cur_size; }
+            
+        private:
+            T* data;
+            size_t cur_size;
+            size_t capacity;
+    };
+}
+
+#endif // __VECTOR_H
