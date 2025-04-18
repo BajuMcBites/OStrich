@@ -38,6 +38,19 @@ void get_fs_partition_info(int& fs_start_sector, int& fs_nums_sectors) {
               "Failed to find filesystem partition.");
 }
 
+void fs_init() {
+    int fs_start_sector = -1;
+    int fs_nums_sectors = -1;
+    get_fs_partition_info(fs_start_sector, fs_nums_sectors);
+    auto blockManager = new BlockManager(fs_nums_sectors, fs_start_sector);
+    printf("Block manager created with %d blocks, starting at sector %d\n", fs_nums_sectors,
+           fs_start_sector);
+    FileSystem::getInstance(blockManager);
+
+    auto* fileSystem = FileSystem::getInstance();
+}
+
+// Test stuff down here.
 void displayTree(const Directory* dir, const char* curPath) {
     const std::vector<char*> entries = dir->listDirectoryEntries();
     for (const auto entry : entries) {
@@ -57,6 +70,8 @@ void displayTree(const Directory* dir, const char* curPath) {
         } else {
             if (file->getSize() > 0) {
                 int fs = file->getSize();
+
+                // printf capped at 256 characters.
                 if (fs > 256) {
                     fs = 256;
                 }
@@ -89,24 +104,12 @@ void displayFilesystem() {
     }
     auto* snapRoot = snapshotFS->getRootDirectory();
     printf("\nSnapshot filesystem (checkpoint 2):\n");
-    displayTree(snapRoot, "    /");
+    displayTree(snapRoot, "/");
 
     printf("Unmounting snapshot filesystem...\n");
     delete snapRoot;
     delete snapshotFS;
     delete rootDir;
-}
-
-void fs_init() {
-    int fs_start_sector = -1;
-    int fs_nums_sectors = -1;
-    get_fs_partition_info(fs_start_sector, fs_nums_sectors);
-    auto blockManager = new BlockManager(fs_nums_sectors, fs_start_sector);
-    printf("Block manager created with %d blocks, starting at sector %d\n", fs_nums_sectors,
-           fs_start_sector);
-    FileSystem::getInstance(blockManager);
-
-    auto* fileSystem = FileSystem::getInstance();
 }
 
 void test_fs() {

@@ -19,7 +19,6 @@ BlockManager::BlockManager(int numSectors, int startSector)
     }
 
     sectorsPerBlock = BLOCK_SIZE / SD_BLK_SIZE;  // should be 8.
-    printf("numSectors: %d, sectorsPerBlock: %d\n", numSectors, sectorsPerBlock);
     if (numSectors % sectorsPerBlock != 0) {
         printf("FS partition size %ld bytes is not a multiple of FS block size %d bytes\n",
                numSectors * SD_BLK_SIZE, BLOCK_SIZE);
