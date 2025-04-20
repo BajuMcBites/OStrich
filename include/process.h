@@ -1,6 +1,7 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
+#include "event.h"
 #include "vm.h"
 
 struct PCB {
@@ -19,5 +20,7 @@ struct PCB {
         delete supp_page_table;
     }
 };
+
+void fork(struct UserTCB* tcb);
 
 #endif /*_PROCESS_H_*/

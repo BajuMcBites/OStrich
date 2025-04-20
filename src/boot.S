@@ -264,14 +264,15 @@ synchronous_el0:
     kernel_exit                 // returns to user via eret
 
 not_syscall:
-    lsr     x2, x1, #26         // x2 = EC = ESR_EL1[31:26]
-    cmp x2, #0x24               // 0x24 = Data Abort
-    b.ne not_data_abort
-    bl page_fault_handler
+    lsr x2, x1, #26         // x2 = EC = ESR_EL1[31:26]
+    cmp x2, #0x24               // 0x24 = Data Abort //0b100000
+    b.eq page_fault_handler
+    cmp x2, #0x20
+    b.eq page_fault_handler
    
 not_data_abort:
     mov     x0, #0              // you could pass reason info here if needed
-    handle_exception            // handle exception (which jumps to exc_handler)
+    handle_exception            // handle exception (which jumps to exc_handler) 
 
 irq_el0: 
 	kernel_entry 

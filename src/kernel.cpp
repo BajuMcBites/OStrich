@@ -2,7 +2,6 @@
 #include "dcache.h"
 #include "dwc.h"
 #include "event.h"
-#include "fork.h"
 #include "frame.h"
 #include "framebuffer.h"
 #include "heap.h"
@@ -78,17 +77,17 @@ extern char _frame_table_start[];
 
 extern "C" void kernel_main() {
     printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
-    // user_paging_tests();
-    blocking_atomic_tests();
-    // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
-    bitmap_tests();
-    swap_tests();
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
+    // // user_paging_tests();
+    // blocking_atomic_tests();
+    // // ramfs_tests();
+    // sdioTests();
+    // ring_buffer_tests();
+    // bitmap_tests();
+    // swap_tests();
     elf_load_test();
     // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
     // it out.

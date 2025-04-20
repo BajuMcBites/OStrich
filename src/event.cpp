@@ -80,7 +80,9 @@ void event_loop() {
  * before loading the user context of the tcb and eret-ing
  */
 void enter_user_space(UserTCB* tcb) {
+    printf("returning from fork\n");
     tcb->pcb->page_table->use_page_table();
+    flush_tlb();
     runningUserTCB[getCoreID()] = tcb;
     load_user_context(&tcb->context);
 }

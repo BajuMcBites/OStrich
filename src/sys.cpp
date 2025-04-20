@@ -1,7 +1,9 @@
 #include "sys.h"
 
 #include "../user_programs/system_calls.h"
+#include "event.h"
 #include "printf.h"
+#include "process.h"
 #include "stdint.h"
 #include "vm.h"
 // #include "trap_frame.h"
@@ -101,10 +103,10 @@ void handle_newlib_syscall(int opcode, SyscallFrame* frame) {
             frame->X[0] = newlib_handle_time(frame);
             break;
         case 18:
-            printf("down call %X%X\n", frame->X[0] >> 32, frame->X[0]);
+            printf("Parent done\n");
             break;
         case 19:
-            printf("up call %X%X\n", frame->X[0] >> 32, frame->X[0]);
+            printf("Child done\n");
             break;
         default:
             break;
@@ -124,6 +126,8 @@ void handle_linux_syscall(int opcode, SyscallFrame* frame) {
 // See https://sourceware.org/newlib/libc.html#Stubs for the specific arguments for each call.
 void newlib_handle_exit(SyscallFrame* frame) {
     // TODO: Implement exit.
+    printf("called exit\n");
+    event_loop();
 }
 
 int newlib_handle_close(SyscallFrame* frame) {
@@ -137,7 +141,11 @@ int newlib_handle_exec(SyscallFrame* frame) {
 }
 
 int newlib_handle_fork(SyscallFrame* frame) {
-    // TODO: Implement fork.
+    printf("called fork\n");
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    save_user_context(tcb, frame->X);
+    fork(tcb);
+    event_loop();
     return 0;
 }
 

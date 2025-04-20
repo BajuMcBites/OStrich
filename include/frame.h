@@ -23,6 +23,7 @@ void unpin_frame(uintptr_t frame_addr);
 typedef struct Frame {
     PageLocation* contents;
     int flags;
+    uint16_t pin_count;
 } Frame;
 
 #endif

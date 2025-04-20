@@ -70,16 +70,14 @@ void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* 
             return;
         }
 
-        local = new LocalPageLocation;
-        local->pcb = pcb;
-        local->perm = prot;
-        local->next = nullptr;
-
+        PageSharingMode sharing_mode;
         if ((flags & 0x3) == MAP_SHARED) {
-            local->sharing_mode = SHARED;
+            sharing_mode = SHARED;
         } else if ((flags & 0x3) == MAP_PRIVATE) {
-            local->sharing_mode = PRIVATE;
+            sharing_mode = PRIVATE;
         }
+
+        local = new LocalPageLocation(pcb, prot, sharing_mode, uvaddr);
 
         page_cache->get_or_add(file, offset, id, local, [=](PageLocation* location) {
             pcb->supp_page_table->map_vaddr(uvaddr, local);

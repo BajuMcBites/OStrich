@@ -192,6 +192,10 @@ void PageTable::map_vaddr_pte(pud_t* pte, uint64_t vaddr, uint64_t paddr,
  * returns true if the vaddr was mapped and is now unmapped
  */
 bool PageTable::unmap_vaddr(uint64_t vaddr) {
+    if (pgd == nullptr) {
+        return false;
+    }
+
     uint64_t pgd_index = get_pgd_index(vaddr);
     uint64_t pgd_descriptor = pgd->descriptors[pgd_index];
     PageTableLevel* pud = descriptor_to_vaddr(pgd_descriptor);
@@ -217,6 +221,8 @@ bool PageTable::unmap_vaddr(uint64_t vaddr) {
     }
 
     uint64_t pte_index = get_pte_index(vaddr);
+    pte->descriptors[pte_index] = 0;
+
     if ((pte->descriptors[pte_index] & 0x1) != 0) {
         pte->descriptors[pte_index] = 0;
         return true;
@@ -310,13 +316,18 @@ uint64_t build_page_attributes(LocalPageLocation* local) {
     if ((local->perm & EXEC_PERM) == 0) {
         attribute |= (0x1L << 54);  // set XN (execute never) to true
     }
-    // TEMPORARY FIX, WE NEED TO FIX THIS
-    if ((local->perm & WRITE_PERM) != 0 && (local->perm & EXEC_PERM) == 0) {
-        attribute |= (0x1L << 6);
-    } else if ((local->perm & WRITE_PERM) != 0 && (local->perm & EXEC_PERM) != 0) {
-        attribute |= (0x01L << 6);
+
+    if (local->sharing_mode == PRIVATE && local->location->ref_count > 1) {
+        attribute |= (0x3L << 6);
+
     } else {
-        attribute |= (0x01L << 6);
+        if ((local->perm & WRITE_PERM) && (local->perm & EXEC_PERM) == 0) {
+            attribute |= (0x1L << 6);
+        } else if ((local->perm & WRITE_PERM) && (local->perm & EXEC_PERM) != 0) {
+            attribute |= (0x01L << 6);
+        } else {
+            attribute |= (0x01L << 6);
+        }
     }
 
     attribute |= (0x2L << 2);   // 2nd index in mair
@@ -366,6 +377,18 @@ void remove_local(PageLocation* location, LocalPageLocation* local) {
     }
 }
 
+void unmap_refs(PageLocation* location) {
+    LocalPageLocation* n = location->users;
+
+    while (n != nullptr) {
+        // if (n->sharing_mode == PRIVATE) {
+            n->pcb->page_table->unmap_vaddr(n->uvaddr);
+        // }
+
+        n = n->next;
+    }
+}
+
 /**
  * gets or adds a page location from/to the page cache
  *
@@ -407,7 +430,7 @@ void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLo
     });
 }
 
-void PageCache::remove(LocalPageLocation* local) {
+void PageCache::remove(LocalPageLocation* local, Function<void(void)> w) {
     lock.lock([=]() {
         PageLocation* location = local->location;
 
@@ -424,9 +447,11 @@ void PageCache::remove(LocalPageLocation* local) {
             }
 
             delete location;
+        } else {
+            local->location->lock.unlock();
         }
-
         lock.unlock();
+        create_event(w);
     });
 }
 
@@ -450,4 +475,40 @@ PageLocation::~PageLocation() {
         free_frame(paddr);
         /* todo: send signal to swap that the space is no longer needed */
     }
+}
+
+void SupplementalPageTable::copy_mappings(SupplementalPageTable* other, PCB* pcb,
+                                          Function<void(void)> w) {
+    other->lock.lock([=]() {
+        this->lock.lock([=]() {
+            Semaphore* sema = new Semaphore((-other->map.size) + 1);
+            other->map.for_each([=](LocalPageLocation* local) {
+                PageLocation* location = local->location;
+                location->lock.lock([=]() {
+                    page_cache->lock.lock([=]() {
+                        LocalPageLocation* new_local = new LocalPageLocation(
+                            pcb, local->perm, local->sharing_mode, local->uvaddr);
+                        add_local(location, new_local);
+                        unmap_refs(location);
+
+                        new_local->location = location;
+
+                        this->map.put(local->uvaddr, new_local);
+
+                        page_cache->lock.unlock();
+                        location->lock.unlock();
+
+                        sema->up();
+                    });
+                });
+            });
+
+            sema->down([=]() {
+                delete sema;
+                this->lock.unlock();
+                other->lock.unlock();
+                create_event(w);
+            });
+        });
+    });
 }

@@ -14,6 +14,8 @@ extern "C" void set_sp_and_jump(uint64_t sp, void (*entry)());
 extern "C" void monitor(long addr);
 extern "C" void outb(int port, int val);
 
+extern "C" void flush_tlb();
+
 extern int onHypervisor;
 
 #endif /*_BOOT_H */

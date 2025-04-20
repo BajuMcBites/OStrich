@@ -113,6 +113,7 @@ memory_block_t* find(size_t size) {
  * returns memory block that we added.
  */
 memory_block_t* extend(size_t size) {
+    K::assert(false, "we are out of heap space");
     return nullptr;
     /*
     size = ALIGN(size);
