@@ -48,10 +48,12 @@ enum sig_val {
 struct Signal {
     int val;
     int from_pid;
+    int status;
     Signal* next;
-    Signal(int id, int from) {
+    Signal(int id, int from, int stat) {
         val = id;
         from_pid = from;
+        status = stat;
     }
 };
 

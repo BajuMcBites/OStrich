@@ -126,8 +126,8 @@ void newlib_handle_exit(SyscallFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID()); 
     printf("exit has ran, returning %d\n", frame->X[0]);
     if (tcb->pcb->waiting_parent != nullptr) {
-        Signal* s = new Signal(SIGCHLD, tcb->pcb->pid);
-        tcb->pcb->raise_signal(s);
+        Signal* s = new Signal(SIGCHLD, tcb->pcb->pid, frame->X[0]);
+        tcb->pcb->parent->raise_signal(s);
         tcb->pcb->waiting_parent->up();
     }
     tcb->state = TASK_KILLED;
@@ -202,6 +202,7 @@ int newlib_handle_fork(SyscallFrame* frame) {
     K::memcpy((void*)new_tcb, (void*)curr_tcb, sizeof(UserTCB));
     K::memcpy((void*)&(new_tcb->context), (void*)frame->X, sizeof(frame->X));
     PCB* pcb = new PCB();
+    curr_tcb->pcb->add_child(pcb);
     // TODO: make a different copy of the page table that does copy on write?
     // pcb->page_table = curr_tcb->pcb->page_table;
     // pcb->supp_page_table = curr_tcb->pcb->supp_page_table;
@@ -273,7 +274,7 @@ int newlib_handle_kill(SyscallFrame* frame) {
             printf("invalid pid\n");
             return 1;
         }
-        Signal* s = new Signal(sig, curr_pid);
+        Signal* s = new Signal(sig, curr_pid, 0);
         target->sigs.add(s);
     }
     return 0;
@@ -317,6 +318,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
     for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
         start->add_waiting_parent(sema, cur);
     }
+    int* status_loca = (int*)frame->X[0];
     sema->down([=]{
         Signal* sig;
         int n_pid = -1;
@@ -327,6 +329,8 @@ int newlib_handle_wait(SyscallFrame* frame) {
                 break;
             }
             if (sig->val == SIGCHLD) {
+                cur->page_table->use_page_table();
+                *status_loca = sig->status;
                 n_pid = sig->from_pid;
                 break;
             }
