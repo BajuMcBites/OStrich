@@ -79,19 +79,19 @@ extern char _frame_table_start[];
 
 extern "C" void kernel_main() {
     // printf("All tests passed\n");
-    // heapTests();
-    // event_loop_tests();
-    // hash_test();
-    // frame_alloc_tests();
-    // // user_paging_tests();
-    // blocking_atomic_tests();
+    heapTests();
+    event_loop_tests();
+    hash_test();
+    frame_alloc_tests();
+    // user_paging_tests();
+    blocking_atomic_tests();
     // ramfs_tests();
-    // sdioTests();
-    // ring_buffer_tests();
+    sdioTests();
+    ring_buffer_tests();
     elf_load_test();
-    // partitionTests();
-    // test_fs();
-    // testSnapshot();
+    partitionTests();
+    test_fs();
+    testSnapshot();
 }
 
 extern char __heap_start[];
