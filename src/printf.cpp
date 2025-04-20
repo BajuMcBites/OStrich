@@ -29,6 +29,8 @@ typedef void (*putcf)(void*, char);
 static putcf stdout_putf;
 static void* stdout_putp;
 
+extern uint64_t PGD[512]; // Reference to kernel page tables
+
 SpinLock printf_err_lock;
 SpinLock printf_lock;
 SpinLock panic_lock;
@@ -314,7 +316,19 @@ void tfp_printf(const char* fmt, ...) {
     va_end(va_copy_list);
     va_end(va);
 
-    // fb_print(buffer, WHITE);
+    // save current page table state before accessing framebuffer
+    uint64_t current_ttbr0;
+    __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(current_ttbr0));
+
+    // ensure we're using the kernel's page table when accessing the framebuffer
+    uint64_t kernel_pgd_paddr = vaddr_to_paddr((uint64_t)PGD);
+    switch_ttbr0(kernel_pgd_paddr);
+
+    fb_print(buffer, WHITE);
+
+    // restore previous page table state
+    switch_ttbr0(current_ttbr0);
+
     printf_lock.unlock();
 }
 
@@ -337,8 +351,20 @@ void tfp_error_printf(const char* fmt, ...) {
     va_end(va_copy);
     va_end(va);
 
+    // Save current page table state before accessing framebuffer
+    uint64_t current_ttbr0;
+    __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(current_ttbr0));
+
+    // ensure we're using the kernel's page table when accessing the framebuffer
+    uint64_t kernel_pgd_paddr = vaddr_to_paddr((uint64_t)PGD);
+    switch_ttbr0(kernel_pgd_paddr);
+
     // print the buffer to the framebuffer in red
-    // fb_print(buffer, RED);
+    fb_print(buffer, RED);
+
+    // restore previous page table state
+    switch_ttbr0(current_ttbr0);
+
     printf_err_lock.unlock();
 }
 
@@ -355,7 +381,18 @@ void tfp_printf_no_lock(const char* fmt, unsigned int color, ...) {
     va_end(va_copy_list);
     va_end(va);
 
-    // fb_print(buffer, color);
+    // we save current page table state before accessing framebuffer
+    uint64_t current_ttbr0;
+    __asm__ volatile("mrs %0, ttbr0_el1" : "=r"(current_ttbr0));
+
+    // ensure we're using the kernel's page table when accessing the framebuffer
+    uint64_t kernel_pgd_paddr = vaddr_to_paddr((uint64_t)PGD);
+    switch_ttbr0(kernel_pgd_paddr);
+
+    fb_print(buffer, color);
+
+    // restore previous page table state
+    switch_ttbr0(current_ttbr0);
 }
 
 __attribute__((noreturn)) void tfp_panic(const char* fmt, ...) {

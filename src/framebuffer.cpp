@@ -113,6 +113,9 @@ int fb_init(void) {
 
 void draw_pixel(int x, int y, unsigned int color) {
     Framebuffer* fb = fb_get();
+    if (!fb_init_done || fb->buffer == nullptr || fb->pitch == 0) {
+        return; 
+    }
     if (x >= 0 && x < (int)fb->width && y >= 0 && y < (int)fb->height) {
         unsigned int* ptr = (unsigned int*)fb->buffer;
         ptr[y * (fb->pitch / 4) + x] = color;
@@ -120,6 +123,10 @@ void draw_pixel(int x, int y, unsigned int color) {
 }
 
 void draw_char(int x, int y, char c, unsigned int color) {
+    if (!fb_init_done) {
+        return;
+    }
+    
     unsigned int idx = 0;
     if (c >= 32 && c <= 127) {
         idx = c - 32;
@@ -136,7 +143,16 @@ void draw_char(int x, int y, char c, unsigned int color) {
 }
 
 void fb_scroll(int scroll_pixels) {
+    if (!fb_init_done) {
+        return;
+    }
+    
     Framebuffer* fb = fb_get();
+    
+    if (fb->buffer == nullptr || fb->width == 0 || fb->height == 0 || fb->pitch == 0) {
+        return;
+    }
+    
     int row_pixels = fb->pitch / 4;  // number of pixels per row (each pixel is 4 bytes)
     int rows_to_move = fb->height - scroll_pixels;
     unsigned int* buf = (unsigned int*)fb->buffer;
@@ -156,30 +172,54 @@ void fb_scroll(int scroll_pixels) {
     }
 }
 
+static void clear_cell(int x_pixel, int y_pixel, unsigned int bg) {
+    Framebuffer* fb = fb_get();
+    unsigned int* buf = (unsigned int*)fb->buffer;
+    int pitch_px = fb->pitch / 4;
+    for (int row = 0; row < 10; row++) {
+        for (int col = 0; col < 8; col++) {
+            int px = x_pixel + col;
+            int py = y_pixel + row;
+            if (px >= 0 && px < (int)fb->width && py >= 0 && py < (int)fb->height) {
+                buf[py * pitch_px + px] = bg;
+            }
+        }
+    }
+}
+
 void fb_print(const char* str, unsigned int color) {
     fb_lock.lock();
-    if (!fb_init_done) {
-        fb_lock.unlock();
-        return;
-    }
+    if (!fb_init_done) { fb_lock.unlock(); return; }
     Framebuffer* fb = fb_get();
+    if (!fb->buffer || fb->width==0 || fb->height==0 || fb->pitch==0) {
+        fb_lock.unlock(); return;
+    }
+
     while (*str) {
         char c = *str++;
-        if (c == '\n') {
-            // when newline, move down by 10 pixels
-            if (y + 10 >= fb->height) {
-                // move down if out of room
+        if (c == '\r') {
+            // 1) reset to margin  
+            x = x_start;
+            // 2) clear old char cell  
+            clear_cell(x, y, BLACK);
+        }
+        else if (c == '\n') {
+            // newline: scroll or move down, then margin
+            if (y + 10 >= (int)fb->height) {
                 fb_scroll(10);
                 y = fb->height - 10;
             } else {
                 y += 10;
             }
             x = x_start;
-        } else {
+        }
+        else {
+            // draw the glyph
             draw_char(x, y, c, color);
             x += 8;
-            if (x >= fb->width) {
-                if (y + 10 >= fb->height) {
+            // wrap
+            if (x + 8 > (int)fb->width) {
+                if (y + 10 >= (int)fb->height) {
                     fb_scroll(10);
                     y = fb->height - 10;
                 } else {
@@ -189,8 +229,11 @@ void fb_print(const char* str, unsigned int color) {
             }
         }
     }
+
     fb_lock.unlock();
 }
+
+
 
 void fb_clear(unsigned int color) {
     Framebuffer* fb = fb_get();

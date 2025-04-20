@@ -84,7 +84,7 @@ extern "C" void kernel_main() {
     event_loop_tests();
     hash_test();
     frame_alloc_tests();
-    // user_paging_tests();
+    user_paging_tests();
     blocking_atomic_tests();
     // ramfs_tests();
     sdioTests();
@@ -111,6 +111,9 @@ extern "C" void secondary_kernel_init() {
     event_listener_init();
     mergeCores();
 }
+
+const char spin[] = { '/', '-', '\\', '|' };
+int idx = 0;
 
 extern "C" void primary_kernel_init() {
     create_page_tables();
@@ -152,6 +155,14 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
+
+        while (true) {
+        // '\r' returns you to column 0 of the same line
+        printf("\r%c", spin[idx]);
+        // assume you have a millisecond delay
+        for(int i = 0; i < 10000000; i++);
+        idx = (idx + 1) & 3;
+    }
     wake_up_cores();
     mergeCores();
 }
