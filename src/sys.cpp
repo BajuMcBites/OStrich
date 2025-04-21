@@ -139,6 +139,7 @@ void newlib_handle_exit(SyscallFrame* frame) {
         tcb->pcb->waiting_parent->up();
     }
     tcb->state = TASK_KILLED;
+    delete tcb;
     event_loop();
 }
 
@@ -286,7 +287,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
     for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
         start->add_waiting_parent(sema, cur);
     }
-    int* status_loca = (int*)frame->X[0];
+    int* status_location = (int*)frame->X[0];
     sema->down([=]{
         Signal* sig;
         int n_pid = -1;
@@ -298,7 +299,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
             }
             if (sig->val == SIGCHLD) {
                 cur->page_table->use_page_table();
-                *status_loca = sig->status;
+                *status_location = sig->status;
                 n_pid = sig->from_pid;
                 break;
             }
@@ -306,10 +307,10 @@ int newlib_handle_wait(SyscallFrame* frame) {
         if (n_pid == -1) {
             printf("no SIGCHLD signal - something's wrong\n");
         }
-        tcb->context.pc = (uint64_t)frame->X[30];
-        tcb->context.sp = (uint64_t)frame->X[29];
         set_return_value(tcb, n_pid);
+        tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
+        event_loop();
     });
     event_loop();
     return 0;
