@@ -62,7 +62,7 @@ struct PCB {
     int pid;
     PageTable* page_table;
     SupplementalPageTable* supp_page_table;
-    LockedQueue<Signal, SpinLock> sigs;
+    LockedQueue<Signal, SpinLock>* sigs;
     Semaphore* waiting_parent;
     PCB* parent;
     PCB* child_start;
@@ -79,6 +79,9 @@ struct PCB {
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
         waiting_parent = nullptr;
+        parent = nullptr;
+        child_start = child_end = next = nullptr;
+        sigs = new LockedQueue<Signal, SpinLock>;
     }
     PCB(int id) {
         task[pid] = this;
@@ -86,19 +89,20 @@ struct PCB {
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
         waiting_parent = nullptr;
+        parent = nullptr;
         child_start = child_end = next = nullptr;
     }
     
     void raise_signal(Signal* s) {
-        sigs.add(s);
+        this->sigs->add(s);
     }
 
-    void add_waiting_parent(Semaphore* s, PCB* p) {
+    void add_waiting_parent(Semaphore* s) {
         waiting_parent = s;
-        parent = p;
     }
 
     void add_child(PCB* child) {
+        child->parent = this;
         if (child_start == nullptr) {
             child_start = child_end = child;
         } else {
@@ -114,6 +118,7 @@ struct PCB {
     ~PCB() {
         delete page_table;
         delete supp_page_table;
+        delete sigs;
     }
 };
 

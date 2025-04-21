@@ -133,13 +133,14 @@ void handle_linux_syscall(int opcode, SyscallFrame* frame) {
 void newlib_handle_exit(SyscallFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID()); 
     printf("exit has ran, returning %d\n", frame->X[0]);
-    if (tcb->pcb->waiting_parent != nullptr) {
+    if (tcb->pcb->parent != nullptr) {
         Signal* s = new Signal(SIGCHLD, tcb->pcb->pid, frame->X[0]);
         tcb->pcb->parent->raise_signal(s);
-        tcb->pcb->waiting_parent->up();
+        if (tcb->pcb->waiting_parent) {
+            tcb->pcb->waiting_parent->up();
+        }
     }
     tcb->state = TASK_KILLED;
-    delete tcb;
     event_loop();
 }
 
@@ -244,7 +245,7 @@ int newlib_handle_kill(SyscallFrame* frame) {
             return 1;
         }
         Signal* s = new Signal(sig, curr_pid, 0);
-        target->sigs.add(s);
+        target->sigs->add(s);
     }
     return 0;
 }
@@ -283,16 +284,49 @@ int newlib_handle_wait(SyscallFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID()); 
     tcb->state = TASK_STOPPED;
     PCB* cur = tcb->pcb;
+    int* status_location = (int*)frame->X[0];
+    Signal* sig;
+    int n_pid = -1;
+    bool terminated = false;
+    printf("this is cur addy %x%x\n", (uint64_t)tcb->pcb->sigs >> 32, tcb->pcb->sigs);
+    while (true) {
+        sig = tcb->pcb->sigs->remove();
+        if (sig == nullptr) break;
+        if (sig->val == SIGKILL) {
+            terminated = true;
+            break;
+        }
+        if (sig->val == SIGCHLD) {
+            printf("we have a sigchlld lmoa\n");
+            cur->page_table->use_page_table();
+            *status_location = sig->status;
+            n_pid = sig->from_pid;
+            break;
+        }
+    }
+    int new_pc = (int)frame->X[30];
+    int new_sp = (int)frame->X[29];
+    if (terminated) {
+        tcb->state = TASK_KILLED;
+        event_loop();
+    } else if (n_pid != -1) {
+        // child already terminated
+        tcb->context.pc = new_pc;
+        set_return_value(tcb, n_pid);
+        tcb->state = TASK_RUNNING;
+        queue_user_tcb(tcb);
+        event_loop();
+    }
+    // need to wait for child to terminate
     Semaphore* sema = new Semaphore();
     for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
-        start->add_waiting_parent(sema, cur);
+        start->add_waiting_parent(sema);
     }
-    int* status_location = (int*)frame->X[0];
     sema->down([=]{
         Signal* sig;
         int n_pid = -1;
         bool terminated = false;
-        while (sig = (tcb->pcb->sigs.remove())) {
+        while (sig = (tcb->pcb->sigs->remove())) {
             if (sig->val == SIGKILL) {
                 terminated = true;
                 break;
@@ -307,6 +341,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
         if (n_pid == -1) {
             printf("no SIGCHLD signal - something's wrong\n");
         }
+        tcb->context.pc = new_pc;
         set_return_value(tcb, n_pid);
         tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
