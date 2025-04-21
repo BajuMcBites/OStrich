@@ -6,7 +6,7 @@
 #include "printf.h"
 #include "atomic.h"
 
-#define NR_TASKS 256
+#define NR_TASKS 32
 
 extern struct PCB* task[NR_TASKS];
 extern int curr_task;

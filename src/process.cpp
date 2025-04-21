@@ -3,7 +3,7 @@
 
 void fork(struct UserTCB *tcb) {
     PCB* child_pcb = new PCB;
-    child_pcb->pid = 99;
+    printf("creating pcb with pid %d\n", child_pcb->pid);
 
     child_pcb->supp_page_table->copy_mappings(tcb->pcb->supp_page_table, child_pcb, [=]() {
         UserTCB* child_tcb = new UserTCB();
@@ -12,6 +12,7 @@ void fork(struct UserTCB *tcb) {
         child_tcb->context.x0 = 0;
         tcb->context.x0 = child_pcb->pid;
         child_pcb->page_table->alloc_pgd([=] () {
+            child_tcb->state = TASK_RUNNING;
             queue_user_tcb(tcb);
             queue_user_tcb(child_tcb);
         });

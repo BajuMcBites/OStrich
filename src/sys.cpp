@@ -21,7 +21,7 @@ struct SyscallFrame {
         /* X[0] ... X[5] - arguments
         once function is called, X[0] will be the return value.
         */
-        uint64_t X[32];  // 0 ... 30 sp
+        uint64_t X[31];  // 0 ... 30 
     };
 };
 
@@ -148,6 +148,11 @@ int newlib_handle_close(SyscallFrame* frame) {
 }
 
 int newlib_handle_exec(SyscallFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    tcb->state = TASK_STOPPED;
+    PCB* pcb = tcb->pcb;
+    int pid = pcb->pid;
+    printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0], pid);
     char* pathname = (char*)frame->X[0];
     char** argv = (char**)frame->X[1];
     int elf_index = get_ramfs_index(pathname);
@@ -155,14 +160,10 @@ int newlib_handle_exec(SyscallFrame* frame) {
         printf("invalid file name!\n");
         return 1;
     }
-    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
-    tcb->state = TASK_STOPPED;
-    PCB* pcb = tcb->pcb;
-    int pid = pcb->pid;
     // calculate argc
     int argc = 0;
     for (; *argv[argc] != 0; argc++);
-    // load elf file
+    // // load elf file
     const int sz = ramfs_size(elf_index);
     char* buffer = (char*)kmalloc(sz);
     ramfs_read(buffer, 0, sz, elf_index);
@@ -187,7 +188,6 @@ int newlib_handle_exec(SyscallFrame* frame) {
     }
     // save &argv
     tcb->context.x1 = sp;
-
     // save argc
     tcb->context.x0 = argc;
     tcb->context.sp = sp;
@@ -195,6 +195,7 @@ int newlib_handle_exec(SyscallFrame* frame) {
     tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
     
     sema->down([=]() {
+        printf("we queued it %d\n", pid);
         tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
         kfree(buffer);

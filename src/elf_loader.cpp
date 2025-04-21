@@ -419,7 +419,8 @@ void *load_segment_mem(void *mem, Elf64_Phdr *phdr, PCB *pcb, Semaphore *sema) {
     if (phdr->p_flags & PF_X) prot |= PROT_EXEC;
     uint64_t to = (uint64_t)aligned_vaddr + page_offset;
     uint64_t from = (uint64_t)mem + mem_offset;
-    uint64_t end = from + file_size;
+    uint64_t file_end = from + file_size;
+    uint64_t mem_end = from + file_size;
     sema->down([=]() {
         mmap(pcb, (uint64_t)aligned_vaddr, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE,
              nullptr, 0, aligned_size, [=]() {
@@ -428,29 +429,28 @@ void *load_segment_mem(void *mem, Elf64_Phdr *phdr, PCB *pcb, Semaphore *sema) {
                       next_vaddr < (uint64_t)vaddr + mem_size; next_vaddr += PAGE_SIZE) {
                      mmap_sema->down([=]() {
                          load_mmapped_page(pcb, next_vaddr, [=](uint64_t kvaddr) {
+                            printf("this is kvaddr. %x%x\n", kvaddr >> 32, kvaddr);
                              pcb->page_table->use_page_table();
-                             void *page_to = (void *)next_vaddr;
-                             if (page_to < (void *)to) {
-                                 page_to = (void *)to;
+                             int pg_offset = to - (uint64_t)next_vaddr;
+                             if (pg_offset < 0) pg_offset = 0;
+                             void *k_page_to = (void *)(kvaddr + pg_offset);
+                             void *page_from = (void*)(from + next_vaddr - to + page_offset);
+                             size_t cpy_size = (size_t)(PAGE_SIZE - pg_offset);
+                             if (file_end - (uint64_t)page_from < cpy_size) {
+                                cpy_size = (size_t)(file_end - (uint64_t)page_from);
                              }
-                             void *page_from =
-                                 ((uint64_t)page_to - (uint64_t)to) + mem + mem_offset;
-                             size_t cpy_size = next_vaddr + PAGE_SIZE - (uint64_t)page_to;
-                             if ((uint64_t)end - (uint64_t)page_from < cpy_size) {
-                                 cpy_size = (size_t)((uint64_t)end - (uint64_t)page_from);
-                             }
-                             K::memcpy(page_to, page_from, cpy_size);
-                             if (mem_size > file_size &&
-                                 next_vaddr + PAGE_SIZE > (uint64_t)vaddr + file_size) {
-                                 uint64_t memset_start = next_vaddr;
-                                 if ((uint64_t)vaddr + file_size > memset_start) {
-                                     memset_start = (uint64_t)vaddr + file_size;
-                                 }
-                                 uint64_t memset_end = next_vaddr + PAGE_SIZE;
-                                 if ((uint64_t)vaddr + mem_size < memset_end) {
-                                     memset_end = (uint64_t)vaddr + mem_size;
-                                 }
-                                 K::memset((void *)memset_start, 0, memset_end - memset_start);
+                             K::memcpy(k_page_to, page_from, cpy_size);
+                             printf("this is uvaddr. %x%x\n", next_vaddr >> 32, next_vaddr);
+                             if (mem_size > file_size && next_vaddr + PAGE_SIZE > (uint64_t)vaddr + file_size) {
+                                uint64_t memset_start = kvaddr;
+                                if (next_vaddr < file_end) {
+                                    memset_start += file_end & 0xfff;
+                                }
+                                uint64_t memset_end = kvaddr + PAGE_SIZE;
+                                if (next_vaddr + PAGE_SIZE > mem_end) {
+                                    memset_end = kvaddr + (mem_end & 0xfff);
+                                }
+                                K::memset((void*)memset_start, 0, memset_end - memset_start);
                              }
                              mmap_sema->up();
                          });

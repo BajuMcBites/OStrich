@@ -250,6 +250,13 @@ mrs     x4, far_el1
 b       exc_handler
 .endm
 
+
+handle_page_fault:
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       page_fault_handler
+
 synchronous_el0:
     kernel_entry
     mov x0, sp
@@ -266,9 +273,11 @@ synchronous_el0:
 not_syscall:
     lsr x2, x1, #26         // x2 = EC = ESR_EL1[31:26]
     cmp x2, #0x24               // 0x24 = Data Abort //0b100000
-    b.eq page_fault_handler
+    b.eq handle_page_fault
     cmp x2, #0x20
-    b.eq page_fault_handler
+    b.eq handle_page_fault
+    cmp x2, #0x25
+    b.eq handle_page_fault
    
 not_data_abort:
     mov     x0, #0              // you could pass reason info here if needed

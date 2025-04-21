@@ -1,15 +1,19 @@
-// Simple user progam that uses libc but only calls one syscall.
-
 #include <unistd.h>
 #include <sys/wait.h>
 
 int main(int argc, char* argv[]) {
-    int c = fork();
-    if (c == 0) {
-        _exit(120);
-    } else {
-        int status = 0;
-        _wait(&status);
+    for (int i = 0; i < 20; i++) {
+        int c = fork();
+        if (c == 0) {
+            char* str= "0\0";
+            str[0] += i;
+            char* nargv[2] = {str, "\0"};
+            execve("exit", nargv, 0);
+            _exit(10200);
+        } else {
+            int sig = 0;
+            continue;
+        }
     }
-    return 0;
+    _exit(0);
 }

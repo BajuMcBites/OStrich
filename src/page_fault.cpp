@@ -14,25 +14,27 @@ extern "C" uint64_t get_esr_el1();
 extern PageCache* page_cache;
 extern Swap* swap;
 
-void handle_translation_fault(trap_frame* trap_frame, uint64_t esr);
-void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr);
+void handle_translation_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr, uint64_t far);
+void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr, uint64_t far);
 
-extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr) {
+extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr, uint64_t far) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     save_user_context(tcb, &trap_frame->X[0]);
 
     switch ((esr >> 2) & 0x3) {
         case 0:
-            printf_err("Address size fault");
+            printf_err("Address size fault\n");
+            printf(":\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n", esr >> 32, esr,
+                   elr >> 32, elr, spsr >> 32, spsr, far >> 32, far);
             K::assert(false, "Not handled yet\n");
             break;
         case 1:
             printf_err("Translation fault\n");
-            handle_translation_fault(trap_frame, esr);
+            handle_translation_fault(trap_frame, esr, elr, spsr, far);
             break;
         case 3:
             printf_err("Permission fault\n");
-            handle_permissions_fault(trap_frame, esr);
+            handle_permissions_fault(trap_frame, esr, elr, spsr, far);
             break;
         default:
             printf_err("Unkown fault");
@@ -42,7 +44,7 @@ extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr) {
     switch (esr >> 26) {
         case 0b100000:
             printf_err("Instruction abort, lower EL\n");
-            handle_translation_fault(trap_frame, esr);
+            handle_translation_fault(trap_frame, esr, elr, spsr, far);
             break;
         default:
             K::assert(false, "Fault not handled Error\n");
@@ -52,11 +54,8 @@ extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr) {
     K::assert(false, "NOOOOOOO\n");
 }
 
-void handle_translation_fault(trap_frame* trap_frame, uint64_t esr) {
+void handle_translation_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr, uint64_t far) {
     uint64_t user_sp = get_sp_el0();
-    uint64_t spsr = get_spsr_el1();
-    uint64_t elr = get_elr_el1();
-    uint64_t far = get_far_el1();
 
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     save_user_context(tcb, &trap_frame->X[0]);
@@ -83,11 +82,8 @@ void handle_translation_fault(trap_frame* trap_frame, uint64_t esr) {
     event_loop();
 }
 
-void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr) {
+void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr, uint64_t far) {
     uint64_t user_sp = get_sp_el0();
-    uint64_t spsr = get_spsr_el1();
-    uint64_t elr = get_elr_el1();
-    uint64_t far = get_far_el1();
 
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     PCB* pcb = tcb->pcb;
@@ -103,7 +99,6 @@ void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr) {
         }
 
         pcb->supp_page_table->lock.unlock();
-
         load_mmapped_page(pcb, far & ~0xFFF, [=](uint64_t kvaddr_old) {
             location->lock.lock([=]() {
                 printf("this is our supp page table %X\n", pcb->supp_page_table);
