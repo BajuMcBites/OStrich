@@ -96,8 +96,8 @@ int create_partition(uint32_t num_sectors, uint8_t system_id) {
     mbr->partitions[slot].starting_cylinder = 0;
     mbr->partitions[slot].system_id = system_id;
     mbr->partitions[slot].ending_head = 0xFF;
-    mbr->partitions[slot].ending_sector = 0xFFFF;
-    mbr->partitions[slot].ending_cylinder = 0xFFFF;
+    mbr->partitions[slot].ending_sector = 0xFF;
+    mbr->partitions[slot].ending_cylinder = 0xFF;
     mbr->partitions[slot].relative_sector = start_sector;
     mbr->partitions[slot].total_sectors = num_sectors;
 
@@ -154,4 +154,44 @@ int delete_partition(int partition_number) {
     }
 
     return SD_OK;
+}
+
+int set_partition_table(uint64_t fs_bytes, uint64_t swap_bytes) {
+    unsigned char mbr_block[512];
+    MasterBootRecord* mbr = read_mbr(mbr_block);
+    if (!mbr) {
+        return SD_ERROR;
+    }
+
+    // Clear the partition table.
+    K::memset(mbr->partitions, 0, sizeof(PartitionEntry) * NUM_PARTITIONS);
+
+    // Write the updated MBR back to the SD card.
+    if (sd_write_block(mbr_block, MBR_SECTOR, 1) < 0) {
+        return SD_ERROR;
+    }
+
+    // Create the filesystem partition.
+    create_partition(fs_bytes / SD_BLK_SIZE, 0x0C);
+
+    // Create the swap partition.
+    create_partition(swap_bytes / SD_BLK_SIZE, 0x0D);
+
+    return SD_OK;
+}
+
+int get_partition_start_sector(uint8_t system_id) {
+    unsigned char mbr_block[512];
+    MasterBootRecord* mbr = read_mbr(mbr_block);
+    if (!mbr) {
+        return SD_ERROR;
+    }
+
+    for (int i = 0; i < NUM_PARTITIONS; i++) {
+        if (mbr->partitions[i].system_id == system_id) {
+            return mbr->partitions[i].relative_sector;
+        }
+    }
+
+    return SD_ERROR;
 }

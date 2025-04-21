@@ -364,9 +364,3 @@ fiq_el0_32:
 serror_el0_32:
     mov     x0, #3
     handle_exception
-
-.globl ret_from_fork
-ret_from_fork:
-	bl	schedule_tail
-	mov	x0, x20
-	blr	x19 		//should never return

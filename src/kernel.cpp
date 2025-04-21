@@ -4,6 +4,7 @@
 #include "event.h"
 #include "frame.h"
 #include "framebuffer.h"
+#include "fs_init.h"
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
@@ -11,12 +12,12 @@
 #include "libk.h"
 #include "listener.h"
 #include "mm.h"
+#include "partition.h"
 #include "partition_tests.h"
 #include "percpu.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
-#include "sched.h"
 #include "sdio.h"
 #include "sdio_tests.h"
 #include "snake.h"
@@ -89,8 +90,9 @@ extern "C" void kernel_main() {
     // bitmap_tests();
     // swap_tests();
     elf_load_test();
-    // partitionTests(); // Won't pass on QEMU without a formatted SD card image so I'm commenting
-    // it out.
+    // partitionTests();
+    // test_fs();
+    // testSnapshot();
 }
 
 extern char __heap_start[];
@@ -142,6 +144,9 @@ extern "C" void primary_kernel_init() {
     event_listener_init();
 
     usb_initialize();
+
+    set_partition_table(1024 * 1024 /* Filesystem (Bytes) */, 1024 * 1024 /* Swap (Bytes) */);
+    fs_init();
 
     smpInitDone = true;
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.

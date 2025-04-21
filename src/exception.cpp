@@ -3,6 +3,7 @@
 #include "printf.h"
 #include "stdint.h"
 #include "uart.h"
+#include "utils.h"
 
 /**
  * common exception handler

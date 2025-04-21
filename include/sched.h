@@ -7,15 +7,9 @@
 
 #define THREAD_SIZE 4096
 
-#define NR_TASKS 64
-
 #define TASK_RUNNING 0
 
 #include "event.h"
-
-extern struct task_struct* current;
-extern struct task_struct* task[NR_TASKS];
-extern int nr_tasks;
 
 struct task_struct {
     struct cpu_context cpu_context;
