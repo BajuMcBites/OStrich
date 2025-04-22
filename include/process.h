@@ -109,11 +109,25 @@ struct PCB {
         } else {
             child_end->next = child;
             child->before = child_end;
+            child_end = child;
         }
     }
 
     void remove_child(PCB* child) {
-        child->before = child->next;
+        if (child->before == nullptr) {
+            if (child->next == nullptr) {
+                child_end = child_start = child->before = child->next = nullptr;
+            } else {
+                child->next->before = nullptr;
+                child_start = child->next;
+            }
+        } else if (child->next == nullptr) {
+            child_end = child->before;
+            child->before->next = nullptr;
+        } else {
+            child->before->next = child->next;
+            child->next->before = child->before;
+        }
     }
 
     ~PCB() {

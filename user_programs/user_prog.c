@@ -9,10 +9,11 @@ int main(int argc, char* argv[]) {
             str[0] += getpid();
             char* nargv[2] = {str, "\0"};
             execve("exit", nargv, 0);
-        } else {
-            int status = 0;
-            wait(&status);
         }
+    }
+    for (int i = 0; i < 20; i++) {
+        int status = 0;
+        wait(&status);
     }
     _exit(1);
 }

@@ -276,8 +276,6 @@ not_syscall:
     b.eq handle_page_fault
     cmp x2, #0x20
     b.eq handle_page_fault
-    cmp x2, #0x25
-    b.eq handle_page_fault
    
 not_data_abort:
     mov     x0, #0              // you could pass reason info here if needed

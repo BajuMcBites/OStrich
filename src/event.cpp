@@ -81,9 +81,11 @@ void run_events() {
                     leftover.add(sig);
                 }
             }
-            leftover.for_each([=](Signal* s){
-                ((UserTCB*)nextThread)->pcb->sigs->add(s);
-            });
+            sig = leftover.remove();
+            while (sig != nullptr) {
+                ((UserTCB*)nextThread)->pcb->sigs->add(sig);
+                sig = leftover.remove();
+            }
         }
         if (terminated) {
             continue;
