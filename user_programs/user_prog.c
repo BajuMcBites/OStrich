@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
             _exit(10200);
         } else {
             int sig = 0;
-            wait(&sig);
+            continue;
         }
     }
     _exit(0);

@@ -65,7 +65,6 @@ void handle_translation_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr
     }
 
     load_mmapped_page(tcb->pcb, far & (~0xFFF), [=](uint64_t kvaddr) {
-        printf("%x%x this is kvaddr\n", kvaddr >> 32, kvaddr);
         if (kvaddr == 0) {
             mmap_page(tcb->pcb, far & (~0xFFF), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE,
                       nullptr, 0, 0, [=]() {
