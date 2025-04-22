@@ -135,7 +135,6 @@ void newlib_handle_exit(SyscallFrame* frame) {
     printf("exit has ran, returning %d\n", frame->X[0]);
     if (tcb->pcb->parent != nullptr) {
         Signal* s = new Signal(SIGCHLD, tcb->pcb->pid, frame->X[0]);
-        printf("%d this is parent pid\n", tcb->pcb->parent->pid);
         tcb->pcb->parent->raise_signal(s);
         if (tcb->pcb->waiting_parent) {
             tcb->pcb->waiting_parent->up();
@@ -173,46 +172,29 @@ int newlib_handle_exec(SyscallFrame* frame) {
     Semaphore* sema = new Semaphore(1);
     void* new_pc = elf_load((void*)buffer, pcb, sema);
     
-    
-    uint64_t sp = 0x0000fffffffff000;
-    sema->down([=]() {
-        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
-             0, PAGE_SIZE, [=]() {
-                 load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
-                    printf("this is sskvaddr. %x%x\n", kvaddr >> 32, kvaddr);
-                     pcb->page_table->use_page_table();
-                     sema->up();
-                 });
-             });
-    });
     // set up stack
-    sema->down([=]() {
-        pcb->page_table->use_page_table();
-        uint64_t sp = 0x0000fffffffff000;
-        uint64_t addrs[argc];
-        for (int i = argc - 1; i >= 0; --i) {
-            int len = K::strlen(argv[i]) + 1;
-            sp -= len;
-            addrs[i] = sp;
-            K::memcpy((void*)sp, argv[i], len);
-        }
-        sp &= ~((uint64_t)7);
+    uint64_t sp = 0x0000fffffffff000;
+    uint64_t addrs[argc];
+    for (int i = argc - 1; i >= 0; --i) {
+        int len = K::strlen(argv[i]) + 1;
+        sp -= len;
+        addrs[i] = sp;
+        K::memcpy((void*)sp, argv[i], len);
+    }
+    sp &= ~((uint64_t)7);
+    sp -= 8;
+    *(uint64_t*)sp = 0;
+    for (int i = argc - 1; i >= 0; --i) {
         sp -= 8;
-        *(uint64_t*)sp = 0;
-        for (int i = argc - 1; i >= 0; --i) {
-            sp -= 8;
-            *(uint64_t*)sp = addrs[i];
-        }
-
-        // save &argv
-        tcb->context.x1 = sp;
-        // save argc
-        tcb->context.x0 = argc;
-        tcb->context.sp = sp;
-        tcb->context.pc = (uint64_t)new_pc;
-        tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
-        sema->up();
-    });
+        *(uint64_t*)sp = addrs[i];
+    }
+    // save &argv
+    tcb->context.x1 = sp;
+    // save argc
+    tcb->context.x0 = argc;
+    tcb->context.sp = sp;
+    tcb->context.pc = (uint64_t)new_pc;
+    tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
     
     sema->down([=]() {
         printf("we queued it %d\n", pid);
@@ -300,7 +282,6 @@ int newlib_handle_unlink(SyscallFrame* frame) {
 
 int newlib_handle_wait(SyscallFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID()); 
-    save_user_context(tcb, frame->X);
     tcb->state = TASK_STOPPED;
     PCB* cur = tcb->pcb;
     int* status_location = (int*)frame->X[0];
@@ -324,11 +305,13 @@ int newlib_handle_wait(SyscallFrame* frame) {
         }
     }
     int new_pc = (int)frame->X[30];
+    int new_sp = (int)frame->X[29];
     if (terminated) {
         tcb->state = TASK_KILLED;
         event_loop();
     } else if (n_pid != -1) {
         // child already terminated
+        tcb->context.pc = new_pc;
         set_return_value(tcb, n_pid);
         tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
@@ -337,7 +320,6 @@ int newlib_handle_wait(SyscallFrame* frame) {
     // need to wait for child to terminate
     Semaphore* sema = new Semaphore();
     for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
-        printf("added parent sema\n");
         start->add_waiting_parent(sema);
     }
     sema->down([=]{
@@ -359,9 +341,11 @@ int newlib_handle_wait(SyscallFrame* frame) {
         if (n_pid == -1) {
             printf("no SIGCHLD signal - something's wrong\n");
         }
-        // set_return_value(tcb, n_pid);
+        tcb->context.pc = new_pc;
+        set_return_value(tcb, n_pid);
         tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
+        event_loop();
     });
     event_loop();
     return 0;
