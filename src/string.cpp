@@ -4,6 +4,10 @@
 #include "libk.h"
 #include "printf.h"
 
+string::string() {
+    this->container.push_back('\0');
+}
+
 string::string(const string& other) {
     // Do a deep copy
     *this += other;
@@ -20,6 +24,7 @@ string::string(const char* c_str) {
     while (c_str[i] != '\0') {
         container.push_back(c_str[i++]);
     }
+    container.push_back('\0');
 }
 
 string& string::operator=(const string& other) {
@@ -48,7 +53,8 @@ char& string::operator[](size_t idx) {
 }
 
 string& string::operator+=(const char& character) {
-    this->container.push_back(character);
+    this->container.back() = character;
+    this->container.push_back('\0');
     return *this;
 }
 
@@ -83,7 +89,7 @@ string operator+(string&& lhs, const string& rhs) {
 }
 
 size_t string::length() const {
-    return this->container.size();
+    return this->container.size() - 1;
 }
 
 bool string::operator==(const string& other) const {
@@ -191,4 +197,8 @@ void stringTest() {
     // Print test results
     // You might want to implement a toString() method or overload << for proper output
     printf("String tests passed!\n");
+}
+
+const char* string::c_str() const {
+    return this->container.data_ptr();
 }

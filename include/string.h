@@ -9,7 +9,7 @@ class string {
     string(const char* c_str);
     string(const string& other);
     string(string&& other);
-    string() = default;
+    string();
     ~string() = default;
 
     // Assignment operators
@@ -41,6 +41,7 @@ class string {
 
     // Nice to have
     bool starts_with(const string& other) const;
+    const char* c_str() const;
 
    private:
     std::vector<char> container;

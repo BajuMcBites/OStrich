@@ -101,7 +101,9 @@ namespace std {
             const T* end() const { return data + cur_size; }
             T* begin() { return data; }
             T* end() { return data + cur_size; }
-            
+
+            const T* data_ptr() const { return data; }
+            T* data_ptr() { return data; }
         private:
             T* data;
             size_t cur_size;
