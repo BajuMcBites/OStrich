@@ -122,7 +122,7 @@ void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr
                                         memcpy((void*)kvaddr_new, (void*)kvaddr_old, PAGE_SIZE);
                                         unpin_frame(vaddr_to_paddr(kvaddr_new));
                                         unpin_frame(vaddr_to_paddr(kvaddr_old));
-                                        location->lock.unlock();
+                                        // location->lock.unlock();
                                         pcb->supp_page_table->lock.unlock();
                                         queue_user_tcb(tcb);
                                     });
