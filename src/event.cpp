@@ -111,7 +111,7 @@ void event_loop() {
  * before loading the user context of the tcb and eret-ing
  */
 void enter_user_space(UserTCB* tcb) {
-    printf("going to process %d with pc %x\n", tcb->pcb->pid, tcb->context.pc);
+    // printf("going to process %d with pc %x\n", tcb->pcb->pid, tcb->context.pc);
     tcb->pcb->page_table->use_page_table();
     flush_tlb();
     runningUserTCB[getCoreID()] = tcb;

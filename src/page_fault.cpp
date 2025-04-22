@@ -29,11 +29,11 @@ extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr, uint64_
             K::assert(false, "Not handled yet\n");
             break;
         case 1:
-            printf_err("Translation fault\n");
+            // printf_err("Translation fault\n");
             handle_translation_fault(trap_frame, esr, elr, spsr, far);
             break;
         case 3:
-            printf_err("Permission fault\n");
+            // printf_err("Permission fault\n");
             handle_permissions_fault(trap_frame, esr, elr, spsr, far);
             break;
         default:
@@ -104,29 +104,29 @@ void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr
             //  pcb->supp_page_table->lock.lock([=]() {
 
                 location->lock.lock([=]() {
-                    printf("this is our supp page table %X\n", pcb->supp_page_table);
+                    // printf("this is our supp page table %X\n", pcb->supp_page_table);
     
                     if (location->ref_count == 1) {
-                        printf("we are the only user rn %d, refcound %d\n", pcb->pid,
-                               location->ref_count);
+                        // printf("we are the only user rn %d, refcound %d\n", pcb->pid,
+                        //        location->ref_count);
                         unpin_frame(vaddr_to_paddr(kvaddr_old));
                         queue_user_tcb(tcb);
                         location->lock.unlock();
                         // pcb->supp_page_table->lock.unlock();
                         return;
                     } else {
-                        printf("copy on writing %d\n", pcb->pid);
+                        // printf("copy on writing %d\n", pcb->pid);
     
                         swap->get_swap_id([=](uint64_t new_id) {
-                            printf("attained swap id %d\n", pcb->pid);
+                            // printf("attained swap id %d\n", pcb->pid);
 
                             page_cache->get_or_add(
                                 nullptr, 0, new_id, new_local, [=](PageLocation* new_location) {
-                                    printf("added to page cache %d\n", pcb->pid);
+                                    // printf("added to page cache %d\n", pcb->pid);
 
                                     pcb->supp_page_table->map_vaddr(new_local->uvaddr, new_local);
                                     load_mmapped_page(pcb, far & ~0xFFF, [=](uint64_t kvaddr_new) {
-                                        printf("loaded into mem %d\n", pcb->pid);
+                                        // printf("loaded into mem %d\n", pcb->pid);
 
                                         memcpy((void*)kvaddr_new, (void*)kvaddr_old, PAGE_SIZE);
                                         unpin_frame(vaddr_to_paddr(kvaddr_new));

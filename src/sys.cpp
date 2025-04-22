@@ -136,7 +136,6 @@ void newlib_handle_exit(SyscallFrame* frame) {
     if (tcb->pcb->parent != nullptr) {
         Signal* s = new Signal(SIGCHLD, tcb->pcb->pid, frame->X[0]);
         tcb->pcb->parent->raise_signal(s);
-        printf("raised signal\n");
         if (tcb->pcb->waiting_parent) {
             tcb->pcb->waiting_parent->up();
         }
@@ -157,7 +156,7 @@ int newlib_handle_exec(SyscallFrame* frame) {
     pcb->supp_page_table = new SupplementalPageTable();
     pcb->page_table = new PageTable();
     int pid = pcb->pid;
-    printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0], pid);
+    // printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0], pid);
     char* pathname = (char*)frame->X[0];
     char** argv = (char**)frame->X[1];
     int elf_index = get_ramfs_index(pathname);
@@ -200,7 +199,7 @@ int newlib_handle_exec(SyscallFrame* frame) {
     tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
     
     sema->down([=]() {
-        printf("we queued it %d\n", pid);
+        // printf("we queued it %d\n", pid);
         tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
         kfree(buffer);
@@ -210,7 +209,7 @@ int newlib_handle_exec(SyscallFrame* frame) {
 }
 
 int newlib_handle_fork(SyscallFrame* frame) {
-    printf("called fork\n");
+    // printf("called fork\n");
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     save_user_context(tcb, frame->X);
     fork(tcb);
@@ -292,7 +291,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
     Signal* sig;
     int n_pid = -1;
     bool terminated = false;
-    printf("this is cur addy %x%x\n", (uint64_t)tcb->pcb->sigs >> 32, tcb->pcb->sigs);
+    // printf("this is cur addy %x%x\n", (uint64_t)tcb->pcb->sigs >> 32, tcb->pcb->sigs);
     while (true) {
         sig = tcb->pcb->sigs->remove();
         if (sig == nullptr) break;
@@ -301,7 +300,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
             break;
         }
         if (sig->val == SIGCHLD) {
-            printf("we have a sigchlld lmoa\n");
+            // printf("we have a sigchlld lmoa\n");
             cur->page_table->use_page_table();
             *status_location = sig->status;
             n_pid = sig->from_pid;
@@ -322,7 +321,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
     // need to wait for child to terminate
     Semaphore* sema = new Semaphore();
     for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
-        printf("added parent sema\n");
+        // printf("added parent sema\n");
         start->add_waiting_parent(sema);
     }
     sema->down([=]{
