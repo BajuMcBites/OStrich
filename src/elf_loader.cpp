@@ -429,7 +429,6 @@ void *load_segment_mem(void *mem, Elf64_Phdr *phdr, PCB *pcb, Semaphore *sema) {
                       next_vaddr < (uint64_t)vaddr + mem_size; next_vaddr += PAGE_SIZE) {
                      mmap_sema->down([=]() {
                          load_mmapped_page(pcb, next_vaddr, [=](uint64_t kvaddr) {
-                            printf("this is kvaddr. %x%x\n", kvaddr >> 32, kvaddr);
                              pcb->page_table->use_page_table();
                              int pg_offset = to - (uint64_t)next_vaddr;
                              if (pg_offset < 0) pg_offset = 0;
@@ -440,7 +439,6 @@ void *load_segment_mem(void *mem, Elf64_Phdr *phdr, PCB *pcb, Semaphore *sema) {
                                 cpy_size = (size_t)(file_end - (uint64_t)page_from);
                              }
                              K::memcpy(k_page_to, page_from, cpy_size);
-                             printf("this is uvaddr. %x%x\n", next_vaddr >> 32, next_vaddr);
                              if (mem_size > file_size && next_vaddr + PAGE_SIZE > (uint64_t)vaddr + file_size) {
                                 uint64_t memset_start = kvaddr;
                                 if (next_vaddr < file_end) {
