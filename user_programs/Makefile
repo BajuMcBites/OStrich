@@ -3,11 +3,11 @@ INCLUDE_DIR=$(LIBC_FILES)/include
 LIB_DIR=$(LIBC_FILES)/lib
 LINKER_SCRIPT=app.ld
 
-TOOLCHAIN_PREFIX = $(strip $(shell uname -s)	) # semi portable ig.
+CURRENT_OS = $(strip $(shell uname -s)) # semi portable ig.
 ifeq ($(findstring Darwin,$(CURRENT_OS)),Darwin) # MACOS
-    CROSS_COMPILE = aarch64-elf-
+    TOOLCHAIN_PREFIX = aarch64-elf-
 else
-    CROSS_COMPILE = aarch64-linux-gnu-
+    TOOLCHAIN_PREFIX = aarch64-linux-gnu-
 endif
 
 CC=$(TOOLCHAIN_PREFIX)gcc
