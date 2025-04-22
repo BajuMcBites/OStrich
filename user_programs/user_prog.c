@@ -6,14 +6,13 @@ int main(int argc, char* argv[]) {
         int c = fork();
         if (c == 0) {
             char* str= "0\0";
-            str[0] += i;
+            str[0] += getpid();
             char* nargv[2] = {str, "\0"};
             execve("exit", nargv, 0);
-            _exit(10200);
         } else {
-            int sig = 0;
-            continue;
+            int status = 0;
+            wait(&status);
         }
     }
-    _exit(0);
+    _exit(1);
 }

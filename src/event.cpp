@@ -73,11 +73,17 @@ void run_events() {
         bool terminated = false;
         if (!nextThread->kernel_event) {
             Signal* sig;
-            while (sig = ((UserTCB*)nextThread)->pcb->sigs.remove()) {
+            Queue<Signal> leftover;
+            while (sig = ((UserTCB*)nextThread)->pcb->sigs->remove()) {
                 if (sig->val == SIGKILL) {
                     terminated = true;
+                } else {
+                    leftover.add(sig);
                 }
             }
+            leftover.for_each([=](Signal* s){
+                ((UserTCB*)nextThread)->pcb->sigs->add(s);
+            });
         }
         if (terminated) {
             continue;

@@ -92,6 +92,7 @@ void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr
 
     pcb->supp_page_table->lock.lock([=]() {
         LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(far & ~0xFFF);
+        LocalPageLocation* new_local = new LocalPageLocation(pcb, local->perm, local->sharing_mode, local->uvaddr);
         PageLocation* location = local->location;
 
         if ((local->perm & WRITE_PERM == 0 && (esr >> 6) & 0x1) || (local->perm & READ_PERM == 0)) {
@@ -100,38 +101,50 @@ void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr
 
         pcb->supp_page_table->lock.unlock();
         load_mmapped_page(pcb, far & ~0xFFF, [=](uint64_t kvaddr_old) {
-            location->lock.lock([=]() {
-                printf("this is our supp page table %X\n", pcb->supp_page_table);
+            //  pcb->supp_page_table->lock.lock([=]() {
 
-                if (location->ref_count == 1) {
-                    printf("we are the only user rn %d, refcound %d\n", pcb->pid,
-                           location->ref_count);
-                    unpin_frame(vaddr_to_paddr(kvaddr_old));
-                    queue_user_tcb(tcb);
-                    location->lock.unlock();
-                    pcb->supp_page_table->lock.unlock();
-                    return;
-                } else {
-                    printf("copy on writing %d\n", pcb->pid);
+                location->lock.lock([=]() {
+                    printf("this is our supp page table %X\n", pcb->supp_page_table);
+    
+                    if (location->ref_count == 1) {
+                        printf("we are the only user rn %d, refcound %d\n", pcb->pid,
+                               location->ref_count);
+                        unpin_frame(vaddr_to_paddr(kvaddr_old));
+                        queue_user_tcb(tcb);
+                        location->lock.unlock();
+                        // pcb->supp_page_table->lock.unlock();
+                        return;
+                    } else {
+                        printf("copy on writing %d\n", pcb->pid);
+    
+                        swap->get_swap_id([=](uint64_t new_id) {
+                            printf("attained swap id %d\n", pcb->pid);
 
-                    swap->get_swap_id([=](uint64_t new_id) {
-                        page_cache->remove(local, [=]() {
                             page_cache->get_or_add(
-                                nullptr, 0, new_id, local, [=](PageLocation* new_location) {
+                                nullptr, 0, new_id, new_local, [=](PageLocation* new_location) {
+                                    printf("added to page cache %d\n", pcb->pid);
+
+                                    pcb->supp_page_table->map_vaddr(new_local->uvaddr, new_local);
                                     load_mmapped_page(pcb, far & ~0xFFF, [=](uint64_t kvaddr_new) {
+                                        printf("loaded into mem %d\n", pcb->pid);
+
                                         memcpy((void*)kvaddr_new, (void*)kvaddr_old, PAGE_SIZE);
                                         unpin_frame(vaddr_to_paddr(kvaddr_new));
                                         unpin_frame(vaddr_to_paddr(kvaddr_old));
-                                        location->lock.unlock();
-                                        pcb->supp_page_table->lock.unlock();
+                                        page_cache->remove(local, [=]() {
+                                            delete local;
+                                        });
+    
+                                        // pcb->supp_page_table->lock.unlock();
                                         queue_user_tcb(tcb);
                                     });
                                 });
-                        });
-                    });
-                }
-            });
-        });
+                            });
+                    }
+                });
+
+             });
+        // });
     });
     event_loop();
 }
