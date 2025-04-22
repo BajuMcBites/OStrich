@@ -299,10 +299,12 @@ void* operator new(size_t size) {
 }
 
 void operator delete(void* p) noexcept {
+    if (!p) return;
     return kfree(p);
 }
 
 void operator delete(void* p, size_t sz) {
+    if (!p) return;
     return kfree(p);
 }
 
@@ -313,9 +315,11 @@ void* operator new[](size_t size) {
 }
 
 void operator delete[](void* p) noexcept {
+    if (!p) return;
     return kfree(p);
 }
 
 void operator delete[](void* p, size_t sz) {
+    if (!p) return;
     return kfree(p);
 }
