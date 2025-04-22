@@ -84,6 +84,16 @@ namespace std {
                 data[cur_size++] = value;
             } 
 
+            T& back() {
+                K::assert(cur_size > 0, "vector: back() called on empty vector.");
+                return data[cur_size - 1];
+            }
+
+            const T& back() const {
+                K::assert(cur_size > 0, "vector: back() called on empty vector.");
+                return data[cur_size - 1];
+            }
+
             size_t size() const { return cur_size; }
 
             // Allow range-based for-loops
