@@ -56,6 +56,7 @@ struct cpu_context {
 
 struct TCB {
     TCB* next = nullptr;
+    bool irq_was_disabled = false;
     bool kernel_event = true;
     virtual void run() = 0;  // Abstract/virtual function that must be overridden
     virtual ~TCB() {};       // Allows child classes to be deleted
@@ -69,6 +70,7 @@ extern PerCPU<CPU_Queues> readyQueue;
 extern void event_loop();
 extern void enter_user_space(struct UserTCB* tcb);
 extern void save_user_context(struct UserTCB* tcb, uint64_t* regs);
+extern void yield(KernelEntryFrame* frame);
 
 struct UserTCB : public TCB {
     cpu_context context;
@@ -159,5 +161,7 @@ inline void create_event_core(
 void set_return_value(UserTCB* tcb, uint64_t ret_val);
 
 UserTCB* get_running_user_tcb(int core);
+
+TCB* get_running_task(int core);
 
 #endif
