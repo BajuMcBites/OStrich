@@ -76,6 +76,7 @@ void run_events() {
             Signal* sig_arr[64];
             int ptr = 0;
             while (sig = (((UserTCB*)nextThread)->pcb->sigs->remove())) {
+                printf("yea theres a signal1!!\n");
                 if (sig->val == SIGKILL) {
                     terminated = true;
                     break;

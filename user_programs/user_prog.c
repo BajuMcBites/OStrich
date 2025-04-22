@@ -7,12 +7,10 @@ int main(int argc, char* argv[]) {
         if (c == 0) {
             char* str= "0\0";
             str[0] += i;
-            // char* nargv[2] = {str, "\0"};
-            // execve("exit", nargv, 0);
-            _exit(10200);
+            char* nargv[2] = {str, "\0"};
+            execve("exit", nargv, 0);
         } else {
-            int sig = 0;
-            wait(&sig);
+            continue;
         }
     }
     _exit(0);
