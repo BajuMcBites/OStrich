@@ -73,18 +73,10 @@ void run_events() {
         bool terminated = false;
         if (!nextThread->kernel_event) {
             Signal* sig;
-            Signal* sig_arr[64];
-            int ptr = 0;
-            while (sig = (((UserTCB*)nextThread)->pcb->sigs->remove())) {
+            while (sig = ((UserTCB*)nextThread)->pcb->sigs.remove()) {
                 if (sig->val == SIGKILL) {
                     terminated = true;
-                    break;
-                } else {
-                    sig_arr[ptr++] = sig;
                 }
-            }
-            for (int i = 0; i < ptr; i++) {
-                ((UserTCB*)nextThread)->pcb->sigs->add(sig_arr[i]);
             }
         }
         if (terminated) {
