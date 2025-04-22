@@ -133,7 +133,8 @@ class Interrupts {
    public:
     static bool isDisabled() {
         uint64_t oldFlags = getFlags();
-        return (getFlags() & (1 << 7)) != 0;  // I-bit = IRQ disable
+        // double check this is the correct bit
+        return (oldFlags & (1 << 7)) != 0;  // I-bit = IRQ disable
     }
 
     static bool disable() {

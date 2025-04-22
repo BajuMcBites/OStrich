@@ -4,6 +4,7 @@
 #include "atomic.h"
 #include "libk.h"
 #include "percpu.h"
+#include "peripherals/arm_devices.h"
 #include "printf.h"
 #include "queue.h"
 #include "stdint.h"

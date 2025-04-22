@@ -100,9 +100,9 @@
 //     return;
 // }
 
-extern "C" void page_fault_handler(trap_frame* trap_frame) {
+extern "C" void page_fault_handler(KernelEntryFrame* trap_frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
-    save_user_context(tcb, &trap_frame->X[0]);
+    save_user_context(tcb, trap_frame);
 
     printf("in data abort handler\n");
 }

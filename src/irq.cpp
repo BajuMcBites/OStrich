@@ -36,8 +36,10 @@ void enable_interrupt_controller() {
 Atomic<int> wait{0};
 
 extern "C" void handle_irq(KernelEntryFrame* frame) {
-    disable_irq();
     auto me = getCoreID();
+    auto event = get_running_task(me);
+    event->irq_was_disabled = Interrupts::disable();  // disable returns the irq status before irq
+
     core_int_source_reg_t irq_source;
     if (me == 0) {
         irq_source.Raw32 = QA7->Core0IRQSource.Raw32;
@@ -122,5 +124,5 @@ extern "C" void handle_irq(KernelEntryFrame* frame) {
             put32(CORE3_MBOX0_SET, 0);
         }
     }
-    enable_irq();
+    Interrupts::restore(event->irq_was_disabled);
 }

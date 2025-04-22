@@ -14,6 +14,7 @@
 #include "mm.h"
 #include "partition_tests.h"
 #include "percpu.h"
+#include "peripherals/arm_devices.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
@@ -26,7 +27,6 @@
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
-#include "peripherals/arm_devices.h"
 
 void mergeCores();
 
@@ -140,38 +140,42 @@ extern "C" void secondary_kernel_init() {
     init_mmu();
     enable_irq();
     event_listener_init();
-    while(1);
+    while (1);
     mergeCores();
 }
 
-void timerInit(){
-    printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
-    printf("Setting up Local Timer Irq to Core0\n");
+void timerInit() {
     QA7->TimerRouting.Routing =
-        LOCALTIMER_TO_CORE3_IRQ;  // Route local timer IRQ to Core0 // Ensure the
-    printf("TimerRouting: 0x%x\n", QA7->TimerRouting.Raw32);
-    printf("TimerRouting adr:0x%x\n", (void *)&QA7->TimerRouting.Raw32);
+        LOCALTIMER_TO_CORE3_IRQ;                     // Route local timer IRQ to Core0 // Ensure the
+    QA7->TimerControlStatus.ReloadValue = 50000000;  // Timer period set
+    QA7->TimerControlStatus.TimerEnable = 1;         // Timer enabled
+    QA7->TimerControlStatus.IntEnable = 1;           // Timer IRQ enabled
+    QA7->TimerClearReload.IntClear = 1;              // Clear interrupt
+    QA7->TimerClearReload.Reload = 1;                // Reload now
 
-    printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
-    QA7->TimerControlStatus.ReloadValue = 20000000;  // Timer period set
-    QA7->TimerControlStatus.TimerEnable = 1;       // Timer enabled
-    QA7->TimerControlStatus.IntEnable = 1;         // Timer IRQ enabled
-    printf("TimerControlStatus: 0x%x\n", QA7->TimerControlStatus.Raw32);
-    printf("TimerContraolStatus ard: 0x%x\n", (void *)&QA7->TimerControlStatus.Raw32);
+    // We are in NS EL1 so enable IRQ to core0 that level
+    // Make sure FIQ is zero, if set irq is ignored (I think)
+    QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ = 1;
+    QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;
+    QA7->Core1TimerIntControl.nCNTPNSIRQ_IRQ = 1;
+    QA7->Core1TimerIntControl.nCNTPNSIRQ_FIQ = 0;
+    QA7->Core2TimerIntControl.nCNTPNSIRQ_IRQ = 1;
+    QA7->Core2TimerIntControl.nCNTPNSIRQ_FIQ = 0;
+    QA7->Core3TimerIntControl.nCNTPNSIRQ_IRQ = 1;
+    QA7->Core3TimerIntControl.nCNTPNSIRQ_FIQ = 0;
 
-    printf("TimerClearReload: 0x%x\n", QA7->TimerClearReload.Raw32);
-    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;    // Reload now
-    printf("TimerClearReload: 0x%x\n",
-            QA7->TimerClearReload.Raw32);  
-    printf("TimerClearReload adr: 0x%x\n", (void *)&QA7->TimerClearReload.Raw32);
+    // set up mailbox
+    QA7->Core0MailboxIntControl.Mailbox0_IRQ = 1;
+    QA7->Core0MailboxIntControl.Mailbox0_FIQ = 0;
 
-    printf("Core3TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
-    QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ =
-        1;  // We are in NS EL1 so enable IRQ to core0 that level
-    QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;  // Make sure FIQ is zero
-    printf("Core0TimerIntControl: 0x%x\n", QA7->Core0TimerIntControl.Raw32);
-    printf("Core0TimerIntControl adr: 0x%x\n", (void *)&QA7->Core0TimerIntControl.Raw32);
+    QA7->Core1MailboxIntControl.Mailbox0_IRQ = 1;
+    QA7->Core1MailboxIntControl.Mailbox0_FIQ = 0;
+
+    QA7->Core2MailboxIntControl.Mailbox0_IRQ = 1;
+    QA7->Core2MailboxIntControl.Mailbox0_FIQ = 0;
+
+    QA7->Core3MailboxIntControl.Mailbox0_IRQ = 1;
+    QA7->Core3MailboxIntControl.Mailbox0_FIQ = 0;
 }
 
 extern "C" void primary_kernel_init() {
@@ -182,7 +186,7 @@ extern "C" void primary_kernel_init() {
     init_printf(nullptr, uart_putc_wrapper);
     // timer_init();
     // enable_interrupt_controller();
-    // enable_irq();
+    enable_irq();
     printf("printf initialized!!!\n");
     if (fb_init()) {
         printf("Framebuffer initialization successful!\n");
@@ -200,10 +204,6 @@ extern "C" void primary_kernel_init() {
     // of 0x96000021)
     init_ramfs();
 
-    enable_irq();
-
-    timerInit();
-    
     create_frame_table(frame_table_start,
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
@@ -216,6 +216,8 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
+    // enable_irq();
+    timerInit();
     wake_up_cores();
     mergeCores();
 }
@@ -227,11 +229,11 @@ void mergeCores() {
     K::check_stack();
 
     // if (number_awake == CORE_COUNT) {
-        // create_event([] { kernel_main(); });
-        while (1) {
-            printf("timer tick %d\n", timer_getTickCount64());
-            timer_wait(500000);
-        }
+    create_event([] { kernel_main(); });
+    // while (1) {
+    //     printf("timer tick %d\n", timer_getTickCount64());
+    //     timer_wait(500000);
+    // }
     // }
 
     // Uncomment to run snake

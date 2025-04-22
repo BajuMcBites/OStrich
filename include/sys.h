@@ -1,6 +1,7 @@
 #ifndef _SYS__H_
 #define _SYS__H_
 
+#include "stdint.h"
 // KernelEntryFrame structure.
 // X[0] - return value
 struct KernelEntryFrame {
