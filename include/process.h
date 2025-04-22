@@ -134,6 +134,7 @@ struct PCB {
         delete page_table;
         delete supp_page_table;
         delete sigs;
+        if (waiting_parent) delete waiting_parent;
     }
 };
 

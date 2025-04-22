@@ -321,6 +321,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
     Semaphore* sema = new Semaphore();
     for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
         printf("added parent sema to pid %d\n", start->pid);
+        if (start->waiting_parent) delete start->waiting_parent;
         start->add_waiting_parent(sema);
     }
     sema->down([=]{
