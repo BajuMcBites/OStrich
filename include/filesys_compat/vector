@@ -8,13 +8,56 @@ namespace std {
     template <typename T>
     class vector {
         public:
-            vector() : data(nullptr), cur_size(0), capacity(0) {}
+            vector() : data(nullptr), cur_size(0), capacity(1) {}
             vector(int size) : cur_size(size), capacity(size) {
                 data = new T[size];
             }
 
             ~vector() {
                 delete[] data;
+            }
+
+            vector(const vector<T>& other) : cur_size(other.size()), capacity(other.capacity) {
+                data = new T[capacity];
+                for (int i = 0; i < other.size(); i++) {
+                    data[i] = other[i];
+                }
+            }
+
+            vector(vector<T>&& other) : data(other.data), cur_size(other.cur_size), capacity(other.capacity) {
+                other.data = nullptr;
+                other.cur_size = 0;
+                other.capacity = 0;
+            }
+
+            vector<T>& operator=(const vector<T>& other) {
+                if (this == &other) return *this;
+
+                // Delete current data.
+                delete[] data;
+
+                // Deep copy.
+                capacity = other.capacity;
+                cur_size = other.size();
+                data = new T[capacity];
+                for (int i = 0; i < other.size(); i++) {
+                    data[i] = other[i];
+                }
+            }
+
+            vector<T>& operator=(vector<T>&& other) {
+                if (this == &other) return *this;
+
+                // Delete current data.
+                delete[] data;
+                capacity = other.capacity;
+                cur_size = other.size();
+                data = other.data;
+
+                other.data = nullptr;
+                other.capacity = 0;
+                other.cur_size = 0;
+                return *this;
             }
 
             T& operator[](int index) {
@@ -31,14 +74,14 @@ namespace std {
                 if (cur_size + 1 == capacity) {
                     int newCapacity = capacity * 2;
                     T* newData = new T[newCapacity];
-                    for (int i = 0; i < capacity; i++) {
+                    for (int i = 0; i < cur_size; i++) {
                         newData[i] = data[i];
                     }
                     capacity = newCapacity;
                     delete[] data;
                     data = newData;
                 }
-                data[++cur_size] = value;
+                data[cur_size++] = value;
             } 
 
             size_t size() const { return cur_size; }
