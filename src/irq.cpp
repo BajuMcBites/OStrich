@@ -1,6 +1,7 @@
 #include "peripherals/irq.h"
 
 #include "dwc.h"
+#include "event.h"
 #include "irq.h"
 #include "peripherals/arm_devices.h"
 #include "peripherals/timer.h"
@@ -84,9 +85,8 @@ extern "C" void handle_irq(KernelEntryFrame* frame) {
     if (irq_source.Timer_Int) {
         // handle timer irq
         printf("Core %d in timer irq\n", getCoreID());
+        yield(frame);
 
-        QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-        QA7->TimerClearReload.Reload = 1;    // Reload now
         // (uintptr_t)(0x40000024 + VA_START)
     } else {
         if (me == 0) {
