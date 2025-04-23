@@ -141,6 +141,7 @@ void yield(KernelEntryFrame* frame) {
     TCB* running = runningEvent[getCoreID()];
     if (running->kernel_event) {
         // check stack
+        K::check_stack();
         QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
         QA7->TimerClearReload.Reload = 1;    // Reload now
         Interrupts::restore(running->irq_was_disabled);

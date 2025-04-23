@@ -69,7 +69,7 @@ extern "C" void handle_irq(KernelEntryFrame* frame) {
     // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
     if (irq_source.Timer_Int) {
         // handle timer irq
-        printf("Core %d in timer irq\n", getCoreID());
+        // printf("Core %d in timer irq\n", getCoreID());
         yield(frame);
 
         // (uintptr_t)(0x40000024 + VA_START)
