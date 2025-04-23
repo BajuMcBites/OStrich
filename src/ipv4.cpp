@@ -13,7 +13,7 @@ void handle_ipv4_packet(usb_session *session, PacketBufferParser *buffer_parser)
     if ((checked = calc_checksum(nullptr, ipv4_packet, 0, 5 * 4)) != 0x00) {
         return;
     }
-
+    
     switch (ipv4_packet->protocol) {
         case IP_ICMP:
             handle_icmp(session, buffer_parser);
@@ -28,4 +28,5 @@ void handle_ipv4_packet(usb_session *session, PacketBufferParser *buffer_parser)
             printf("Unknown protocol %d\n", ipv4_packet->protocol);
             break;
     }
+
 }

@@ -6,6 +6,7 @@
 #include "listener.h"
 #include "network_card.h"
 
+
 HashMap<const char*, server_group*>& get_dns_cache() {
     static HashMap<const char*, server_group*> dns_cache(string_hash, string_equals, 30);
     return dns_cache;
@@ -116,7 +117,7 @@ void dns_query(usb_session* session, const char* domain, Function<void(server_gr
                                          PayloadBuilder{packet, end - packet})))
                     .build(nullptr, &len);
 
-        send_packet(session, (uint8_t*)frame, len);
+        send_packet((uint8_t*)frame, len);
 
         delete frame;
 
@@ -177,7 +178,7 @@ void handle_dns_response(usb_session* session,
 
         get_dns_cache().put(key, group);
 
-        uint64_t event_id = DNS_RESOLVED_EVENT | (string_hash(domain_name) & 0xFFFFFFFF);
-        get_event_handler().handle_event(event_id, group);
+            get_event_handler().handle_event(
+                DNS_RESOLVED_EVENT | (string_hash(domain_name) & 0xFFFFFFFF), group);
     }
 }

@@ -2,42 +2,27 @@
 
 #include "heap.h"
 #include "libk.h"
+#include "printf.h"
 
 uint8_t port_bitmap[(1 << 16) >> 3];
 SpinLock bitmap_lock;
 
-#include "printf.h"
-
-HashMap<uint64_t, void*>& get_ports() {
-    static HashMap<uint64_t, void*> ports(uint64_t_hash, uint64_t_equals, 30);
-    return ports;
-}
-
-port_status* get_port_status(uint16_t port) {
-    return (port_status*)get_ports().get(port);
-}
-
-port_status* obtain_port(uint16_t port) {
+bool obtain_port(uint16_t port) {
     bitmap_lock.lock();
     if (port_bitmap[port >> 3] & (1 << (port & 0x7))) {
         bitmap_lock.unlock();
-        return nullptr;
+        return false;
     }
     port_bitmap[port >> 3] |= (1 << (port & 0x7));
     bitmap_lock.unlock();
-
-    port_status* status = (port_status*)kcalloc(1, sizeof(port_status));
-    get_ports().put(port, status);
-    return status;
+    return true;
 }
 
 // lot of trust in this :)
 void release_port(uint16_t port) {
-    port_status* status = (port_status*)get_ports().get(port);
-    if (get_ports().remove(port)) {
-        delete status;
-        port_bitmap[port >> 3] &= ~(1 << (port & 0x7));
-    }
+    bitmap_lock.lock();
+    port_bitmap[port >> 3] &= ~(1 << (port & 0x7));
+    bitmap_lock.unlock();
 }
 
 uint16_t i16(uint16_t val) {
@@ -118,12 +103,12 @@ void IPv4Builder::build_at(void* addr) {
     this->internal->header_check_sum = 0;
     this->internal->total_length = get_size();
     this->internal->header_check_sum =
-        calc_checksum(nullptr, this->internal, 0, sizeof(ipv4_header));
+        calc_checksum(nullptr, this->internal, 0, this->internal->ihl * 4);
 
     memcpy(addr, this->internal, sizeof(*this->internal));
 
     if (this->encapsulated) {
-        this->encapsulated->build_at(((uint8_t*)addr) + sizeof(ipv4_header));
+        this->encapsulated->build_at(((uint8_t*)addr) + this->internal->ihl * 4);
     }
 }
 
@@ -138,10 +123,9 @@ void UDPBuilder::build_at(void* addr) {
     if (this->encapsulated) {
         this->encapsulated->build_at((addr) + sizeof(udp_header));
     }
-    memcpy(addr, this->internal, sizeof(*this->internal));
-
     this->internal->checksum = 0;
-    this->internal->checksum =
+    memcpy(addr, this->internal, sizeof(*this->internal));
+    ((udp_header*)addr)->checksum =
         calc_checksum(&this->pseudo, addr, sizeof(this->pseudo), total_length);
 }
 

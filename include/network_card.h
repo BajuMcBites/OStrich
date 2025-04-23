@@ -26,10 +26,12 @@ typedef struct {
     uint8_t bInterval;
 } __attribute__((packed)) EndpointDescriptor;
 
-usb_session* network_usb_session(usb_session *update);
+usb_session* network_usb_send_session(usb_session *update);
+usb_session* network_usb_recv_session(usb_session *update);
+
 void initialize_network_card(usb_session *, usb_device_descriptor_t *, usb_device_config_t *);
-void send_packet(usb_session *session, uint8_t *data, size_t length);
-int receive_packet(usb_session *session, uint8_t *buffer, size_t buffer_len);
+void send_packet(uint8_t *data, size_t length);
+int receive_packet(uint8_t *buffer, size_t buffer_len);
 uint8_t *get_mac_address();
 void network_loop();
 

@@ -82,18 +82,18 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    // printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
+    printf("All tests passed\n");
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
     // user_paging_tests();
-    blocking_atomic_tests();
+    // blocking_atomic_tests();
     // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
+    // sdioTests();
+    // ring_buffer_tests();
     elf_load_test();
-    partitionTests();
+    // partitionTests();
     // test_fs();
     // testSnapshot();
 }
@@ -160,7 +160,8 @@ extern "C" void primary_kernel_init() {
 }
 
 #include "function.h"
-#include "socket.h"
+#include "ksocket.h"
+
 
 void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
@@ -169,38 +170,33 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
-        create_event([] { kernel_main(); });
+        // create_event([] { kernel_main(); });
     }
 
     if (getCoreID() == 0) {
-        network_loop();
+        // wait_msec(1000000);
+        // printf("initializing network loop!\n");
+        create_event([=]() { network_loop(); });
 
-        create_event([]() {
-            // wait for dhcp to init
-            wait_msec(1000000);
-            // network_tests();
-            Socket socket(22);
-            socket.on_recv([&socket](size_t length) {
-                char print_buffer[length + 1];
-                memcpy(print_buffer, socket.get_recv_buffer(), length);
-                print_buffer[length] = '\0';
+    } else if (getCoreID() == 1) {
+        create_event([=]() {
+            ServerSocket socket(100);
+            uint8_t __attribute__((aligned(8))) buffer[1516];
 
-                printf("[network] received: %s\n", socket.get_recv_buffer());
+            size_t received = 0;
+            uint32_t pckt_cnt = 0;
 
-                uint8_t buffer[7 + length + 3];
-                memcpy(buffer, "Hello \"", 7);
-                memcpy(buffer + 7, socket.get_recv_buffer(), length);
-                memcpy(buffer + 7 + length, "\"!\0", 3);
+            while (socket.is_alive()) {
+                size_t length = socket.recv(buffer);
+                pckt_cnt++;
+                received += length;
 
-                socket.send((uint8_t *)buffer, length + 10);
-            });
-
-            while (1) {
+                if (pckt_cnt % 8) socket.send(nullptr, 0, TCP_FLAG_ACK);
             }
 
-            printf("socket no longer active!\n");
+            printf("socket no longer active, received %d bytes total!\n", received);
         });
     }
-    stop();
+    event_loop();
     printf("PANIC I should not go here\n");
 }

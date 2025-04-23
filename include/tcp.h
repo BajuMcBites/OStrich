@@ -15,7 +15,10 @@
 #define TCP_FLAG_ECE 0x040
 #define TCP_FLAG_CWR 0x080
 #define TCP_FLAG_NS 0x100
+#define TCP_FLAG_UNUSED 0x200
+#define TCP_HAD_DATA 0x200
 
+void ip_send(uint8_t *buffer, size_t length);
 void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser);
 
 #endif

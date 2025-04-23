@@ -1,60 +1,47 @@
 #include "tcp.h"
 
+#include "arp.h"
 #include "event.h"
+#include "ksocket.h"
 #include "network_card.h"
 #include "printf.h"
-#include "socket.h"
 
-void cleanup_connection(uint16_t port_id) {
-    if (auto socket = get_open_sockets().get(port_id)) {
-        socket->close();
+void ip_send(uint8_t *buffer, size_t length) {
+    PacketParser<EthernetFrame, IPv4Packet> parser(buffer, length);
+    usb_session *session = network_usb_send_session(nullptr);
+
+    auto ipv4 = parser.get<IPv4Packet>();
+    if (arp_has_resolved(ipv4->dst_address.get())) {
+        send_packet(buffer, length);
+        return;
     }
-    release_port(port_id);
-}
 
-void handle_receive_status(port_status *status, tcp_header *tcp, uint32_t bytes_received) {
-    uint32_t seq = tcp->sequence_number.get();
-    uint32_t ack = tcp->ack_number.get();
-    uint16_t flags = tcp->data_offset_reserved_flags.get_flags();
+    arp_resolve_mac(session, ipv4->dst_address.get(), [&](uint8_t *dst_mac) {
+        uint32_t dst_ip = ipv4->dst_address.get();
+        uint8_t *ip = ((uint8_t *)&dst_ip);
+        auto ethernet = parser.get<EthernetFrame>();
 
-    if (status->tcp.ack_number == 0 && flags & TCP_FLAG_SYN) {
-        status->tcp.ack_number = seq + 1;
-        status->tcp.seq_number = 0x05;
-    } else if (flags & TCP_FLAG_ACK) {
-        if (ack > status->tcp.seq_number) {
-            status->tcp.seq_number = ack;
-        }
-        if (seq == status->tcp.ack_number) {
-            // accept data that matches what we are expecting
-            status->tcp.ack_number = status->tcp.ack_number + bytes_received;
-        } else if (seq < status->tcp.ack_number) {
-            // duplicate packet or retransmitted packet
-            // but we have already received & ack'd this packet
-            // so ignored
-        } else {
-            // can improve our tcp implementation by buffering data
-            // from packet's w/ higher seq_nums than what we expect
-        }
-    }
+        memcpy(ethernet->dst_mac, dst_mac, 6);
+
+        send_packet(buffer, length);
+    });
 }
 
 void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
-    PacketParser<EthernetFrame, IPv4Packet, TCPPacket> parser(buffer_parser->get_packet_base(),
-                                                              buffer_parser->get_length());
+    PacketParser<EthernetFrame, IPv4Packet, TCPPacket, Payload> parser(
+        buffer_parser->get_packet_base(), buffer_parser->get_length());
     auto eth_frame = parser.get<EthernetFrame>();
     auto ip_packet = parser.get<IPv4Packet>();
-    auto tcp_packet = buffer_parser->pop<TCPPacket>();
+    auto tcp_packet = parser.get<TCPPacket>();
 
     pseduo_header header;
     header.src_ip.set_raw(ip_packet->src_address.network_raw);
     header.dst_ip.set_raw(ip_packet->dst_address.network_raw);
     header.zero = 0x00;
     header.protocol = IP_TCP;
-    header.length =
-        ip_packet->total_length.get() - (ip_packet->ihl * 4);  // total length of TCP header
+    header.length = ip_packet->total_length.get() - (ip_packet->ihl * 4);
 
     uint16_t checked = 0x00;
-
     if ((checked = calc_checksum(&header, tcp_packet, sizeof(header), header.length.get())) !=
         0x00) {
         printf("Received TCP packet with invalid checksum\n");
@@ -62,88 +49,9 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
         return;
     }
 
-    uint16_t flags = tcp_packet->data_offset_reserved_flags.get_flags();
-    uint16_t src_port_id = tcp_packet->src_port.get();
     uint16_t port_id = tcp_packet->dst_port.get();
 
-    uint32_t bytes_received =
-        header.length.get() - (tcp_packet->data_offset_reserved_flags.get_data_offset() * 4);
-
-    if (flags & TCP_FLAG_RST) {
-        cleanup_connection(port_id);
-        return;
-    }
-
-    uint16_t respond_flags = 0x000;
-
-    if (flags & TCP_FLAG_FIN) {
-        respond_flags |= TCP_FLAG_ACK;
-    }
-
-    port_status *status = get_port_status(port_id);
-
-    if (flags & TCP_FLAG_SYN) {
-        respond_flags |= TCP_FLAG_SYN | TCP_FLAG_ACK;
-        // if (status == nullptr && (status = obtain_port(port_id)) == nullptr) {
-        // port is already in use and doesn't belong to me :/
-        // return;
-        // }
-    }
-
-    if (flags & TCP_FLAG_ACK) {
-        respond_flags |= TCP_FLAG_ACK;
-    }
-
-    if (status == nullptr) {
-        // port is not in use?
-        // there should be a port_status associated with this
-        // tcp packet if it is valid
-        return;
-    }
-
-    handle_receive_status(status, tcp_packet, bytes_received);
-
-    PayloadBuilder *payload = nullptr;
-    char *response_payload = nullptr;
-    size_t response_length = 0;
-
-    if (bytes_received > 0) {
-        auto receive_buffer = buffer_parser->pop<Payload>();
-
-        if (auto socket = get_open_sockets().get(port_id)) {
-            memcpy(socket->get_recv_buffer(), receive_buffer, bytes_received);
-            socket->recv(eth_frame, ip_packet, tcp_packet, bytes_received);
-        }
-    }
-
-    size_t packet_length;
-
-    ethernet_header *response;
-    response =
-        ETHFrameBuilder{eth_frame->dst_mac, eth_frame->src_mac, 0x0800}
-            .encapsulate(
-                IPv4Builder{}
-                    .with_src_address(ip_packet->dst_address.get())
-                    .with_dst_address(ip_packet->src_address.get())
-                    .with_protocol(IP_TCP)
-                    .encapsulate(TCPBuilder{tcp_packet->dst_port.get(), tcp_packet->src_port.get()}
-                                     .with_seq_number(status->tcp.seq_number)
-                                     .with_ack_number(status->tcp.ack_number)
-                                     .with_flags(respond_flags)
-                                     .with_data_offset(5)
-                                     .with_window_size(0xFFFF)
-                                     .with_urgent_pointer(0)
-                                     .with_pseduo_header(ip_packet->src_address.get(),
-                                                         ip_packet->dst_address.get())
-                                     .encapsulate(PayloadBuilder{(uint8_t *)response_payload,
-                                                                 response_length})))
-            .build(nullptr, &packet_length);
-
-    send_packet(session, (uint8_t *)response, packet_length);
-
-    delete response;
-
-    if (flags & TCP_FLAG_FIN) {
-        cleanup_connection(port_id);
+    if (auto socket = get_open_sockets().get(port_id)) {
+        socket->enqueue(buffer_parser->get_packet_base(), ip_packet->total_length.get() + sizeof(ethernet_header));
     }
 }
