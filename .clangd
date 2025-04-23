@@ -1,8 +1,0 @@
-CompileFlags:
-  Add:
-    - -Iinclude
-    - -std=c11  
-
-FallbackFlags:
-  - -Iinclude
-  - -std=c11
