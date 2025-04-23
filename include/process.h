@@ -82,6 +82,7 @@ struct PCB {
         parent = nullptr;
         child_start = child_end = next = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
+        before = nullptr;
     }
     PCB(int id) {
         task[pid] = this;
@@ -92,6 +93,7 @@ struct PCB {
         child_start = child_end = next = nullptr;
         parent = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
+        before = nullptr;
     }
     
     void raise_signal(Signal* s) {
