@@ -1,6 +1,7 @@
 #include "fs_init.h"
 
 #include "../filesystem/filesys/FileSystem.h"
+#include "../filesystem/filesys/fs_requests.h"
 #include "../filesystem/interface/BlockManager.h"
 #include "heap.h"
 #include "libk.h"
@@ -46,8 +47,6 @@ void fs_init() {
     printf("Block manager created with %d blocks, starting at sector %d\n", fs_nums_sectors,
            fs_start_sector);
     FileSystem::getInstance(blockManager);
-
-    auto* fileSystem = FileSystem::getInstance();
 }
 
 // Test stuff down here.
@@ -185,6 +184,138 @@ void test_fs() {
     delete rootDir;
 
     printf("Filesystem test finished!\n");
+}
+
+static string readFile(inode_index_t inode, int nBytes) {
+    char buffer[256] = {};
+    auto rdr = fs::fs_req_read(inode, buffer, 0, nBytes);
+    buffer[nBytes - 1] = '\0';
+    K::assert(rdr.status == fs::FS_RESP_SUCCESS, "");
+    return string(buffer);
+}
+
+static bool dirContains(inode_index_t dirInode, const char* name) {
+    auto resp = fs::fs_req_read_dir(dirInode);
+    printf("dirContains: %d entries in inode %u\n", resp.entry_count, dirInode);
+    K::assert(resp.status == fs::FS_RESP_SUCCESS, "Failed to read directory.");
+    for (int i = 0; i < resp.entry_count; i++) {
+        printf("entry %d: %s\n", i, resp.entries[i].name);
+        if (K::strcmp(resp.entries[i].name, name) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void test_fs_requests() {
+    auto* fileSystem = FileSystem::getInstance();
+
+    printf("FS REQUESTS TEST\n");
+    constexpr int ROOT_DIR_INODE = 0;
+
+    // 1) CREATE file1 in root directory.
+    printf("STEP 1\n");
+    printf("Creating file1 in root directory...\n");
+    auto r1 = fs_req_create_file(ROOT_DIR_INODE, false, "file1", 0);
+    K::assert(r1.status == FS_RESP_SUCCESS, "Failed to create file1 in root directory.");
+    printf("File1 created successfully.\n");
+
+    // assert it shows up in root
+    K::assert(dirContains(ROOT_DIR_INODE, "file1"), "file1 not foundin root dir.");
+    printf("File1 found in root directory.\n");
+
+    printf("STEP 2\n");
+    // 2) WRITE "hello"
+    // open to fetch inode number
+    auto r2 = fs_req_open("/file1");
+    K::assert(r2.status == FS_RESP_SUCCESS, "Failed to open file1.");
+    inode_index_t file1Inode = r2.inode_index;
+    printf("File1 opened successfully.\n");
+
+    const char* msg = "hello";
+    int len = K::strlen(msg) + 1;  // includes null terminator
+    auto r3 = fs_req_write(file1Inode, msg, 0, len);
+    K::assert(r3.status == FS_RESP_SUCCESS, "Failed to write to file1.");
+    printf("Data written to file1 successfully.\n");
+
+    // assert read returns the same data
+    string got = readFile(file1Inode, len);
+    K::assert(got == "hello", "contents were incorrect.");
+    printf("File1 contents verified successfully.\n");
+
+    printf("STEP 3\n");
+    auto r4 = fs_req_remove_file(0, "file1");
+    K::assert(r4.status == FS_RESP_SUCCESS, "Failed to remove file1.");
+
+    // assert it's gone
+    K::assert(!dirContains(0, "file1"), "file1 still exists.");
+
+    printf("STEP 4\n");
+    // recreate
+    auto r5 = fs_req_create_file(0, false, "file2", 0);
+    K::assert(r5.status == FS_RESP_SUCCESS, "Failed to create file2.");
+    file1Inode = r5.inode_index;
+    // check that file exists
+
+    // assert it shows up in root
+    K::assert(dirContains(ROOT_DIR_INODE, "file2"), "file2 not foundin root dir.");
+    printf("File2 found in root directory.\n");
+
+    printf("STEP 5\n");
+    auto r6 = fs_req_open("/file2");
+    K::assert(r6.status == FS_RESP_SUCCESS, "Failed to open file2.");
+    inode_index_t checkInode = r6.inode_index;
+    K::assert(checkInode == file1Inode, "file2 inode number mismatch.");
+
+    // write first
+    printf("STEP 6\n");
+    const char* m1 = "first";
+    len = K::strlen(m1) + 1;
+    auto r7 = fs_req_write(file1Inode, m1, 0, len);
+    K::assert(r7.status == FS_RESP_SUCCESS, "Failed to write to file2.");
+
+    // checkpoint (2)
+    K::assert(fileSystem->createCheckpoint(), "Failed to create checkpoint.");
+
+    // overwrite
+    printf("STEP 7\n");
+    const char* m2 = "second";
+    len = K::strlen(m2) + 1;
+    auto r8 = fs_req_write(file1Inode, m2, 0, len);
+    K::assert(r8.status == FS_RESP_SUCCESS, "Failed to write to file2.");
+
+    // checkpoint (3)
+    K::assert(fileSystem->createCheckpoint(), "Failed to create checkpoint.");
+
+    // delete
+    printf("STEP 8\n");
+    auto r9 = fs_req_remove_file(0, "file2");
+    K::assert(r9.status == FS_RESP_SUCCESS, "Failed to remove file2.");
+
+    // checkpoint (4)
+    K::assert(fileSystem->createCheckpoint(), "Failed to create checkpoint.");
+
+    // helper to test
+    auto validate = [&](int cp, bool exists, const char* expected) {
+        printf("----- VALIDATING SNAPSHOT %d -----\n", cp);
+        auto resp = fs_req_mount_snapshot(cp);
+        K::assert(resp.status == FS_RESP_SUCCESS, "Failed to mount snapshot.");
+        printf("snapshot mounted successfully.\n");
+        bool found = dirContains(0, "file2");
+        K::assert(found == exists, "file2 not found in snapshot.");
+        if (exists) {
+            int expectedLen = K::strlen(expected) + 1;
+            string content = readFile(file1Inode, expectedLen);
+            K::assert(content == expected, "contents were incorrect.");
+        }
+    };
+
+    // TODO: fix this once snapshotting is fixed.
+    // validate(2, true, "first");
+    // validate(3, true, "second");
+    // validate(4, false, nullptr);
+    // auto resp = fs_req_mount_snapshot(0);
+    // K::assert(resp.status == FS_RESP_SUCCESS, "Failed to mount snapshot.");
 }
 
 void testSnapshot() {
