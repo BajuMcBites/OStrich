@@ -76,8 +76,8 @@ struct UserTCB : public TCB {
     cpu_context context;
     PCB* pcb = nullptr;
     Function<void(UserTCB*)> w;
-    bool use_pt = false;
     UserTCB() : w(enter_user_space) {
+        context.spsr = 0;
         context.sp = 0;
         context.pc = 0;
         kernel_event = false;

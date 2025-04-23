@@ -1,4 +1,8 @@
 #include "stdint.h"
+
+#define FS_PARTITION_ID 0x0C
+#define SWAP_PARTITION_ID 0x0D
+
 // Partition table entry structure
 typedef struct {
     uint8_t boot_indicator;  // Boot flag: 0x80 active, 0x00 inactive
@@ -107,3 +111,27 @@ int delete_partition(int partition_number);
  * @return Number of blocks in the partition, or negative error code.
  */
 int get_num_partition_blocks(int system_id);
+
+/**
+ * @brief Get the start sector of a partition.
+ *
+ * This function returns the start sector of a partition based on the system ID.
+ *
+ * @param system_id System ID of the partition.
+ *
+ * @return Start sector of the partition, or negative error code.
+ */
+int get_partition_start_sector(int system_id);
+
+/**
+ * @brief Set the partition table on the SD card.
+ *
+ * This function sets the partition table on the SD card with the specified filesystem and swap
+ * sizes. It creates two partitions: one for the filesystem and one for the swap.
+ *
+ * @param fs_bytes Size of the filesystem in bytes.
+ * @param swap_bytes Size of the swap in bytes.
+ *
+ * @return SD_OK on success, error code on failure.
+ */
+int set_partition_table(uint64_t fs_bytes, uint64_t swap_bytes);
