@@ -3,13 +3,19 @@
 #include "filesys_compat/vector"
 #include "libk.h"
 #include "printf.h"
+#include "vm.h"
+
+/*
+Simple String Class.
+Invariant: Container always has a null terminator.
+*/
 
 string::string() {
     this->container.push_back('\0');
 }
 
 string::string(const string& other) {
-    // Do a deep copy
+    this->container.push_back('\0');
     *this += other;
 }
 
@@ -18,7 +24,10 @@ string::string(string&& other) {
 }
 
 string::string(const char* c_str) {
-    if (c_str == nullptr) return;
+    if (c_str == nullptr) {
+        this->container.push_back('\0');
+        return;
+    }
 
     int i = 0;
     while (c_str[i] != '\0') {
@@ -117,7 +126,10 @@ bool string::starts_with(const string& other) const {
     }
     return true;
 }
+
 void stringTest() {
+    printf("starting string test\n");
+
     // Construction tests
     string a("Hello");
     string b("World");
@@ -141,7 +153,7 @@ void stringTest() {
     K::assert(c == a, "copied string c should equal original a");
     K::assert(c[0] == 'H', "first char of c should be 'H'");
 
-    printf("copty assignment done\n");
+    printf("copy assignment done\n");
 
     // Test self assignment
     c = c;
