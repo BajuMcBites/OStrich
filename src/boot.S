@@ -56,8 +56,12 @@ master:
 
 el1_entry:
     // Clear BSS section
-    adr    x0, __bss_start
-    adr    x1, __bss_end
+    adrp x0, __bss_start       // page‐relative high bits
+    add  x0, x0, :lo12:__bss_start  // low‐12 bits
+
+    adrp x1, __bss_end
+    add  x1, x1, :lo12:__bss_end
+
     sub    x1, x1, x0
     bl     memzero
 
