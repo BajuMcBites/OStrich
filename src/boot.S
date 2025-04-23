@@ -28,6 +28,19 @@ master:
     msr     cnthctl_el2, x0
     msr     cntvoff_el2, xzr
 
+   
+	/* Not sure if I want this yet */
+	mrs	x0, cntkctl_el1
+	orr	x0, x0, #0x3						/* Enable EL0 access to timers */
+	msr	cntkctl_el1, x0
+
+
+    # mov x0, #1        // Enable timer (bit 0)
+    # msr CNTV_CTL_EL0, x0
+	
+    # ldr x0,#200000  // Set desired tick interval (e.g., 10ms worth of timer ticks)
+    # msr CNTV_TVAL_EL0, x0
+
     // Disable coprocessor traps in EL2
     mov     x0, #0x33FF
     msr     cptr_el2, x0
@@ -83,6 +96,11 @@ setup_el1_for_secondary:
     orr     x0, x0, #3
     msr     cnthctl_el2, x0
     msr     cntvoff_el2, xzr
+	
+	/* Not sure if I want this yet */
+	mrs	x0, cntkctl_el1
+	orr	x0, x0, #0x3						/* Enable EL0 access to timers */
+	msr	cntkctl_el1, x0
 
     // Disable coprocessor in EL2
     mov     x0, #0x33FF
@@ -275,6 +293,7 @@ not_data_abort:
 
 irq_el0: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
 	kernel_exit 
 
@@ -318,8 +337,10 @@ synchronous_el1:
 
 irq_el1: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
-	kernel_exit_el1 
+    // changed this from kernel_exit_el1 to just kernel_exit because you need eret to properly exit from an interrupt state
+	kernel_exit 
 
 fiq_el1:
     mov     x0, #2
@@ -336,6 +357,7 @@ synchronous_el0_64:
 
 irq_el0_64: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
 	kernel_exit 
 
@@ -353,6 +375,7 @@ synchronous_el0_32:
 
 irq_el0_32: 
 	kernel_entry 
+    mov x0, sp
 	bl	handle_irq
 	kernel_exit 
 

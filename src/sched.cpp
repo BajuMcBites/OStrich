@@ -70,6 +70,6 @@ extern "C" void timer_tick() {
     }
     current->counter = 0;
     enable_irq();
-    _schedule();
+    //_schedule();
     disable_irq();
 }
