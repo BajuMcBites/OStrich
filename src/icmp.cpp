@@ -36,20 +36,22 @@ void handle_icmp_echo(usb_session *session,
                             .encapsulate(PayloadBuilder{(uint8_t *)payload, payload_length})))
             .build(nullptr, &len);
 
-    send_packet(session, (uint8_t *)frame, len);
+    send_packet((uint8_t *)frame, len);
 
     delete frame;
 
     PacketParser<ICMPPacket, Payload> event_parser((const uint8_t *)icmp_packet,
                                                    payload_length + sizeof(icmp_header));
-    get_event_handler().handle_event(ICMP_PING_EVENT | ipv4_packet->src_address.get(),
-                                     &event_parser);
+
+        get_event_handler().handle_event(ICMP_PING_EVENT | ipv4_packet->src_address.get(),
+                                         &event_parser);
 }
 
 void icmp_ping(usb_session *session, uint32_t ip,
                Function<void(PacketParser<ICMPPacket, Payload> *)> &&callback) {
     size_t len;
     ethernet_header *frame;
+
     frame =
         ETHFrameBuilder{get_mac_address(), get_arp_cache().get(dhcp_state.dhcp_server_ip), 0x0800}
             .encapsulate(IPv4Builder{}
@@ -60,7 +62,7 @@ void icmp_ping(usb_session *session, uint32_t ip,
                                  {.echo = {.identifier = 22, .seq_number = 1}})))
             .build(nullptr, &len);
 
-    send_packet(session, (uint8_t *)frame, len);
+    send_packet((uint8_t *)frame, len);
 
     delete frame;
 

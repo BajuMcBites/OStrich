@@ -2,6 +2,7 @@
 
 #include "dhcp.h"
 #include "dns.h"
+#include "event.h"
 #include "libk.h"
 #include "listener.h"
 #include "network_card.h"
@@ -55,7 +56,7 @@ void arp_resolve_mac(usb_session *session, uint32_t dst_ip, Function<void(uint8_
                 .encapsulate(PayloadBuilder{(uint8_t *)&packet, sizeof(packet)})
                 .build(nullptr, &length);
 
-    send_packet(session, (uint8_t *)frame, length);
+    send_packet((uint8_t *)frame, length);
 
     delete frame;
     get_event_handler().register_listener(ARP_RESOLVED_EVENT | dst_ip,
@@ -81,7 +82,7 @@ void send_arp_response(usb_session *session, arp_packet *request) {
             .encapsulate(PayloadBuilder{(uint8_t *)&packet, sizeof(packet)})
             .build(nullptr, &len);
 
-    send_packet(session, (uint8_t *)frame, len);
+    send_packet((uint8_t *)frame, len);
 
     delete frame;
 }

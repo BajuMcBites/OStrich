@@ -101,7 +101,7 @@
 #define USB_HPRT ((volatile uint32_t *)(USB_BASE + 0x440))
 #define USB_HPRT_RESET() *USB_HPRT = 0x00000000;
 
-#define USB_CHANNEL(num) ((host_channel *)(USB_BASE + 0x500 + (num * 0x20)))
+#define USB_CHANNEL(num) ((host_channel *)(VA_START | USB_BASE + 0x500 + (num * 0x20)))
 
 // Host Channel #num Characteristics Register
 #define USB_HCCHAR(num) ((volatile uint32_t *)(USB_BASE + 0x500 + (num * 0x20)))

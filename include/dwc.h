@@ -60,7 +60,7 @@ typedef struct {
             bool excessive_trans : 1;
             bool frame_list_rollover : 1;
             unsigned _reserved14_31 : 18;
-        } __attribute__((packed, aligned(4))) st;
+    } __attribute__((packed, aligned(4))) st; 
     } interrupt;
     uint32_t interrupt_mask;
     union transfer_size_u {
@@ -84,6 +84,7 @@ typedef struct {
     uint16_t wIndex;
     uint16_t wLength;
 } __attribute__((packed, aligned(4))) usb_setup_packet_t;
+
 
 typedef struct {
     uint16_t status;
@@ -265,5 +266,4 @@ int handle_transaction(usb_session *session, uint8_t stage);
 int usb_send_token_in(usb_session *session, uint8_t *buffer);
 int usb_receive_in_data(usb_session *session, uint8_t *buffer, size_t length);
 int usb_send_setup_packet(usb_session *session, usb_setup_packet_t *setup, int length);
-
 #endif

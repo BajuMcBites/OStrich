@@ -4,10 +4,10 @@
 
 #include "arp.h"
 #include "dhcp.h"
+#include "dns.h"
 #include "net_stack.h"
 #include "network_card.h"
 #include "printf.h"
-#include "dns.h"
 
 void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
     PacketParser<EthernetFrame, IPv4Packet, TCPPacket> parser(buffer_parser->get_packet_base(),

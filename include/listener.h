@@ -2,6 +2,7 @@
 #define _LISTENER_H
 
 #include "atomic.h"
+#include "event.h"
 #include "hash.h"
 #include "heap.h"
 #include "queue.h"
@@ -25,9 +26,7 @@ struct Listener : public IListener {
     Function<void()> cleanup;
 
     Listener(Function<void(Args...)> &&handler) : handler(std::move(handler)) {
-        this->cleanup = [&]() {
-            delete this;
-        };
+        this->cleanup = [&]() { delete this; };
     }
 
     Listener(Function<void(Args...)> &&handler, Function<void()> &&clean_up)

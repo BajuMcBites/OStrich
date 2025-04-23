@@ -3,6 +3,7 @@
 #include "libk.h"
 #include "network_card.h"
 #include "printf.h"
+#include "arp.h"
 
 static const uint32_t DHCP_XID = 0x55444455;
 static const uint32_t DHCP_MAGIC_COOKIE = 0x63825363;
@@ -60,12 +61,10 @@ void dhcp_print_state() {
     print_server_group("Time Servers:", &dhcp_state.time_servers);
 }
 
-#include "arp.h"
-
 void dhcp_resolve(usb_session* session) {
     dhcp_state.dns_servers.for_each([&session](uint32_t dst_ip) {
         if (arp_has_resolved(dst_ip)) return;
-        arp_resolve_mac(session, dst_ip, [](uint8_t* ignored){});
+        arp_resolve_mac(session, dst_ip, [](uint8_t* ignored) {});
     });
 }
 
@@ -176,7 +175,8 @@ void dhcp_discover(usb_session* session) {
                                                                           packet_len})))
             .build(nullptr, &len);
 
-    send_packet(session, (uint8_t*)frame, len);
+            
+    send_packet((uint8_t*)frame, len);
 
     delete frame;
 }

@@ -164,9 +164,14 @@ typedef struct {
 
 typedef union {
     struct tcp_fields {
-        uint32_t ack_number;
-        uint32_t seq_number;
-        bool alive : 1 = true;
+        uint32_t snd_una;
+        uint32_t snd_nxt;
+        uint32_t rcv_nxt;
+        struct tcp_flags {
+            uint8_t stage : 2;
+            bool alive : 1;
+        } __attribute__((packed)) flags;
+
     } __attribute__((packed)) tcp;
 } __attribute__((packed)) port_status;
 
@@ -471,12 +476,11 @@ class PacketParser {
     }
 };
 
-HashMap<uint64_t, void*>& get_ports();
+extern uint8_t port_bitmap[];
 
-port_status* obtain_port(uint16_t port);
+bool obtain_port(uint16_t port);
 void release_port(uint16_t port);
 
-port_status* get_port_status(uint16_t port);
 uint16_t calc_checksum(void*, void*, size_t, size_t);
 
 #endif

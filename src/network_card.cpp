@@ -9,7 +9,9 @@
 #include "ipv4.h"
 #include "libk.h"
 #include "net_stack.h"
+#include "peripherals/dwc.h"
 #include "printf.h"
+#include "timer.h"
 
 // Variables to store bulk endpoints
 uint8_t control_interface;
@@ -35,19 +37,22 @@ void process_packet(usb_session *session, uint8_t *buffer, size_t len) {
     }
 }
 
-void send_packet(usb_session *session, uint8_t *data, size_t length) {
+void send_packet(uint8_t *data, size_t length) {
     if (length > MAX_BUFFER_SIZE) {
         printf("Error: Packet too large to send.\n");
         return;
     }
+    int status;
+    int retries = 10;
 
-    session->mps = bulk_out_mps;
-    usb_send_bulk(session, data, length);
+    usb_session *session = network_usb_send_session(nullptr);
+    while ((status = usb_send_bulk(session, data, length)) && (retries--)) {
+    }
+    if (status == 0) session->out_toggle ^= 2;
 }
 
-int receive_packet(usb_session *session, uint8_t *buffer, size_t buffer_len) {
-    session->mps = bulk_in_mps;
-    return usb_receive_bulk(session, buffer, buffer_len);
+int receive_packet(uint8_t *buffer, size_t buffer_len) {
+    return usb_receive_bulk(network_usb_recv_session(nullptr), buffer, buffer_len);
 }
 
 int parse_config(uint8_t *descriptor, size_t length) {
@@ -114,7 +119,7 @@ uint8_t *get_mac_address() {
     return mac_address;
 }
 
-uint8_t ethernet_buffer[1514];
+uint8_t __attribute__((aligned(8))) ethernet_buffer[1514];
 
 int cdc_ecm_get_mac(usb_session *session) {
     uint8_t buffer[32];
@@ -162,36 +167,44 @@ int cdc_ecm_init(usb_session *session) {
            cdc_ecm_set_filter(session);
 }
 
-usb_session *network_usb_session(usb_session *update = nullptr) {
-    static usb_session session;
-    if (update != nullptr) session = *update;
-    return &session;
+usb_session *network_usb_send_session(usb_session *update) {
+    static usb_session send_session;
+    if (update != nullptr) send_session = *update;
+    return &send_session;
+}
+
+usb_session *network_usb_recv_session(usb_session *update) {
+    static usb_session recv_session;
+    if (update != nullptr) recv_session = *update;
+    return &recv_session;
 }
 
 void network_loop() {
-    usb_session *session = network_usb_session(nullptr);
-    create_event([=]() {
-        dhcp_discover(session);
-        while (1) {
-            int res = receive_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
-            if (res == 0x10 || res == 0x00) {
-                process_packet(session, ethernet_buffer, sizeof(ethernet_buffer));
-            }
+    usb_session *send_session = network_usb_send_session(nullptr);
+    int size;
+
+    dhcp_discover(send_session);
+
+    while (1) {
+        size = receive_packet(ethernet_buffer, sizeof(ethernet_buffer));
+        if (size) {
+            process_packet(send_session, ethernet_buffer, sizeof(ethernet_buffer));
         }
-    });
+    }
 }
 
 void initialize_network_card(usb_session *session, usb_device_descriptor_t *device,
                              usb_device_config_t *config) {
-    if (cdc_ecm_init(session)) {
+    usb_session network_session;
+    memcpy(&network_session, session, sizeof(usb_session));
+    if (cdc_ecm_init(&network_session)) {
         printf("[ethernet-driver] failed to initialize cdc ecm\n");
-        stop();
         return;
     }
 
     usb_device_config_t cdc_config;
 
-    usb_get_device_config_descriptor(session, (uint8_t *)&cdc_config, sizeof(cdc_config));
+    usb_get_device_config_descriptor(&network_session, (uint8_t *)&cdc_config, sizeof(cdc_config));
 
     uint8_t __attribute__((aligned(4))) full_config[cdc_config.total_length];
 
@@ -202,19 +215,34 @@ void initialize_network_card(usb_session *session, usb_device_descriptor_t *devi
     packet.wIndex = 0;
     packet.wLength = cdc_config.total_length;
 
-    usb_handle_transfer(session, &packet, full_config, cdc_config.total_length);
+    usb_handle_transfer(&network_session, &packet, full_config, cdc_config.total_length);
 
     if (parse_config(full_config, cdc_config.total_length) != TOTAL_CONFIG_ELEMENTS) {
         printf("[ethernet-driver] faulty device configuration.\n");
-        stop();
         return;
     }
 
-    session->in_ep_num = bulk_in_ep;
-    session->out_ep_num = bulk_out_ep;
-    session->in_toggle = 0;
-    session->out_toggle = 0;
+    network_session.in_ep_num = bulk_in_ep;
+    network_session.out_ep_num = bulk_out_ep;
+    network_session.in_toggle = 0x00;
+    network_session.out_toggle = 0x00;
 
     printf("\n[ethernet-driver] network card initialized, attempting dhcp discovery...\n");
-    network_usb_session(session);
+    network_session.channel = USB_CHANNEL(6);
+
+    network_session.channel->characteristics.st.enable = false;
+    while (network_session.channel->characteristics.st.enable);
+    network_session.channel->interrupt.raw = 0x3FF;
+
+    network_session.mps = bulk_in_mps;
+    network_usb_recv_session(&network_session);
+
+    network_session.channel = USB_CHANNEL(5);
+
+    network_session.channel->characteristics.st.enable = false;
+    while (network_session.channel->characteristics.st.enable);
+    network_session.channel->interrupt.raw = 0x3FF;
+
+    network_session.mps = bulk_out_mps;
+    network_usb_send_session(&network_session);
 }

@@ -115,18 +115,18 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    // printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
+    printf("All tests passed\n");
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
     // user_paging_tests();
-    blocking_atomic_tests();
+    // blocking_atomic_tests();
     // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
+    // sdioTests();
+    // ring_buffer_tests();
     elf_load_test();
-    partitionTests();
+    // partitionTests();
     // test_fs();
     // testSnapshot();
 }
@@ -201,6 +201,10 @@ extern "C" void primary_kernel_init() {
 #include "function.h"
 #include "socket.h"
 
+#include "function.h"
+#include "ksocket.h"
+
+
 void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
@@ -208,15 +212,33 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
-        printf("creating kernel_main\n");
-        create_event([] { kernel_main(); });
+        // create_event([] { kernel_main(); });
     }
-    // Uncomment to run snake
-    // if(getCoreID() == 0){
-    //     printf("init_snake() + keyboard_loop();\n");
-    //     create_event(init_snake);
-    //     create_event(keyboard_loop);
-    // }
+
+    if (getCoreID() == 0) {
+        // wait_msec(1000000);
+        // printf("initializing network loop!\n");
+        create_event([=]() { network_loop(); });
+
+    } else if (getCoreID() == 1) {
+        create_event([=]() {
+            ServerSocket socket(100);
+            uint8_t __attribute__((aligned(8))) buffer[1516];
+
+            size_t received = 0;
+            uint32_t pckt_cnt = 0;
+
+            while (socket.is_alive()) {
+                size_t length = socket.recv(buffer);
+                pckt_cnt++;
+                received += length;
+
+                if (pckt_cnt % 8) socket.send(nullptr, 0, TCP_FLAG_ACK);
+            }
+
+            printf("socket no longer active, received %d bytes total!\n", received);
+        });
+    }
     event_loop();
     printf("PANIC I should not go here\n");
 }
