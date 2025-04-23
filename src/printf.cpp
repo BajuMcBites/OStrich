@@ -314,7 +314,7 @@ void tfp_printf(const char* fmt, ...) {
     va_end(va_copy_list);
     va_end(va);
 
-    fb_print(buffer, WHITE);
+    // fb_print(buffer, WHITE);
     printf_lock.unlock();
 }
 

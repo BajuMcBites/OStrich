@@ -143,7 +143,7 @@ extern "C" void secondary_kernel_init() {
     init_mmu();
     enable_irq();
     event_listener_init();
-    while (1);
+    // while (1);
     mergeCores();
 }
 
