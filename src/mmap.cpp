@@ -144,7 +144,6 @@ void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
         }
 
         PageLocation* location = local->location;
-
         location->lock.lock([=]() {
             if (!location->present) {
                 load_location(location, [=](uint64_t paddr) {
@@ -169,6 +168,40 @@ void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
         return;
     });
     return;
+}
+
+/**
+ * Writes back the contents of a page to the location that backs it to the page 
+ * location being passed in
+ */
+void write_location(PageLocation* location, Function<void()> w) {
+    location->lock.lock([=]() {
+        location->owned = false;
+        location->present = false;
+    
+        page_cache->lock.lock([=]() {
+            unmap_refs(location);
+            page_cache->lock.unlock();
+            
+            if (location->location_type == SWAP) {
+                swap->write_swap(location->location.swap->swap_id, (void*) paddr_to_vaddr(location->paddr), [=]() {
+                    location->lock.unlock();
+                    create_event(w);
+                });
+            } else if (location->location_type == FILESYSTEM) {
+                // write(location->location.filesystem->file, 
+                //     location->location.filesystem->offset, (char*) paddr_to_vaddr(location->paddr), 
+                //     PAGE_SIZE, [=](int unsused) {
+                //         create_event(w);
+                //     });
+                location->lock.unlock();
+                K::assert(false, "need to call file write, currently unsupported");
+            } else {
+                location->lock.unlock();
+                K::assert(false, "we are tring to evict an unbacked page, this is unsupported");
+            }
+        });
+    });
 }
 
 /**

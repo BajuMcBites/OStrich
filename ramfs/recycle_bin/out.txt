@@ -1,0 +1,133 @@
+
+temp.elf:	file format elf64-littleaarch64
+
+Disassembly of section .text:
+
+0000000000400000 <recursion>:
+  400000: 910003fd     	mov	x29, sp
+  400004: a9a57bfd     	stp	x29, x30, [sp, #-0x1b0]!
+  400008: b9001fe0     	str	w0, [sp, #0x1c]
+  40000c: aa1e03e0     	mov	x0, x30
+  400010: d2800268     	mov	x8, #0x13               // =19
+  400014: d4000101     	svc	#0x8
+  400018: b9401fe0     	ldr	w0, [sp, #0x1c]
+  40001c: 51000400     	sub	w0, w0, #0x1
+  400020: 97fffff8     	bl	0x400000 <recursion>
+  400024: a8db7bfd     	ldp	x29, x30, [sp], #0x1b0
+  400028: aa1e03e0     	mov	x0, x30
+  40002c: d2800248     	mov	x8, #0x12               // =18
+  400030: d4000101     	svc	#0x8
+  400034: d65f03c0     	ret
+
+0000000000400038 <main>:
+  400038: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+  40003c: 910003fd     	mov	x29, sp
+  400040: 528003a0     	mov	w0, #0x1d               // =29
+  400044: 97ffffef     	bl	0x400000 <recursion>
+  400048: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+  40004c: d65f03c0     	ret
+
+Disassembly of section .symtab:
+
+0000000000000000 <.symtab>:
+		...
+      1c: 00010003     	<unknown>
+      20: 00400000     	<unknown>
+		...
+      30: 00000001     	udf	#0x1
+      34: fff10004     	<unknown>
+		...
+      48: 00000008     	udf	#0x8
+      4c: 00010000     	<unknown>
+      50: 00400000     	<unknown>
+		...
+      60: 00000012     	udf	#0x12
+      64: 00010000     	<unknown>
+      68: 00400000     	<unknown>
+		...
+      78: 00000015     	udf	#0x15
+      7c: 00010000     	<unknown>
+      80: 00400038     	<unknown>
+		...
+      90: 00000029     	udf	#0x29
+      94: 00010010     	<unknown>
+      98: 00410050     	<unknown>
+		...
+      a8: 0000001a     	udf	#0x1a
+      ac: 00010010     	<unknown>
+      b0: 00410050     	<unknown>
+		...
+      c0: 00000028     	udf	#0x28
+      c4: 00010010     	<unknown>
+      c8: 00410050     	<unknown>
+		...
+      d8: 00000061     	udf	#0x61
+      dc: 00000010     	udf	#0x10
+		...
+      f0: 00000034     	udf	#0x34
+      f4: 00010010     	<unknown>
+      f8: 00410050     	<unknown>
+		...
+     108: 00000040     	udf	#0x40
+     10c: 00010010     	<unknown>
+     110: 00410050     	<unknown>
+		...
+     120: 00000048     	udf	#0x48
+     124: 00010010     	<unknown>
+     128: 00410050     	<unknown>
+		...
+     138: 0000004f     	udf	#0x4f
+     13c: 00010010     	<unknown>
+     140: 00410050     	<unknown>
+		...
+     150: 00000054     	udf	#0x54
+     154: 00010010     	<unknown>
+     158: 00080000     	<unknown>
+		...
+     168: 0000005b     	udf	#0x5b
+     16c: 00010010     	<unknown>
+     170: 00410050     	<unknown>
+		...
+
+Disassembly of section .strtab:
+
+0000000000000000 <.strtab>:
+       0: 6d657400     	ldp	d0, d29, [x0, #-0x1b0]
+       4: 006f2e70     	<unknown>
+       8: 75636572     	<unknown>
+       c: 6f697372     	fcmla	v18.8h, v27.8h, v9.h[1], #270
+      10: 7824006e     	ldaddh	w4, w14, [x3]
+      14: 69616d00     	ldpsw	x0, x27, [x8, #-0xf8]
+      18: 5f5f006e     	<unknown>
+      1c: 5f737362     	sqdmlsl	s2, h27, v3.h[3]
+      20: 72617473     	<unknown>
+      24: 005f5f74     	<unknown>
+      28: 73625f5f     	<unknown>
+      2c: 6e655f73     	uqrshl	v19.8h, v27.8h, v5.8h
+      30: 005f5f64     	<unknown>
+      34: 73625f5f     	<unknown>
+      38: 74735f73     	<unknown>
+      3c: 00747261     	<unknown>
+      40: 6e655f5f     	uqrshl	v31.8h, v26.8h, v5.8h
+      44: 005f5f64     	<unknown>
+      48: 6164655f     	<unknown>
+      4c: 5f006174     	<unknown>
+      50: 00646e65     	<unknown>
+      54: 6174735f     	<unknown>
+      58: 5f006b63     	<unknown>
+      5c: 7461645f     	<unknown>
+      60: 74735f61     	<unknown>
+      64: 00747261     	<unknown>
+
+Disassembly of section .shstrtab:
+
+0000000000000000 <.shstrtab>:
+       0: 79732e00     	ldrh	w0, [x16, #0x1996]
+       4: 6261746d     	<unknown>
+       8: 74732e00     	<unknown>
+       c: 62617472     	<unknown>
+      10: 68732e00     	<unknown>
+      14: 74727473     	<unknown>
+      18: 2e006261     	<unknown>
+      1c: 74786574     	<unknown>
+      20: 00           	<unknown>

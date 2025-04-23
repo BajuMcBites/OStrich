@@ -245,9 +245,7 @@ class SupplementalPageTable {
     SupplementalPageTable() : map(uint64_t_hash, uint64_t_equals, 100) {
     }
 
-    ~SupplementalPageTable() {
-        // TODO: go through and clear all local pages + 0 ref page_locs
-    }
+    ~SupplementalPageTable(); 
 
     LocalPageLocation* vaddr_mapping(uint64_t vaddr);
     void map_vaddr(uint64_t vaddr, LocalPageLocation* local);
@@ -326,7 +324,11 @@ uint64_t vaddr_to_paddr(uint64_t vaddr);
 
 uint64_t build_page_attributes(LocalPageLocation* local);
 
+void unmap_refs(PageLocation* location);
+
 void init_swap();
+
+void tlb_shootdown();
 
 #endif /*__ASSEMBLER__*/
 

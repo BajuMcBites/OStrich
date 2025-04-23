@@ -96,6 +96,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
+	git restore sdcard.dd
 	qemu-system-aarch64 $(QEMU_ARGS)
 
 debug:

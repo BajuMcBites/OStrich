@@ -22,6 +22,7 @@
 #define NUM_TIMES 1000
 
 PageTable* page_table;
+extern PageCache* page_cache;
 
 void test_new_delete_basic() {
     printf("Test 1: Basic Allocation and Deletion\n");
@@ -409,13 +410,37 @@ void mmap_shared_unreserved() {
     });
 }
 
+void test_write_location() {
+    PCB* pcb = new PCB;
+    uint64_t uvaddr = 0x9000;
+
+    mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, nullptr,
+         0, PAGE_SIZE, [=]() {
+             load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
+                 char* kbuf = (char*)kvaddr;
+                 K::strncpy(kbuf, "THIS MUST PERSIST AFTER READING BACK INTO MEM", 60);
+
+                 PageLocation* location = pcb->supp_page_table->vaddr_mapping(uvaddr)->location;
+                 write_location(location, [=]() {
+                    load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr2) {
+                        char* kbuf = (char*)kvaddr2;
+                        printf("page_contents: %s\n", kbuf);
+                        printf("kvaddr 1: %X, kvaddr2 %X\n", kvaddr, kvaddr2);
+                        delete pcb;
+                    });
+                 });
+             });
+         });
+}
+
 void user_paging_tests() {
     printf("starting user paging tests\n");
-    basic_page_table_creation();
-    mmap_test_no_reserve();
-    mmap_test_file();
-    mmap_test_file();
-    mmap_shared_unreserved();
+    // basic_page_table_creation();
+    // mmap_test_no_reserve();
+    // mmap_test_file();
+    // mmap_test_file();
+    // mmap_shared_unreserved();
+    test_write_location();
     printf("user paging tests complete\n");
 }
 

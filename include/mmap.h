@@ -33,5 +33,6 @@ void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint6
                uint64_t id, Function<void(void)> w);
 void load_location(PageLocation* location, Function<void(uint64_t)> w);
 int unreserved_id();
+void write_location(PageLocation* location, Function<void()> w);
 
 #endif

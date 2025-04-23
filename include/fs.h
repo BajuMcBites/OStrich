@@ -39,6 +39,8 @@ void get_file_name(file* file, Function<void(char*)> w);
 void read(file* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 
+void write(file* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
+
 // void write_dev();
 
 #endif /* _FS_H */

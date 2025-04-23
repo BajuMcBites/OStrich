@@ -106,7 +106,7 @@ void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr
                 location->lock.lock([=]() {
                     // printf("this is our supp page table %X\n", pcb->supp_page_table);
     
-                    if (location->ref_count == 1) {
+                    if (location->ref_count == 1 || location->location_type == FILESYSTEM) {
                         // printf("we are the only user rn %d, refcound %d\n", pcb->pid,
                         //        location->ref_count);
                         unpin_frame(vaddr_to_paddr(kvaddr_old));

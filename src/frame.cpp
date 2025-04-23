@@ -5,9 +5,11 @@
 #include "printf.h"
 #include "stdint.h"
 #include "vm.h"
+#include "mmap.h"
 
-int index = 0;
-int num_frames = 0;
+uint64_t index = 0;
+uint64_t eviction_index = 0;
+uint64_t num_frames = 0;
 Frame* frame_table = 0;
 SpinLock lock;  // switch to blocking lock
 
@@ -50,37 +52,42 @@ int get_free_index_unlocked() {
     return -1;
 }
 
+/*
+ * Evicts a frame from frame table
+ */
+void evict_frame(Function<void(uint64_t)> w) {
+    while ((frame_table[eviction_index].flags & USED_PAGE_FLAG) || frame_table[eviction_index].pin_count > 0 
+        || frame_table[eviction_index].contents == nullptr)
+        eviction_index = (eviction_index + 1) % num_frames;
+
+    
+    write_location(frame_table[eviction_index].contents, [=]() {
+        lock.unlock();
+        create_event(w, (uint64_t) (eviction_index * PAGE_SIZE));
+    });
+}
+
 /**
  * allocates a frame from physical memory
  */
 void alloc_frame(int flags, Function<void(uint64_t)> w) {
-    LockGuard<SpinLock>{lock};
-    int index = get_free_index_unlocked();
-    if (index != -1) {
-        frame_table[index].flags = flags;
-
-        if (frame_table[index].flags & PINNED_PAGE_FLAG) frame_table[index].pin_count = 1;
-
-        frame_table[index].flags |= USED_PAGE_FLAG;
-        create_event<uint64_t>(w, index * PAGE_SIZE, 1);
-    } else {
-        // evict
-    }
+    alloc_frame(flags, nullptr, w);
 }
 
 /**
  * allocates a frame from physical memory + maps location struct
  */
 void alloc_frame(int flags, PageLocation* location, Function<void(uint64_t)> w) {
-    LockGuard<SpinLock>{lock};
+    lock.lock();
     int index = get_free_index_unlocked();
     if (index != -1) {
         frame_table[index].flags = flags;
         frame_table[index].flags |= USED_PAGE_FLAG;
         frame_table[index].contents = location;
         create_event<uint64_t>(w, index * PAGE_SIZE, 1);
+        lock.unlock();
     } else {
-        // evict
+        evict_frame(w);
     }
 }
 

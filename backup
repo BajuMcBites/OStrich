@@ -1,0 +1,12 @@
+/*
+Evictions
+
+process dead:
+    - Proper deletion of supplemental page table
+    - correct freeing of pages deletion page table 
+
+TLB shootdowns
+*/
+
+
+

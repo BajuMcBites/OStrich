@@ -305,6 +305,18 @@ void SupplementalPageTable::map_vaddr(uint64_t vaddr, LocalPageLocation* local) 
     this->map.put(vaddr, local);
 }
 
+SupplementalPageTable::~SupplementalPageTable() {
+    lock.lock([=]() {
+        map.for_each([=](LocalPageLocation* local) {
+            local->location->lock.lock([=]() {
+                page_cache->remove(local, [=]() {
+                    delete local;
+                });
+            });
+        });
+    });
+}
+
 /**
  * Assume all locks are appropriately held to call this. Returns bits [11:2] and
  * [63:52] of a 4096 block descriptor for a user page. Bits [51:12] must be
@@ -511,4 +523,9 @@ void SupplementalPageTable::copy_mappings(SupplementalPageTable* other, PCB* pcb
             });
         });
     });
+}
+
+
+void tlb_shootdown() {
+
 }

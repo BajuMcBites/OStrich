@@ -154,8 +154,13 @@ int newlib_handle_exec(SyscallFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID()); 
     tcb->state = TASK_STOPPED;
     PCB* pcb = tcb->pcb;
+
+    delete pcb->supp_page_table;
+    delete pcb->page_table;
+
     pcb->supp_page_table = new SupplementalPageTable();
     pcb->page_table = new PageTable();
+    
     int pid = pcb->pid;
     // printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0], pid);
     char* pathname = (char*)frame->X[0];
