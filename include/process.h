@@ -65,6 +65,7 @@ struct PCB {
     LockedQueue<Signal, SpinLock>* sigs;
     Semaphore* waiting_parent;
     PCB* parent;
+    // fields for maintaining double linked list of children
     PCB* child_start;
     PCB* child_end;
     PCB* next;
@@ -116,6 +117,8 @@ struct PCB {
     }
 
     void remove_child(PCB* child) {
+        // linked list logic- if we are removing child_start then the next element is child_start 
+        // and if we are removing child_end then the element before is child_end
         if (child->before == nullptr) {
             if (child->next == nullptr) {
                 child_end = child_start = child->before = child->next = nullptr;

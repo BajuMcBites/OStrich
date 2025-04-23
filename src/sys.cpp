@@ -134,12 +134,17 @@ void newlib_handle_exit(SyscallFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID()); 
     printf("exit has ran, returning %d\n", frame->X[0]);
     if (tcb->pcb->parent != nullptr) {
+        // throw signals at parent processes
         Signal* s = new Signal(SIGCHLD, tcb->pcb->pid, frame->X[0]);
         tcb->pcb->parent->remove_child(tcb->pcb);
         tcb->pcb->parent->raise_signal(s);
         if (tcb->pcb->waiting_parent) {
             tcb->pcb->waiting_parent->up();
         }
+    }
+    // orphan the child processes
+    for (PCB* start = tcb->pcb->child_start; start != nullptr; start = start->next) {
+        start->parent = nullptr;
     }
     tcb->state = TASK_KILLED;
     event_loop();
@@ -292,6 +297,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
     Signal* sig;
     int n_pid = -1;
     bool terminated = false;
+    // check among existing signals if it already has an exited child or if this is a terminated process
     while (true) {
         sig = tcb->pcb->sigs->remove();
         if (sig == nullptr) break;
@@ -317,7 +323,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
         queue_user_tcb(tcb);
         event_loop();
     }
-    // need to wait for child to terminate
+    // otherwise we need to wait for child to terminate
     Semaphore* sema = new Semaphore();
     for (PCB* start = cur->child_start; start != nullptr; start = start->next) {
         printf("added parent sema to pid %d\n", start->pid);
@@ -325,6 +331,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
         start->add_waiting_parent(sema);
     }
     sema->down([=]{
+        // among child exit, sema will be unlocked
         Signal* sig;
         int n_pid = -1;
         bool terminated = false;

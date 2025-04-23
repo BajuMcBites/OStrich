@@ -71,6 +71,7 @@ void run_events() {
         }
         bool terminated = false;
         if (!nextThread->kernel_event) {
+            // check if any signals came that killed the process
             Signal* sig;
             Queue<Signal> leftover;
             while (sig = ((UserTCB*)nextThread)->pcb->sigs->remove()) {
