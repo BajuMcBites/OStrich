@@ -144,49 +144,12 @@ extern "C" void secondary_kernel_init() {
     mergeCores();
 }
 
-void timerInit() {
-    QA7->TimerRouting.Routing =
-        LOCALTIMER_TO_CORE3_IRQ;                     // Route local timer IRQ to Core0 // Ensure the
-    QA7->TimerControlStatus.ReloadValue = 50000000;  // Timer period set
-    QA7->TimerControlStatus.TimerEnable = 1;         // Timer enabled
-    QA7->TimerControlStatus.IntEnable = 1;           // Timer IRQ enabled
-    QA7->TimerClearReload.IntClear = 1;              // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;                // Reload now
-
-    // We are in NS EL1 so enable IRQ to core0 that level
-    // Make sure FIQ is zero, if set irq is ignored (I think)
-    QA7->Core0TimerIntControl.nCNTPNSIRQ_IRQ = 1;
-    QA7->Core0TimerIntControl.nCNTPNSIRQ_FIQ = 0;
-    QA7->Core1TimerIntControl.nCNTPNSIRQ_IRQ = 1;
-    QA7->Core1TimerIntControl.nCNTPNSIRQ_FIQ = 0;
-    QA7->Core2TimerIntControl.nCNTPNSIRQ_IRQ = 1;
-    QA7->Core2TimerIntControl.nCNTPNSIRQ_FIQ = 0;
-    QA7->Core3TimerIntControl.nCNTPNSIRQ_IRQ = 1;
-    QA7->Core3TimerIntControl.nCNTPNSIRQ_FIQ = 0;
-
-    // set up mailbox
-    QA7->Core0MailboxIntControl.Mailbox0_IRQ = 1;
-    QA7->Core0MailboxIntControl.Mailbox0_FIQ = 0;
-
-    QA7->Core1MailboxIntControl.Mailbox0_IRQ = 1;
-    QA7->Core1MailboxIntControl.Mailbox0_FIQ = 0;
-
-    QA7->Core2MailboxIntControl.Mailbox0_IRQ = 1;
-    QA7->Core2MailboxIntControl.Mailbox0_FIQ = 0;
-
-    QA7->Core3MailboxIntControl.Mailbox0_IRQ = 1;
-    QA7->Core3MailboxIntControl.Mailbox0_FIQ = 0;
-}
-
 extern "C" void primary_kernel_init() {
     create_page_tables();
     patch_page_tables();
     init_mmu();
     uart_init();
     init_printf(nullptr, uart_putc_wrapper);
-    // timer_init();
-    // enable_interrupt_controller();
-    enable_irq();
     printf("printf initialized!!!\n");
     if (fb_init()) {
         printf("Framebuffer initialization successful!\n");
@@ -216,8 +179,8 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
-    // enable_irq();
-    timerInit();
+    enable_irq();
+    local_timer_init();
     wake_up_cores();
     mergeCores();
 }
@@ -228,14 +191,9 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    // if (number_awake == CORE_COUNT) {
-    create_event([] { kernel_main(); });
-    // while (1) {
-    //     printf("timer tick %d\n", timer_getTickCount64());
-    //     timer_wait(500000);
-    // }
-    // }
-
+    if (number_awake == CORE_COUNT) {
+        create_event([] { kernel_main(); });
+    }
     // Uncomment to run snake
     // if(getCoreID() == 0){
     //     printf("init_snake() + keyboard_loop();\n");
