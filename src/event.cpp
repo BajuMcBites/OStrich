@@ -139,22 +139,33 @@ void save_user_context(UserTCB* tcb, KernelEntryFrame* regs) {
 void yield(KernelEntryFrame* frame) {
     K::assert(Interrupts::isDisabled(), "preempt happening with interrupts on uh oh\n");
     TCB* running = runningEvent[getCoreID()];
+    // printf("yield in core: %d\n", getCoreID());
     if (running->kernel_event) {
         // check stack
         K::check_stack();
-        QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-        QA7->TimerClearReload.Reload = 1;    // Reload now
-        Interrupts::restore(running->irq_was_disabled);
         return;
     }
-
     UserTCB* old = get_running_user_tcb(getCoreID());
     // force thread to change
     K::assert((running == old), "mismatched running event and user thread\n");
 
     save_user_context(old, frame);
     QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;    // Reload now
+    QA7->TimerClearReload.Reload = 1;    // Reload nows
+
+    // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
+
+    // route to next core
+    auto me = getCoreID();
+    if (me == 0) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+    } else if (me == 1) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+    } else if (me == 2) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+    } else {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+    }
     enable_irq();
     event_loop();
 }

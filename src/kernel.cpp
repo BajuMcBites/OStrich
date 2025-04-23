@@ -185,9 +185,9 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
-    enable_irq();
     local_timer_init();
     wake_up_cores();
+    enable_irq();
     mergeCores();
 }
 
@@ -198,6 +198,7 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
+        printf("creating kernel_main\n");
         create_event([] { kernel_main(); });
     }
     // Uncomment to run snake

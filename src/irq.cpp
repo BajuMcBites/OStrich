@@ -38,41 +38,46 @@ Atomic<int> wait{0};
 extern "C" void handle_irq(KernelEntryFrame* frame) {
     auto me = getCoreID();
     auto event = get_running_task(me);
-    event->irq_was_disabled = Interrupts::disable();  // disable returns the irq status before irq
+    event->irq_was_disabled = Interrupts::disable();  // disable returns the irq status before
+    // irq
 
     core_int_source_reg_t irq_source;
     if (me == 0) {
         irq_source.Raw32 = QA7->Core0IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
     } else if (me == 1) {
         irq_source.Raw32 = QA7->Core1IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
-
     } else if (me == 2) {
         irq_source.Raw32 = QA7->Core2IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
     } else {
         irq_source.Raw32 = QA7->Core3IRQSource.Raw32;
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
     }
 
-    // uint32_t interrupt_source = 0;
-    // if (me == 0)
-    //     interrupt_source = QA7->Core0IRQSource.Raw32;
-    // else if (me == 1)
-    //     interrupt_source = QA7->Core1IRQSource.Raw32;
-    // else if (me == 2)
-    //     interrupt_source = QA7->Core2IRQSource.Raw32;
-    // else
-    //     interrupt_source = QA7->Core3IRQSource.Raw32;
-
-    // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
     if (irq_source.Timer_Int) {
+        // if (me == 0) {
+        //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+        // } else if (me == 1) {
+        //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+        // } else if (me == 2) {
+        //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+        // } else {
+        //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+        // }
+        // // handle timer irq
+        // printf("Core %d in timer irq\n", getCoreID());
+        QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+        QA7->TimerClearReload.Reload = 1;    // Reload now
+        yield(frame);
+        if (me == 0) {
+            QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+        } else if (me == 1) {
+            QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+        } else if (me == 2) {
+            QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+        } else {
+            QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+        }
         // handle timer irq
         // printf("Core %d in timer irq\n", getCoreID());
-        yield(frame);
-
-        // (uintptr_t)(0x40000024 + VA_START)
     } else {
         printf("UNKNOWN irq: 0x%x,  Core %d in irq\n", irq_source.Raw32, me);
     }
