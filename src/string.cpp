@@ -127,6 +127,10 @@ bool string::starts_with(const string& other) const {
     return true;
 }
 
+const char* string::c_str() const {
+    return this->container.data_ptr();
+}
+
 void stringTest() {
     printf("starting string test\n");
 
@@ -209,8 +213,4 @@ void stringTest() {
     // Print test results
     // You might want to implement a toString() method or overload << for proper output
     printf("String tests passed!\n");
-}
-
-const char* string::c_str() const {
-    return this->container.data_ptr();
 }

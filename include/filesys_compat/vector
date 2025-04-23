@@ -43,6 +43,8 @@ namespace std {
                 for (int i = 0; i < other.size(); i++) {
                     data[i] = other[i];
                 }
+
+                return *this;
             }
 
             vector<T>& operator=(vector<T>&& other) {
