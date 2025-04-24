@@ -144,7 +144,9 @@ void kfopen(string file_name, Function<void(KFile*)> w) {
 }
 
 void kfclose(KFile* file) {
-    file->inode->increment_ref_count_atomic(-1);
+    if (file->inode) {
+        file->inode->increment_ref_count_atomic(-1);
+    }
     delete file;
 }
 
