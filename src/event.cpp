@@ -29,19 +29,40 @@ UserTCB* runningUserTCB[CORE_COUNT] = {nullptr};
 TCB* getNextEvent(int core) {
     auto& ready = readyQueue.forCPU(core);
     for (int i = 0; i < PRIORITY_LEVELS; i++) {
-        while (1) {
-        auto next = ready.queues[i].remove();
-            if (next != nullptr) {
-                if (next->state == TASK_RUNNING) 
-                    return next;
-                else if (next->state == TASK_STOPPED) {
-                    ready.queues[i].add(next);
-                } else if (next->state == TASK_KILLED) {
-                    delete next;
-                    continue;
+        TCB* next = nullptr;
+        while (next = ready.queues[i].remove()) {
+            if (next->state == TASK_RUNNING) 
+                return next;
+            else if (next->state == TASK_STOPPED) {
+                ready.queues[i].add(next);
+            } else if (next->state == TASK_KILLED) {
+                delete next;
+                continue;
+            } 
+            
+            bool terminated = false;
+            if (!next->kernel_event) {
+                // check if any signals came that killed the process
+                Signal* sig;
+                Queue<Signal> leftover;
+                while (sig = ((UserTCB*)next)->pcb->sigs->remove()) {
+                    if (sig->val == SIGKILL) {
+                        terminated = true;
+                    } else {
+                        leftover.add(sig);
+                    }
                 }
-            } else break;
-        }
+                sig = leftover.remove();
+                while (sig != nullptr) {
+                    ((UserTCB*)next)->pcb->sigs->add(sig);
+                    sig = leftover.remove();
+                }
+            }
+            if (terminated) {
+                delete next;
+                continue;
+            }
+        } 
     }
     return nullptr;
 }
@@ -69,27 +90,6 @@ void run_events() {
             {
                 continue;
             }
-        }
-        bool terminated = false;
-        if (!nextThread->kernel_event) {
-            // check if any signals came that killed the process
-            Signal* sig;
-            Queue<Signal> leftover;
-            while (sig = ((UserTCB*)nextThread)->pcb->sigs->remove()) {
-                if (sig->val == SIGKILL) {
-                    terminated = true;
-                } else {
-                    leftover.add(sig);
-                }
-            }
-            sig = leftover.remove();
-            while (sig != nullptr) {
-                ((UserTCB*)nextThread)->pcb->sigs->add(sig);
-                sig = leftover.remove();
-            }
-        }
-        if (terminated) {
-            continue;
         }
         nextThread->run();
         if (!nextThread->kernel_event) {
