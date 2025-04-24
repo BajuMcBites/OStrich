@@ -595,46 +595,39 @@ void kfs_tests() {
     constexpr const char* DATA = "hello world";
 
     // Create file using issue_fs_request
-    fs::issue_fs_request<fs::FS_REQ_CREATE_FILE>(
-        [=](fs::fs_response_t resp) {
-            K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS,
-                      "Failed to create file.");
-            printf("(1) Created file.\n");
+    fs::issue_fs_create_file(ROOT_DIR_INODE, false, "test1.txt", 0, [=](fs::fs_response_t resp) {
+        K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS, "Failed to create file.");
+        printf("(1) Created file.\n");
 
-            int inode_num = resp.data.create_file.inode_index;
+        int inode_num = resp.data.create_file.inode_index;
 
-            // Write data to file using issue_fs_request
-            fs::issue_fs_request<fs::FS_REQ_WRITE>(
-                [=](fs::fs_response_t resp) {
-                    K::assert(resp.data.write.status == fs::FS_RESP_SUCCESS,
-                              "Failed to write to file.");
-                    printf("(2) Wrote data to file.\n");
+        // Write data to file using issue_fs_request
+        fs::issue_fs_write(inode_num, DATA, 0, K::strlen(DATA) + 1, [=](fs::fs_response_t resp) {
+            K::assert(resp.data.write.status == fs::FS_RESP_SUCCESS, "Failed to write to file.");
+            printf("(2) Wrote data to file.\n");
 
-                    char* buffer = (char*)kmalloc(strlen(DATA) + 1);
+            char* buffer = (char*)kmalloc(strlen(DATA) + 1);
 
-                    // Read data from file using issue_fs_request
-                    kfopen("///test1.txt", [=](file* file) {
-                        if (!file) {
-                            printf("failed to open file\n");
-                            return;
-                        }
+            // Read data from file using issue_fs_request
+            kfopen("///test1.txt", [=](file* file) {
+                if (!file) {
+                    printf("failed to open file\n");
+                    return;
+                }
 
-                        printf("(3) Opened file.\n");
+                printf("(3) Opened file.\n");
 
-                        kread(file, 0, buffer, strlen(DATA) + 1, [=](int ret) {
-                            K::assert(ret == strlen(DATA) + 1, "Failed to read from file.");
-                            K::assert(K::strcmp(buffer, DATA) == 0,
-                                      "Data read from file is incorrect.");
-                            printf("(4) Data read from file is correct.\n");
+                kread(file, 0, buffer, strlen(DATA) + 1, [=](int ret) {
+                    K::assert(ret == strlen(DATA) + 1, "Failed to read from file.");
+                    K::assert(K::strcmp(buffer, DATA) == 0, "Data read from file is incorrect.");
+                    printf("(4) Data read from file is correct.\n");
 
-                            // Close the file.
-                            kfclose(file);
-                            kfree(buffer);
-                            printf("(5) End kfs tests.\n");
-                        });
-                    });
-                },
-                inode_num, DATA, 0, K::strlen(DATA) + 1);
-        },
-        ROOT_DIR_INODE, false, "test1.txt", 0);
+                    // Close the file.
+                    kfclose(file);
+                    kfree(buffer);
+                    printf("(5) End kfs tests.\n");
+                });
+            });
+        });
+    });
 }

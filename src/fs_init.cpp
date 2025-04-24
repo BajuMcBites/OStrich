@@ -53,7 +53,7 @@ void fs_init() {
 void displayTree(const Directory* dir, const char* curPath) {
     const std::vector<char*> entries = dir->listDirectoryEntries();
     for (const auto entry : entries) {
-        File* file = dir->getFile(entry);
+        KFile* file = dir->getFile(entry);
         if (file->isDirectory()) {
             printf("%s%s (directory)\n", curPath, entry);
             size_t newPathLen = K::strlen("    ") + K::strlen(curPath) + K::strlen(entry) + 1 +
@@ -121,7 +121,7 @@ void test_fs() {
     Directory* dir1 = rootDir->createDirectory("dir1");
 
     printf("Creating new file /dir1/file1\n");
-    File* file1 = dir1->createFile("file1");
+    KFile* file1 = dir1->createFile("file1");
 
     printf("Writing data to file1\n");
     const char* testData = "testing!";
@@ -141,15 +141,15 @@ void test_fs() {
     Directory* dir3 = dir2->createDirectory("dir3");
 
     printf("Creating new file /dir2/dir3/file2\n");
-    File* file2 = dir3->createFile("file2");
+    KFile* file2 = dir3->createFile("file2");
 
     printf("\n");
 
     printf("Creating new file /dir2/tmpfile\n");
-    File* tmpFile = dir2->createFile("tmpfile");
+    KFile* tmpFile = dir2->createFile("tmpfile");
 
     printf("Creating new file /dir2/largefile\n");
-    File* largeFile = dir2->createFile("largefile");
+    KFile* largeFile = dir2->createFile("largefile");
 
     printf("Writing >BLOCK_SIZE bytes to largefile\n");
     constexpr uint64_t BUFFER_SIZE = BlockManager::BLOCK_SIZE + 100;

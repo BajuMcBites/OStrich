@@ -51,22 +51,22 @@ enum class FileType {
 };
 
 // Represents a file that is opened by any process (user or kernel).
-class File {
+class KFile {
    public:
-    File() : inode(nullptr), file_type(FileType::UNKNOWN) {
+    KFile() : inode(nullptr), file_type(FileType::UNKNOWN) {
     }
     mem_inode_t* inode;  // TODO: remove dependency on inode and use fileListNode instead.
     FileType file_type;
     string name;
 };
 
-void kfopen(string file_name, Function<void(File*)> w);
-void kfclose(File* file);
-void get_file_name(File* file, Function<void(char*)> w);
+void kfopen(string file_name, Function<void(KFile*)> w);
+void kfclose(KFile* file);
+void get_file_name(KFile* file, Function<void(char*)> w);
 
-void kread(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
-void kwrite(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
-void read_dev(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
+void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
+void kwrite(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
+void read_dev(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 
 // void write_dev();
 
