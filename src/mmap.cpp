@@ -54,7 +54,7 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
     return;
 }
 
-void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file,
+void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, File* file,
                           uint64_t offset, uint64_t id, Function<void(void)> w) {
     pcb->supp_page_table->lock.lock([=]() {
         LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(uvaddr);
@@ -96,7 +96,7 @@ void create_local_mapping(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* 
  * decide whether it is swap or unbacked (0 for swap 1 for unbacked). All
  * params passed must match the flags passed aswell.
  */
-void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset,
+void mmap_page(PCB* pcb, uint64_t uvaddr, int prot, int flags, File* file, uint64_t offset,
                uint64_t id, Function<void(void)> w) {
     bool file_mmap = (flags & MAP_ANONYMOUS) == 0;
     bool no_reserve = (flags & MAP_NORESERVE) != 0;
@@ -167,7 +167,7 @@ void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w) {
  * runs the continuation function. This does not load the region into memory, which
  * can be done by load_mmapped_region.
  */
-void mmap(PCB* pcb, uint64_t uvaddr, int prot, int flags, file* file, uint64_t offset, int length,
+void mmap(PCB* pcb, uint64_t uvaddr, int prot, int flags, File* file, uint64_t offset, int length,
           Function<void(void)> w) {
     K::assert(uvaddr % PAGE_SIZE == 0, "invalid user vaddr being mmapped");
     K::assert(length > 0, "invalid length input into mmap");

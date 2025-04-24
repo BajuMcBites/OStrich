@@ -159,10 +159,10 @@ struct SwapLocation {
 };
 
 struct FileLocation {
-    struct file* file;
+    File* file;
     uint64_t offset;
 
-    FileLocation(struct file* f, uint64_t off) {
+    FileLocation(File* f, uint64_t off) {
         file = f;
         offset = off;
     }
@@ -243,11 +243,11 @@ class SupplementalPageTable {
 };
 
 struct PCKey {
-    struct file* file;
+    File* file;
     uint64_t offset;  // 0 is swap, 1 is unbacked
     uint64_t id;      // swap or unbacked id
 
-    PCKey(struct file* f, uint64_t off, uint64_t _id) {
+    PCKey(File* f, uint64_t off, uint64_t _id) {
         file = f;
         offset = off;
         id = _id;
@@ -290,7 +290,7 @@ class PageCache {
     ~PageCache() {
     }
 
-    void get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+    void get_or_add(File* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
                     Function<void(PageLocation*)> w);
 
     void remove(LocalPageLocation* local);
