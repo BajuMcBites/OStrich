@@ -38,14 +38,14 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
 
         } else if (location->location_type == FILESYSTEM) {
             FileLocation* file_location = location->location.filesystem;
-            read(file_location->file, file_location->offset, (char*)page_vaddr, PAGE_SIZE,
-                 [=](int ret) {
-                     K::assert(ret >= 0, "mmap: read failed\n");
-                     location->paddr = paddr;
-                     location->present = true;
+            kread(file_location->file, file_location->offset, (char*)page_vaddr, PAGE_SIZE,
+                  [=](int ret) {
+                      K::assert(ret >= 0, "mmap: read failed\n");
+                      location->paddr = paddr;
+                      location->present = true;
 
-                     create_event(w, paddr);
-                 });
+                      create_event(w, paddr);
+                  });
 
         } else {
             K::assert(false, "invalid location type");

@@ -86,6 +86,11 @@ namespace std {
                 data[cur_size++] = value;
             } 
 
+            void pop_back() {
+                K::assert(cur_size > 0, "vector: pop_back() called on empty vector.");
+                cur_size--;
+            }
+
             T& back() {
                 K::assert(cur_size > 0, "vector: back() called on empty vector.");
                 return data[cur_size - 1];
