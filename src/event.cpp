@@ -48,12 +48,13 @@ TCB* getNextEvent(int core) {
                 while (sig = ((UserTCB*)next)->pcb->sigs->remove()) {
                     if (sig->val == SIGKILL) {
                         terminated = true;
+                        break;
                     } else {
                         leftover.add(sig);
                     }
                 }
                 sig = leftover.remove();
-                while (sig != nullptr) {
+                while (sig != nullptr && !terminated) {
                     ((UserTCB*)next)->pcb->sigs->add(sig);
                     sig = leftover.remove();
                 }
