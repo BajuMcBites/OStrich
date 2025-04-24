@@ -6,25 +6,23 @@
 #include "function.h"
 #include "hash.h"
 #include "partition.h"
+#include "printf.h"
 #include "stdint.h"
-
-#define SWAP_ID 0xb8
 
 class Swap {
    public:
     Swap(uint64_t num_sectors) {
         this->num_sectors = num_sectors;
-        create_partition(num_sectors, SWAP_ID);
         PartitionEntry partitions[4];
         int ret = read_partition_table(partitions);
         starting_sector = 0;
         for (int i = 0; i < 4; i++) {
-            if (partitions[i].system_id == SWAP_ID && partitions[i].total_sectors == num_sectors) {
+            if (partitions[i].system_id == SWAP_PARTITION_ID) {
                 starting_sector = partitions[i].relative_sector;
             }
         }
 
-        this->bitmap = new Bitmap(num_sectors / 4);
+        this->bitmap = new Bitmap(num_sectors / 8);
         this->lock = new Lock;
         this->map = new HashMap<uint64_t, long>(uint64_t_hash, uint64_t_equals, 1000);
         this->map->set_not_found(-1);
@@ -37,6 +35,18 @@ class Swap {
     void get_swap_id(Function<void(uint64_t)> w);
 
     long swap_id_to_sector(uint64_t swap_id);
+
+    /**
+     * Sector Index vs Sector
+     *
+     * Sectors are 512 byte regions but everything we store in swap is 4096 byte pages,
+     * to save some space in out bitmap, we cluster every 4 sectors into groups, that are
+     * represented by 1 bit in the bitmap. Sector indexes refer to the place in the bitmap
+     * where as a sector is the physical sector that it is being stored in. The translation
+     * between the 2 is: sector_index * 4 + starting_index = sector
+     */
+    inline uint32_t sector_to_sector_index(uint32_t sector);
+    inline uint32_t sector_index_to_sector(uint32_t sector_index);
 
    private:
     uint64_t num_sectors;
@@ -51,9 +61,5 @@ class Swap {
         delete lock;
     }
 };
-
-inline uint32_t sector_to_sector_index(uint32_t sector);
-
-inline uint32_t sector_index_to_sector(uint32_t sector_index);
 
 #endif /* _SWAP_H */

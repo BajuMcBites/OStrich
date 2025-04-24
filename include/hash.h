@@ -141,7 +141,7 @@ class HashMap {
         }
     }
 
-    void set_not_found(T value) {
+    void set_not_found(const T &value) {
         not_found = value;
     }
 

@@ -1,10 +1,10 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
-#include "event.h"
-#include "vm.h"
-#include "printf.h"
 #include "atomic.h"
+#include "event.h"
+#include "printf.h"
+#include "vm.h"
 
 #define NR_TASKS (1 << 8)
 
@@ -12,39 +12,38 @@ extern struct PCB* task[NR_TASKS];
 extern int curr_task;
 extern int task_cnt;
 
-
 enum sig_val {
-    SIGHUP=1,
-    SIGINT=2,
-    SIGQUIT=3,
-    SIGILL=4,
-    SIGTRAP=5,
-    SIGABRT=6,
-    SIGBUS=7,
-    SIGFPE=8,
-    SIGKILL=9,
-    SIGUSR1=10,
-    SIGSEGV=11,
-    SIGUSR2=12,
-    SIGPIPE=13,
-    SIGALRM=14,
-    SIGTERM=15,
-    SIGSTKFLT=16,
-    SIGCHLD=17,
-    SIGCONT=18,
-    SIGSTOP=19,
-    SIGTSTP=20,
-    SIGTTIN=21,
-    SIGTTOU=22,
-    SIGURG=23,
-    SIGXCPU=24,
-    SIGXFSZ=25,
-    SIGVTALRM=26,
-    SIGPROF=27,
-    SIGWINCH=28,
-    SIGIO=29,
-    SIGPWR=30,
-    SIGSYS=31
+    SIGHUP = 1,
+    SIGINT = 2,
+    SIGQUIT = 3,
+    SIGILL = 4,
+    SIGTRAP = 5,
+    SIGABRT = 6,
+    SIGBUS = 7,
+    SIGFPE = 8,
+    SIGKILL = 9,
+    SIGUSR1 = 10,
+    SIGSEGV = 11,
+    SIGUSR2 = 12,
+    SIGPIPE = 13,
+    SIGALRM = 14,
+    SIGTERM = 15,
+    SIGSTKFLT = 16,
+    SIGCHLD = 17,
+    SIGCONT = 18,
+    SIGSTOP = 19,
+    SIGTSTP = 20,
+    SIGTTIN = 21,
+    SIGTTOU = 22,
+    SIGURG = 23,
+    SIGXCPU = 24,
+    SIGXFSZ = 25,
+    SIGVTALRM = 26,
+    SIGPROF = 27,
+    SIGWINCH = 28,
+    SIGIO = 29,
+    SIGPWR = 30,
+    SIGSYS = 31
 };
 
 struct Signal {
@@ -84,9 +83,8 @@ struct PCB {
         supp_page_table = new SupplementalPageTable;
         waiting_parent = nullptr;
         parent = nullptr;
-        child_start = child_end = next = nullptr;
+        child_start = child_end = next = before = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
-        before = nullptr;
     }
     PCB(int id) {
         delete task[pid];
@@ -101,7 +99,7 @@ struct PCB {
         sigs = new LockedQueue<Signal, SpinLock>;
         before = nullptr;
     }
-    
+
     void raise_signal(Signal* s) {
         sigs->add(s);
     }
@@ -122,7 +120,7 @@ struct PCB {
     }
 
     void remove_child(PCB* child) {
-        // linked list logic- if we are removing child_start then the next element is child_start 
+        // linked list logic- if we are removing child_start then the next element is child_start
         // and if we are removing child_end then the element before is child_end
         if (child->before == nullptr) {
             if (child->next == nullptr) {
@@ -150,5 +148,7 @@ struct PCB {
 };
 
 void fork(struct UserTCB* tcb);
+
+void kill_process(struct PCB* pcb);
 
 #endif /*_PROCESS_H_*/

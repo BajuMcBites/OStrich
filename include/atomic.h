@@ -293,6 +293,7 @@ public:
 
 struct SemaphoreNode {
     SemaphoreNode(Function<void()> w) : work(w) {
+        next = nullptr;
     }
 
     Function<void()> work;

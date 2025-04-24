@@ -264,6 +264,7 @@ void kfree(void* ptr) {
     LockGuardP g{theLock};
     // assert(ptr != nullptr);                        // check for null pointer
     memory_block_t* freeBlock = get_block(ptr);  // block we want to add back to free list
+    K::memset(ptr, 0, freeBlock->block_size_alloc & ~0x1);
     deallocate(freeBlock);
     if (free_head == nullptr)  // list is empty, make block the head
     {

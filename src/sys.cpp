@@ -1,17 +1,16 @@
 #include "sys.h"
 
 #include "../user_programs/system_calls.h"
+#include "atomic.h"
+#include "elf_loader.h"
 #include "event.h"
+#include "mmap.h"
 #include "printf.h"
 #include "process.h"
-#include "stdint.h"
-#include "vm.h"
-#include "utils.h"
-#include "event.h"
-#include "elf_loader.h"
-#include "atomic.h"
 #include "ramfs.h"
-#include "mmap.h"
+#include "stdint.h"
+#include "utils.h"
+#include "vm.h"
 // #include "trap_frame.h"
 
 // SyscallFrame structure.
@@ -21,7 +20,7 @@ struct SyscallFrame {
         /* X[0] ... X[5] - arguments
         once function is called, X[0] will be the return value.
         */
-        uint64_t X[31];  // 0 ... 30 
+        uint64_t X[31];  // 0 ... 30
     };
 };
 
@@ -108,12 +107,6 @@ void handle_newlib_syscall(int opcode, SyscallFrame* frame) {
         case NEWLIB_TIME:
             frame->X[0] = newlib_handle_time(frame);
             break;
-        case 18:
-            printf("Parent done\n");
-            break;
-        case 19:
-            printf("Child done\n");
-            break;
         default:
             break;
     }
@@ -131,15 +124,19 @@ void handle_linux_syscall(int opcode, SyscallFrame* frame) {
 // frame[0] ... frame[5] would be where the first 6 arguments are.
 // See https://sourceware.org/newlib/libc.html#Stubs for the specific arguments for each call.
 void newlib_handle_exit(SyscallFrame* frame) {
-    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
     printf("exit has ran, returning %d\n", frame->X[0]);
     if (tcb->pcb->parent != nullptr) {
         // throw signals at parent processes
         Signal* s = new Signal(SIGCHLD, tcb->pcb->pid, frame->X[0]);
         tcb->pcb->parent->remove_child(tcb->pcb);
         tcb->pcb->parent->raise_signal(s);
+
         if (tcb->pcb->waiting_parent) {
+            printf("sema is not null for %d\n", tcb->pcb->pid);
             tcb->pcb->waiting_parent->up();
+        } else {
+            printf("sema is null for %d\n", tcb->pcb->pid);
         }
     }
     // orphan the child processes
@@ -156,13 +153,14 @@ int newlib_handle_close(SyscallFrame* frame) {
 }
 
 int newlib_handle_exec(SyscallFrame* frame) {
-    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
     tcb->state = TASK_STOPPED;
     PCB* pcb = tcb->pcb;
     pcb->supp_page_table = new SupplementalPageTable();
     pcb->page_table = new PageTable();
     int pid = pcb->pid;
-    // printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0], pid);
+    // printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0],
+    // pid);
     char* pathname = (char*)frame->X[0];
     char** argv = (char**)frame->X[1];
     int elf_index = get_ramfs_index(pathname);
@@ -179,7 +177,7 @@ int newlib_handle_exec(SyscallFrame* frame) {
     ramfs_read(buffer, 0, sz, elf_index);
     Semaphore* sema = new Semaphore(1);
     void* new_pc = elf_load((void*)buffer, pcb, sema);
-    
+
     // set up stack
     uint64_t sp = 0x0000fffffffff000;
     uint64_t addrs[argc];
@@ -203,7 +201,7 @@ int newlib_handle_exec(SyscallFrame* frame) {
     tcb->context.sp = sp;
     tcb->context.pc = (uint64_t)new_pc;
     tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
-    
+
     sema->down([=]() {
         // printf("we queued it %d\n", pid);
         tcb->state = TASK_RUNNING;
@@ -229,7 +227,7 @@ int newlib_handle_fstat(SyscallFrame* frame) {
 }
 
 int newlib_handle_getpid(SyscallFrame* frame) {
-    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
     return tcb->pcb->pid;
 }
 
@@ -245,7 +243,7 @@ int newlib_handle_kill(SyscallFrame* frame) {
         printf("dont have process groups implemented\n");
         return 1;
     } else {
-        UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+        UserTCB* tcb = get_running_user_tcb(getCoreID());
         int curr_pid = tcb->pcb->pid;
         PCB* target = task[pid];
         if (target == nullptr) {
@@ -289,7 +287,7 @@ int newlib_handle_unlink(SyscallFrame* frame) {
 }
 
 int newlib_handle_wait(SyscallFrame* frame) {
-    UserTCB* tcb = get_running_user_tcb(getCoreID()); 
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
     save_user_context(tcb, frame->X);
     tcb->state = TASK_STOPPED;
     PCB* cur = tcb->pcb;
@@ -297,7 +295,8 @@ int newlib_handle_wait(SyscallFrame* frame) {
     Signal* sig;
     int n_pid = -1;
     bool terminated = false;
-    // check among existing signals if it already has an exited child or if this is a terminated process
+    // check among existing signals if it already has an exited child or if this is a terminated
+    // process
     while (true) {
         sig = tcb->pcb->sigs->remove();
         if (sig == nullptr) break;
@@ -330,7 +329,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
         if (start->waiting_parent) delete start->waiting_parent;
         start->add_waiting_parent(sema);
     }
-    sema->down([=]{
+    sema->down([=] {
         // among child exit, sema will be unlocked
         Signal* sig;
         int n_pid = -1;
@@ -350,6 +349,7 @@ int newlib_handle_wait(SyscallFrame* frame) {
         if (n_pid == -1) {
             printf("no SIGCHLD signal - something's wrong\n");
         }
+
         set_return_value(tcb, n_pid);
         printf("wait returned, returning %d\n", n_pid);
         tcb->state = TASK_RUNNING;

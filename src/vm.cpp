@@ -382,7 +382,7 @@ void unmap_refs(PageLocation* location) {
 
     while (n != nullptr) {
         // if (n->sharing_mode == PRIVATE) {
-            n->pcb->page_table->unmap_vaddr(n->uvaddr);
+        n->pcb->page_table->unmap_vaddr(n->uvaddr);
         // }
 
         n = n->next;

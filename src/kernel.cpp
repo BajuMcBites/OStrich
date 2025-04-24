@@ -78,17 +78,17 @@ extern char _frame_table_start[];
 
 extern "C" void kernel_main() {
     printf("All tests passed\n");
-    // heapTests();
-    // event_loop_tests();
-    // hash_test();
-    // frame_alloc_tests();
-    // // user_paging_tests();
-    // blocking_atomic_tests();
-    // // ramfs_tests();
-    // sdioTests();
-    // ring_buffer_tests();
-    // bitmap_tests();
-    // swap_tests();
+    heapTests();
+    event_loop_tests();
+    hash_test();
+    frame_alloc_tests();
+    // user_paging_tests();
+    blocking_atomic_tests();
+    // ramfs_tests();
+    sdioTests();
+    ring_buffer_tests();
+    bitmap_tests();
+    swap_tests();
     elf_load_test();
     // partitionTests();
     // test_fs();
@@ -145,7 +145,7 @@ extern "C" void primary_kernel_init() {
 
     usb_initialize();
 
-    set_partition_table(1024 * 1024 /* Filesystem (Bytes) */, 1024 * 1024 /* Swap (Bytes) */);
+    set_partition_table(512 * 1024 /* Filesystem (Bytes) */, 512 * 1024 /* Swap (Bytes) */);
     fs_init();
 
     smpInitDone = true;

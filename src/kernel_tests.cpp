@@ -38,9 +38,7 @@ void test_new_delete_basic() {
 void swap_tests() {
     printf("Starting Swap Tests\n");
 
-    Swap* swap = new Swap(8);
-
-    printf("Writing to a page\n");
+    Swap* swap = new Swap(32);
     alloc_frame(0, [=](uint64_t paddr) {
         uint64_t kvaddr = paddr_to_vaddr(paddr);
         int* temp = (int*)kvaddr;
@@ -50,17 +48,12 @@ void swap_tests() {
         temp += 1;
         *temp = -1;
 
-        printf("Swapping page\n");
-
         swap->write_swap(1, (void*)kvaddr, [=]() {
             alloc_frame(0, [=](uint64_t new_paddr) {
-                printf("Reading from swap\n");
-
-                printf("GOT PHYSICAL ADDRESS %X%X\n", new_paddr >> 32, new_paddr);
+                // printf("GOT PHYSICAL ADDRESS %X%X\n", new_paddr >> 32, new_paddr);
                 void* new_kvaddr = (void*)paddr_to_vaddr(new_paddr);
-                printf("GOT PHYSICAL ADDRESS %X%X\n", new_paddr >> 32, new_paddr);
+                // printf("GOT PHYSICAL ADDRESS %X%X\n", new_paddr >> 32, new_paddr);
                 swap->read_swap(1, new_kvaddr, [=]() {
-                    printf("Checking new page has previous writes\n");
                     int* temp = (int*)new_kvaddr;
                     K::assert(*temp == 1, "Read wrong value");
                     temp += 1;

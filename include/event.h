@@ -12,7 +12,7 @@
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
 
-#define TASK_RUNNING 0 
+#define TASK_RUNNING 0
 #define TASK_STOPPED 1
 #define TASK_KILLED 2
 

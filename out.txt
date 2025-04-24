@@ -1,0 +1,5110 @@
+qemu-system-aarch64 -M raspi3b -kernel build/kernel8.img -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
+printf initialized!!!
+Starting framebuffer initialization...
+Sending mailbox call...
+mbox array at VA: 0xffff0000000ed6c0
+Converting address VA: 0xffff0000000ed6c0
+Physical address PA: 0xed6c0
+GPU address: 0x   ed6c0
+Converting to PA=0x   ed6c0
+Writing to mailbox: channel=8, value=0xed6c0
+Converting address VA: 0xed6c0
+Physical address PA: 0xed6c0
+GPU address: 0x   ed6c0
+Converting VA 0xed6c0 to PA 0xed6c0
+Read from mailbox: raw=0xed6c8, channel=8
+Matched channel 8, returning 0xed6c0
+Mailbox call successful
+Got framebuffer address: 3c100000
+Framebuffer initialized:
+Width: 640, Height: 480
+Pitch: 2560, Buffer size: 1228800
+Buffer address: 3c100000
+Powering on HDMI...
+Converting address VA: 0xffff0000000ed6c0
+Physical address PA: 0xed6c0
+GPU address: 0x   ed6c0
+Writing to mailbox: channel=8, value=0xed6c0
+Converting address VA: 0xed6c0
+Physical address PA: 0xed6c0
+GPU address: 0x   ed6c0
+Converting VA 0xed6c0 to PA 0xed6c0
+Read from mailbox: raw=0xed6c8, channel=8
+Matched channel 8, returning 0xed6c0
+HDMI power on complete
+Framebuffer initialization successful!
+SD card initialized successfully!
+frame table initialized! 
+| heap range 0x177000 0x377000
+
+Device Descriptior: 
+	length = 0x12
+	descriptor_type = 0x1
+	usb_version = 0x110
+	device_class = 0x9
+	device_subclass = 0x0
+	device_protocol = 0x0
+	max_packet_size = 0x8
+	vendor_id = 0x409
+	product_id = 0x55aa
+	device_version = 0x101
+	manufacturer_index = 0x1
+	product_index = 0x2
+	serial_number_index = 0x3
+	num_configurations = 0x1
+Device Configuration Descriptior: 
+	length = 0x9
+	descriptor_type = 0x2
+	total_length = 0x19
+	num_configurations = 0x1
+	configuration_value = 0x1
+	configuration_index = 0x0
+	bm_attributes = 0xe0
+	max_power = 0x0
+Hub Descriptior: 
+	bLength = 0xa
+	bDescriptorType = 0x29
+	bNbrPorts = 0x8
+	wHubCharacteristics = 0xa
+	bPwrOn2pwrGood = 0x1
+	bHubContrCurrent = 0x0
+
+Device Descriptior: 
+	length = 0x12
+	descriptor_type = 0x1
+	usb_version = 0x200
+	device_class = 0x2
+	device_subclass = 0x0
+	device_protocol = 0x0
+	max_packet_size = 0x40
+	vendor_id = 0x525
+	product_id = 0xa4a2
+	device_version = 0x0
+	manufacturer_index = 0x1
+	product_index = 0x2
+	serial_number_index = 0xa
+	num_configurations = 0x2
+Device Configuration Descriptior: 
+	length = 0x9
+	descriptor_type = 0x2
+	total_length = 0x43
+	num_configurations = 0x2
+	configuration_value = 0x2
+	configuration_index = 0x9
+	bm_attributes = 0xc0
+	max_power = 0x32
+
+Device Descriptior: 
+	length = 0x12
+	descriptor_type = 0x1
+	usb_version = 0x200
+	device_class = 0x0
+	device_subclass = 0x0
+	device_protocol = 0x0
+	max_packet_size = 0x8
+	vendor_id = 0x627
+	product_id = 0x1
+	device_version = 0x0
+	manufacturer_index = 0x1
+	product_index = 0x2
+	serial_number_index = 0x9
+	num_configurations = 0x1
+Device Configuration Descriptior: 
+	length = 0x9
+	descriptor_type = 0x2
+	total_length = 0x22
+	num_configurations = 0x1
+	configuration_value = 0x1
+	configuration_index = 0x6
+	bm_attributes = 0xa0
+	max_power = 0x32
+Detected & assigned new device to address = 3.
+
+----------- Finished Enumeration -------- 
+Attaching device with interface protocol: 1
+failed to find correct device configurations.
+Attaching device with interface protocol: 2
+
+Device Descriptior: 
+	length = 0x12
+	descriptor_type = 0x1
+	usb_version = 0x200
+	device_class = 0x0
+	device_subclass = 0x0
+	device_protocol = 0x0
+	max_packet_size = 0x8
+	vendor_id = 0x627
+	product_id = 0x1
+	device_version = 0x0
+	manufacturer_index = 0x1
+	product_index = 0x4
+	serial_number_index = 0xb
+	num_configurations = 0x1
+Device Configuration Descriptior: 
+	length = 0x9
+	descriptor_type = 0x2
+	total_length = 0x22
+	num_configurations = 0x1
+	configuration_value = 0x1
+	configuration_index = 0x8
+	bm_attributes = 0xa0
+	max_power = 0x32
+Detected & assigned new device to address = 4.
+
+----------- Finished Enumeration -------- 
+Attaching device with interface protocol: 1
+Attaching device with interface protocol: 2
+Device already connected/discovered.
+create_partition(): Created partition at sector 1 with 1024 sectors
+create_partition(): Created partition at sector 1025 with 1024 sectors
+Block manager created with 1024 blocks, starting at sector 1
+Existing filesystem detected
+Initialize logmanager: latest system log sequence is: 1
+Invalid block index 192, sector index 1537
+Could not read latest log block
+Hi, I'm core 0
+Hi, I'm core 1
+Hi, I'm core 3
+There are 2 cores awake
+There are 1 cores awake
+Hi, I'm core 2
+There are 3 cores awake
+There are 4 cores awake
+kernel event
+All tests passed
+Inserting 1000 random numbers
+Checking size is 1000
+Checking values are correct
+Reinserting 1000 random numbers into hashmap
+Checking size is 1000
+Checking values are correct
+Removing first half of values
+Checking size is 500
+Checking values are null for first half of values
+Removing all values
+Checking size is 0
+Checking values are null for all keys
+Passed
+start elf_load tests
+kernel event
+4001c8 this is pc
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+creating pcb with pid 1
+after child1
+copy mapping 1
+kernel event
+copy mapping 2
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+copy mapping 5
+kernel event
+after child2
+after child3
+after child4
+kernel event
+kernel event
+after child5
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 2
+kernel event
+after child1
+user event
+copy mapping 1
+kernel event
+copy mapping 2
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 1000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+creating pcb with pid 3
+kernel event
+after child1
+kernel event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+user event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 2000
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 4
+kernel event
+after child1
+user event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+after child2
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 5
+user event
+kernel event
+after child1
+kernel event
+copy mapping 1
+exit has ran, returning 3000
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 6
+kernel event
+kernel event
+kernel event
+user event
+after child1
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+kernel event
+user event
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+kernel event
+after child3
+kernel event
+kernel event
+kernel event
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+user event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+exit has ran, returning 4000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 5000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+creating pcb with pid 7
+kernel event
+after child1
+kernel event
+copy mapping 1
+kernel event
+kernel event
+user event
+copy mapping 2
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 6000
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 8
+kernel event
+after child1
+kernel event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+copy mapping 4
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+user event
+kernel event
+kernel event
+after child5
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 9
+user event
+after child1
+user event
+copy mapping 1
+kernel event
+copy mapping 2
+kernel event
+exit has ran, returning 7000
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+creating pcb with pid 10
+exit has ran, returning 8000
+kernel event
+after child1
+kernel event
+copy mapping 1
+user event
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 11
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+after child1
+kernel event
+copy mapping 1
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 9000
+kernel event
+kernel event
+copy mapping 4
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 10000
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+creating pcb with pid 12
+after child1
+copy mapping 1
+kernel event
+copy mapping 2
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 11000
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+creating pcb with pid 13
+kernel event
+after child1
+kernel event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+user event
+copy mapping 2
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+user event
+after child2
+after child3
+after child4
+kernel event
+kernel event
+kernel event
+after child5
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 14
+kernel event
+kernel event
+after child1
+user event
+kernel event
+copy mapping 1
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+copy mapping 3
+user event
+kernel event
+kernel event
+exit has ran, returning 12000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+exit has ran, returning 13000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 15
+kernel event
+after child1
+user event
+copy mapping 1
+kernel event
+copy mapping 2
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+creating pcb with pid 16
+kernel event
+after child1
+kernel event
+kernel event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+user event
+exit has ran, returning 14000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+exit has ran, returning 15000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+creating pcb with pid 17
+kernel event
+after child1
+kernel event
+copy mapping 1
+kernel event
+kernel event
+user event
+copy mapping 2
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+kernel event
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+creating pcb with pid 18
+kernel event
+after child1
+kernel event
+copy mapping 1
+kernel event
+kernel event
+exit has ran, returning 16000
+kernel event
+copy mapping 2
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+copy mapping 4
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+user event
+kernel event
+kernel event
+after child5
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 19
+kernel event
+after child1
+kernel event
+kernel event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 2
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+user event
+after child4
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+after child5
+user event
+user event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+exit has ran, returning 17000
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+creating pcb with pid 20
+kernel event
+kernel event
+after child1
+kernel event
+kernel event
+kernel event
+copy mapping 1
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 2
+user event
+kernel event
+kernel event
+kernel event
+copy mapping 3
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+copy mapping 4
+kernel event
+kernel event
+copy mapping 5
+kernel event
+kernel event
+kernel event
+after child2
+kernel event
+after child3
+kernel event
+after child4
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+after child5
+user event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+exit has ran, returning 18000
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+wait returned, returning 1
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+wait returned, returning 2
+kernel event
+user event
+user event
+kernel event
+wait returned, returning 3
+kernel event
+user event
+kernel event
+exit has ran, returning 19000
+kernel event
+wait returned, returning 4
+kernel event
+user event
+kernel event
+wait returned, returning 5
+user event
+user event
+wait returned, returning 6
+user event
+wait returned, returning 7
+user event
+wait returned, returning 8
+user event
+kernel event
+wait returned, returning 9
+kernel event
+user event
+wait returned, returning 10
+kernel event
+user event
+wait returned, returning 11
+kernel event
+user event
+kernel event
+kernel event
+wait returned, returning 12
+kernel event
+user event
+kernel event
+kernel event
+wait returned, returning 13
+kernel event
+user event
+kernel event
+kernel event
+wait returned, returning 14
+kernel event
+user event
+kernel event
+wait returned, returning 15
+kernel event
+user event
+kernel event
+wait returned, returning 16
+kernel event
+user event
+kernel event
+wait returned, returning 17
+kernel event
+user event
+kernel event
+wait returned, returning 18
+kernel event
+user event
+kernel event
+wait returned, returning 19
+kernel event
+user event
+kernel event
+added parent sema to pid 20
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+kernel event
+user event
+exit has ran, returning 20000
+kernel event
+wait returned, returning 20
+user event
+exit has ran, returning 1
+
