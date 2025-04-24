@@ -53,11 +53,12 @@ enum class FileType {
 // Represents a file that is opened by any process (user or kernel).
 class KFile {
    public:
-    KFile() : file_type(FileType::UNKNOWN) {
+    KFile() : file_type(FileType::UNKNOWN), offset(0) {
     }
     virtual ~KFile() = default;
 
     FileType file_type;
+    int offset;
 };
 
 class FSFile : public KFile {

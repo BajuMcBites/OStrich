@@ -609,7 +609,7 @@ void kfs_tests() {
             char* buffer = (char*)kmalloc(strlen(DATA) + 1);
 
             // Read data from file using issue_fs_request
-            kopen("test1.txt", [=](KFile* file) {
+            kopen("/test1.txt", [=](KFile* file) {
                 if (!file) {
                     printf("failed to open file\n");
                     return;
