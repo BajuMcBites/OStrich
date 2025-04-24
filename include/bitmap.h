@@ -7,7 +7,7 @@ class Bitmap {
    public:
     Bitmap(int size) {
         this->size = size;
-        container = (char *)kcalloc(1, size / 8 + 1);
+        container = (char *)kcalloc(1, (size + 7) / 8);
     }
 
     ~Bitmap() {
