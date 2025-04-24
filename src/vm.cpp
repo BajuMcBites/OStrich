@@ -378,7 +378,7 @@ void remove_local(PageLocation* location, LocalPageLocation* local) {
  * takes in file name offset and id and finds the matching page in the page or
  * creates a new one and inserts it into the page cache.
  */
-void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+void PageCache::get_or_add(KFile* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
                            Function<void(PageLocation*)> w) {
     bool file_backed = file != nullptr;
     bool unbacked = offset == 1;
@@ -393,7 +393,8 @@ void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLo
 
             if (file_backed) {
                 location->location_type = FILESYSTEM;
-                location->location.filesystem = new FileLocation(file, offset);
+                location->location.filesystem =
+                    new FileLocation(static_cast<FSFile*>(file), offset);
             } else {
                 if (unbacked) {
                     location->location_type = UNBACKED;

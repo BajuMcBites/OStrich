@@ -1,5 +1,6 @@
 #include "kernel_tests.h"
 
+#include "../filesystem/filesys/fs_requests.h"
 #include "atomic.h"
 #include "elf_loader.h"
 #include "event.h"
@@ -252,7 +253,7 @@ void mmap_test_file() {
 
     uint64_t uvaddr = 0x9000;
 
-    kfopen("/dev/ramfs/test1.txt", [=](file* file) {
+    kopen("/dev/ramfs/test1.txt", [=](KFile* file) {
         printf("we opend the file\n");
         mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0, PAGE_SIZE * 3 + 46, [=]() {
             load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
@@ -582,5 +583,51 @@ void elf_load_test() {
     sema->down([=]() {
         readyQueue.forCPU(1).queues[1].add(tcb);
         printf("end elf_load tests\n");
+    });
+}
+
+void kfs_tests() {
+    printf("starting kfs tests\n");
+    // Issue some FS requests to create some files.
+    // For rn, kopen assumes the file already exists.
+    // So we need to create the file first.
+    constexpr int ROOT_DIR_INODE = 0;
+    constexpr const char* DATA = "hello world";
+
+    // Create file using issue_fs_request
+    fs::issue_fs_create_file(ROOT_DIR_INODE, false, "test1.txt", 0, [=](fs::fs_response_t resp) {
+        K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS, "Failed to create file.");
+        printf("(1) Created file.\n");
+
+        int inode_num = resp.data.create_file.inode_index;
+
+        // Write data to file using issue_fs_request
+        fs::issue_fs_write(inode_num, DATA, 0, K::strlen(DATA) + 1, [=](fs::fs_response_t resp) {
+            K::assert(resp.data.write.status == fs::FS_RESP_SUCCESS, "Failed to write to file.");
+            printf("(2) Wrote data to file.\n");
+
+            char* buffer = (char*)kmalloc(strlen(DATA) + 1);
+
+            // Read data from file using issue_fs_request
+            kopen("/test1.txt", [=](KFile* file) {
+                if (!file) {
+                    printf("failed to open file\n");
+                    return;
+                }
+
+                printf("(3) Opened file.\n");
+
+                kread(file, 0, buffer, strlen(DATA) + 1, [=](int ret) {
+                    K::assert(ret == strlen(DATA) + 1, "Failed to read from file.");
+                    K::assert(K::strcmp(buffer, DATA) == 0, "Data read from file is incorrect.");
+                    printf("(4) Data read from file is correct.\n");
+
+                    // Close the file.
+                    kclose(file);
+                    kfree(buffer);
+                    printf("(5) End kfs tests.\n");
+                });
+            });
+        });
     });
 }

@@ -1,0 +1,12 @@
+#ifndef FS_COMPAT_STDLIB_H
+#define FS_COMPAT_STDLIB_H
+
+#include "libk.h"
+
+#define malloc(size) kmalloc(size)
+#define free(ptr) kfree(ptr)
+#define calloc(n, size) kcalloc(n, size)
+#define realloc(ptr, size) krealloc(ptr, size)
+#define free(ptr) kfree(ptr)
+
+#endif // FS_COMPAT_STDLIB_H

@@ -11,7 +11,9 @@
 #define strnlen(str, n) K::strnlen(str, n)
 #define strncpy(dest, src, n) K::strncpy(dest, src, n)
 #define strntok(str, c, n) K::strntok(str, c, n)
+#define strtok(str, delim) K::strtok(str, delim)
 #define memset(buf, val, n) K::memcpy(buf, val, n)
 #define strcmp(lhs, rhs) K::strcmp(lhs, rhs)
+#define strcpy(dest, src) K::strcpy(dest, src)
 
 #endif // __STRING_H

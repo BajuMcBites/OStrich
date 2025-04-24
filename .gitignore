@@ -10,3 +10,7 @@ gdb_start.sh
 *.qcow2
 *.dd
 !sdcard.dd
+
+# clangd ignores
+.cache/
+compile_commands.json

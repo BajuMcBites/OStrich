@@ -35,6 +35,11 @@ class K {
     }
 
     static void assert(bool condition, const char* msg);
+
+    template <typename T>
+    static T&& move(T& value) {
+        return static_cast<T&&>(value);
+    }
 };
 
 #endif
