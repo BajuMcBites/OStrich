@@ -86,8 +86,8 @@ struct PCB {
         before = nullptr;
     }
     PCB(int id) {
-        task[pid] = this;
         pid = id;
+        task[pid] = this;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
         waiting_parent = nullptr;
