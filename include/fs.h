@@ -81,7 +81,6 @@ class DeviceFile : public KFile {
 
 void kopen(string file_name, Function<void(KFile*)> w);
 void kclose(KFile* file);
-void get_file_name(KFile* file, Function<void(char*)> w);
 
 void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 void kwrite(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);

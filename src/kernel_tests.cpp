@@ -253,7 +253,7 @@ void mmap_test_file() {
 
     uint64_t uvaddr = 0x9000;
 
-    kfopen("/dev/ramfs/test1.txt", [=](KFile* file) {
+    kopen("/dev/ramfs/test1.txt", [=](KFile* file) {
         printf("we opend the file\n");
         mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0, PAGE_SIZE * 3 + 46, [=]() {
             load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
@@ -589,7 +589,7 @@ void elf_load_test() {
 void kfs_tests() {
     printf("starting kfs tests\n");
     // Issue some FS requests to create some files.
-    // For rn, kfopen assumes the file already exists.
+    // For rn, kopen assumes the file already exists.
     // So we need to create the file first.
     constexpr int ROOT_DIR_INODE = 0;
     constexpr const char* DATA = "hello world";
@@ -609,7 +609,7 @@ void kfs_tests() {
             char* buffer = (char*)kmalloc(strlen(DATA) + 1);
 
             // Read data from file using issue_fs_request
-            kfopen("test1.txt", [=](KFile* file) {
+            kopen("test1.txt", [=](KFile* file) {
                 if (!file) {
                     printf("failed to open file\n");
                     return;
@@ -623,7 +623,7 @@ void kfs_tests() {
                     printf("(4) Data read from file is correct.\n");
 
                     // Close the file.
-                    kfclose(file);
+                    kclose(file);
                     kfree(buffer);
                     printf("(5) End kfs tests.\n");
                 });
