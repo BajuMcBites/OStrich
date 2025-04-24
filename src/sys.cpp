@@ -146,7 +146,7 @@ void newlib_handle_exit(SyscallFrame* frame) {
     for (PCB* start = tcb->pcb->child_start; start != nullptr; start = start->next) {
         start->parent = nullptr;
     }
-    tcb->state = TASK_KILLED;
+    delete tcb;
     event_loop();
 }
 
