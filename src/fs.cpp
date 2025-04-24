@@ -65,11 +65,11 @@ string clean_path_string(string& file_path) {
 }
 
 /**
- * opens a file specified by file name and returns a file* to it
+ * opens a file specified by file name and returns a KFile* to it
  *
  * This as of right now does not verify the file exists, only checks if
  */
-void kfopen(string file_name, Function<void(File*)> w) {
+void kfopen(string file_name, Function<void(KFile*)> w) {
     init_file_list_lock();
 
     // Minify the path.
@@ -83,7 +83,7 @@ void kfopen(string file_name, Function<void(File*)> w) {
     /* TODO: verify file exists and get characteristics */
     file_list_lock->lock([=]() {
         mem_inode_t* file_inode = nullptr;
-        open_files.remove_if_and_free_node([&](fileListNode* n) {
+        open_files.remove_if_and_free_node([&](FileListNode* n) {
             // Don't remove the inode if we are about to use it.
             if (n->file_hash == file_hash) {
                 file_inode = n->inode;
@@ -93,7 +93,7 @@ void kfopen(string file_name, Function<void(File*)> w) {
         });
 
         // We found the inode in the list.
-        file* f = new file;
+        KFile* f = new KFile;
         if (file_inode != nullptr) {
             file_list_lock->unlock();
 
@@ -103,7 +103,7 @@ void kfopen(string file_name, Function<void(File*)> w) {
             // Update inode ref count.
             file_inode->increment_ref_count_atomic(1);
 
-            create_event<file*>(w, f);
+            create_event<KFile*>(w, f);
             return;
         }
 
@@ -113,7 +113,7 @@ void kfopen(string file_name, Function<void(File*)> w) {
             auto callback = [=](fs::fs_response_t resp) mutable {
                 // want better error handling here.
                 if (resp.data.open.status == fs::FS_RESP_ERROR_NOT_FOUND) {
-                    create_event<file*>(w, nullptr);
+                    create_event<KFile*>(w, nullptr);
                     return;
                 }
 
@@ -122,7 +122,7 @@ void kfopen(string file_name, Function<void(File*)> w) {
                 f->file_type = FileType::FILESYSTEM;
 
                 // file_name is copied.
-                open_files.add(new fileListNode(f->inode, cleaned_file_name));
+                open_files.add(new FileListNode(f->inode, cleaned_file_name));
 
                 // Release list lock.
                 file_list_lock->unlock();
@@ -131,61 +131,57 @@ void kfopen(string file_name, Function<void(File*)> w) {
                 create_event(w, f);
             };
 
-            fs::issue_fs_request<fs::FS_REQ_OPEN>(callback, cleaned_file_name);
+            fs::issue_fs_open(cleaned_file_name, callback);
         } else if (cleaned_file_name.starts_with("/dev/ramfs/")) {
-            file* f = new file;
+            KFile* f = new KFile;
             f->file_type = FileType::DEVICE;
             f->name = cleaned_file_name;
-            create_event<file*>(w, f);
+            create_event<KFile*>(w, f);
         } else {
             K::assert(false, "other device files not supported!");
         }
     });
 }
 
-void kfclose(File* file) {
+void kfclose(KFile* file) {
     file->inode->increment_ref_count_atomic(-1);
     delete file;
 }
 
-void read_fs(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-    K::assert(file->file_type == FileType::FILESYSTEM, "read_fs(): File type is incorrect");
+void read_fs(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+    K::assert(file->file_type == FileType::FILESYSTEM, "read_fs(): KFile type is incorrect");
 
     if (!file->inode) {
         create_event<int>(w, INVALID_FILE);
         return;
     }
 
-    auto callback = [=](fs::fs_response_t resp) {
+    fs::issue_fs_read(file->inode->inode_number, buf, offset, n, [=](fs::fs_response_t resp) {
         if (resp.data.read.status == fs::FS_RESP_SUCCESS) {
             printf("read_fs(): Successfully read %d bytes\n", resp.data.read.bytes_read);
         } else {
             K::assert(false, "read_fs(): Failed to read from file");
         }
         create_event<int>(w, resp.data.read.bytes_read);
-    };
-
-    fs::issue_fs_request<fs::FS_REQ_READ>(callback, file->inode->inode_number, buf, offset, n);
+    });
 }
 
-void write_fs(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-    K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): File type is incorrect");
+void write_fs(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+    K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): KFile type is incorrect");
 
     if (!file->inode) {
         create_event<int>(w, INVALID_FILE);
         return;
     }
 
-    auto callback = [=](fs::fs_response_t resp) {
+    fs::issue_fs_write(file->inode->inode_number, buf, offset, n, [=](fs::fs_response_t resp) {
         if (resp.data.write.status == fs::FS_RESP_SUCCESS) {
             printf("write_fs(): Successfully wrote %d bytes\n", resp.data.write.bytes_written);
         }
-    };
-
-    fs::issue_fs_request<fs::FS_REQ_WRITE>(callback, file->inode->inode_number, buf, offset, n);
+    });
 }
 
-void read_dev(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+void read_dev(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     bool is_ramfs = false;
     if (is_ramfs) { /* ramfs file */
         int ramfs_index = get_ramfs_index(file->name.c_str());
@@ -220,7 +216,7 @@ void read_dev(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(
  * kread should read a file into the specified buffer by routing a read call to the
  * correct filesystem handler, ie userspace main fs, device read
  */
-void kread(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     // characteristics are in file struct.
     switch (file->file_type) {
         case FileType::DEVICE:
@@ -238,7 +234,7 @@ void kread(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int
  * kwrite should write a file from the specified buffer by routing a write call to the
  * correct filesystem handler, ie userspace main fs, device write
  */
-void kwrite(File* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+void kwrite(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     // characteristics are in file struct.
     switch (file->file_type) {
         case FileType::DEVICE:

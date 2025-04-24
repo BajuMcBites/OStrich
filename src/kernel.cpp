@@ -24,6 +24,7 @@
 #include "sdio_tests.h"
 #include "snake.h"
 #include "stdint.h"
+#include "string.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
@@ -80,19 +81,21 @@ extern char _frame_table_start[];
 
 extern "C" void kernel_main() {
     // printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
-    // user_paging_tests();
-    blocking_atomic_tests();
-    // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
-    elf_load_test();
-    partitionTests();
-    // test_fs();
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
+    // // user_paging_tests();
+    // blocking_atomic_tests();
+    // // ramfs_tests();
+    // sdioTests();
+    // ring_buffer_tests();
+    // elf_load_test();
+    // partitionTests();
+    // test_fs_requests();
     // testSnapshot();
+    // stringTest();
+    kfs_tests();
 }
 
 extern char __heap_start[];

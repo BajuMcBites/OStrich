@@ -7,6 +7,7 @@ struct PCB {
     int pid;
     PageTable* page_table;
     SupplementalPageTable* supp_page_table;
+    // FileTable* file_table;
 
     PCB() {
         pid = -1;
