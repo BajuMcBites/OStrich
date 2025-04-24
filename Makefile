@@ -97,9 +97,11 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
+	git restore sdcard.dd
 	qemu-system-aarch64 $(QEMU_ARGS)
 
 debug:
+	git restore sdcard.dd
 	qemu-system-aarch64 $(QEMU_ARGS) -S -gdb tcp::1234
 
 .PHONY: ramfs

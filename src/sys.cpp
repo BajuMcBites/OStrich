@@ -2,6 +2,7 @@
 
 #include "../user_programs/system_calls.h"
 #include "printf.h"
+#include "process.h"
 #include "stdint.h"
 #include "vm.h"
 // #include "trap_frame.h"
@@ -167,6 +168,11 @@ int newlib_handle_lseek(SyscallFrame* frame) {
 
 int newlib_handle_open(SyscallFrame* frame) {
     // TODO: Implement open.
+    char* path = (char*)frame->X[0];
+    int flags = frame->X[1];
+    int mode = frame->X[2];
+
+    kopen(path, [=](KFile* file) { frame->X[0] = file->fd; });
     return 0;
 }
 
