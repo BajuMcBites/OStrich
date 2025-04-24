@@ -18,6 +18,7 @@ extern "C" uint64_t get_spsr_el1();
 
 struct PCB* task[NR_TASKS] = {nullptr};
 int curr_task = 0;
+int task_cnt = 0;
 
 // queue of TCBs ready to run
 PerCPU<CPU_Queues> readyQueue;

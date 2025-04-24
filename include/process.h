@@ -6,10 +6,11 @@
 #include "printf.h"
 #include "atomic.h"
 
-#define NR_TASKS 32
+#define NR_TASKS (1 << 8)
 
 extern struct PCB* task[NR_TASKS];
 extern int curr_task;
+extern int task_cnt;
 
 
 enum sig_val {
@@ -72,10 +73,12 @@ struct PCB {
     PCB* before;
 
     PCB() {
+        K::assert(task_cnt < NR_TASKS, "we are out of task space!\n");
         while (task[curr_task] != nullptr) {
             curr_task = (curr_task + 1) % NR_TASKS;
         }
         task[curr_task] = this;
+        task_cnt += 1;
         pid = curr_task;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
@@ -86,6 +89,8 @@ struct PCB {
         before = nullptr;
     }
     PCB(int id) {
+        delete task[pid];
+        task_cnt++;
         pid = id;
         task[pid] = this;
         page_table = new PageTable;
@@ -136,6 +141,7 @@ struct PCB {
     }
 
     ~PCB() {
+        task_cnt--;
         delete page_table;
         delete supp_page_table;
         delete sigs;
