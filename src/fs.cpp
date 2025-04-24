@@ -69,13 +69,13 @@ string clean_path_string(string& file_path) {
  *
  * This as of right now does not verify the file exists, only checks if
  */
-void kfopen(string file_name, Function<void(KFile*)> w) {
+void kopen(string file_name, Function<void(KFile*)> w) {
     init_file_list_lock();
 
     // Minify the path.
     string cleaned_file_name = clean_path_string(file_name);
 
-    printf("kfopen(): opening %s\n", cleaned_file_name.c_str());
+    printf("kopen(): opening %s\n", cleaned_file_name.c_str());
 
     // Get file hash.
     auto file_hash = cleaned_file_name.hash();
@@ -93,7 +93,7 @@ void kfopen(string file_name, Function<void(KFile*)> w) {
         });
 
         // We found the inode in the list.
-        KFile* f = new KFile;
+        FSFile* f = new FSFile;
         if (file_inode != nullptr) {
             file_list_lock->unlock();
 
@@ -128,12 +128,12 @@ void kfopen(string file_name, Function<void(KFile*)> w) {
                 file_list_lock->unlock();
 
                 // Create event.
-                create_event(w, f);
+                create_event<KFile*>(w, f);
             };
 
             fs::issue_fs_open(cleaned_file_name, callback);
         } else if (cleaned_file_name.starts_with("/dev/ramfs/")) {
-            KFile* f = new KFile;
+            DeviceFile* f = new DeviceFile;
             f->file_type = FileType::DEVICE;
             f->name = cleaned_file_name;
             create_event<KFile*>(w, f);
@@ -143,14 +143,15 @@ void kfopen(string file_name, Function<void(KFile*)> w) {
     });
 }
 
-void kfclose(KFile* file) {
-    if (file->inode) {
-        file->inode->increment_ref_count_atomic(-1);
+void kclose(KFile* file) {
+    if (file->file_type == FileType::FILESYSTEM) {
+        FSFile* fs_file = static_cast<FSFile*>(file);
+        fs_file->inode->increment_ref_count_atomic(-1);
     }
     delete file;
 }
 
-void read_fs(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+void read_fs(FSFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     K::assert(file->file_type == FileType::FILESYSTEM, "read_fs(): KFile type is incorrect");
 
     if (!file->inode) {
@@ -168,22 +169,7 @@ void read_fs(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(
     });
 }
 
-void write_fs(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-    K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): KFile type is incorrect");
-
-    if (!file->inode) {
-        create_event<int>(w, INVALID_FILE);
-        return;
-    }
-
-    fs::issue_fs_write(file->inode->inode_number, buf, offset, n, [=](fs::fs_response_t resp) {
-        if (resp.data.write.status == fs::FS_RESP_SUCCESS) {
-            printf("write_fs(): Successfully wrote %d bytes\n", resp.data.write.bytes_written);
-        }
-    });
-}
-
-void read_dev(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+void read_dev(DeviceFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     bool is_ramfs = false;
     if (is_ramfs) { /* ramfs file */
         int ramfs_index = get_ramfs_index(file->name.c_str());
@@ -222,14 +208,29 @@ void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(in
     // characteristics are in file struct.
     switch (file->file_type) {
         case FileType::DEVICE:
-            read_dev(file, offset, buf, n, w);
+            read_dev(static_cast<DeviceFile*>(file), offset, buf, n, w);
             break;
         case FileType::FILESYSTEM:
-            read_fs(file, offset, buf, n, w);
+            read_fs(static_cast<FSFile*>(file), offset, buf, n, w);
             break;
         default:
             K::assert(false, "non device file not supported");
     }
+}
+
+void write_fs(FSFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+    K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): KFile type is incorrect");
+
+    if (!file->inode) {
+        create_event<int>(w, INVALID_FILE);
+        return;
+    }
+
+    fs::issue_fs_write(file->inode->inode_number, buf, offset, n, [=](fs::fs_response_t resp) {
+        if (resp.data.write.status == fs::FS_RESP_SUCCESS) {
+            printf("write_fs(): Successfully wrote %d bytes\n", resp.data.write.bytes_written);
+        }
+    });
 }
 
 /**
@@ -243,7 +244,7 @@ void kwrite(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(i
             K::assert(false, "device write not supported");
             break;
         case FileType::FILESYSTEM:
-            write_fs(file, offset, buf, n, w);
+            write_fs(static_cast<FSFile*>(file), offset, buf, n, w);
             break;
         default:
             K::assert(false, "non device file not supported");
