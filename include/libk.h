@@ -4,6 +4,24 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+namespace std {
+template <typename T>
+constexpr T&& move(T& t) noexcept {
+    return static_cast<T&&>(t);
+}
+
+template <typename T>
+T&& forward(T& arg) noexcept {
+    return static_cast<T&&>(arg);  // For lvalue reference types, returns as lvalue
+}
+
+template <typename T>
+T&& forward(T&& arg) noexcept {
+    return static_cast<T&&>(arg);  // For rvalue types, returns as rvalue
+}
+
+};  // namespace std
+
 extern "C" void* memcpy(void* dest, const void* src, size_t n);
 
 class K {

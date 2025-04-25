@@ -6,8 +6,30 @@
 
 #define HASH_COMBINE_BASIS 0x9e3779b97f4a7c15ULL
 
+#include "function.h"
 #include "heap.h"
 #include "libk.h"
+
+/*
+ * From: http://www.cse.yorku.ca/~oz/hash.html
+ */
+static uint64_t string_hash(const char *str) {
+    uint64_t hash = 5381;
+    int c;
+
+    while (c = *str++) hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+    return hash;
+}
+
+static bool string_equals(const char *str_a, const char *str_b) {
+    while (*str_a == *str_b) {
+        if (*str_a == '\0') return true;
+        str_a++;
+        str_b++;
+    }
+    return false;
+}
 
 static uint64_t uint64_t_hash(uint64_t elem) {
     elem = ((elem >> 16) ^ elem) * 0x45d9f3b;
@@ -17,6 +39,18 @@ static uint64_t uint64_t_hash(uint64_t elem) {
 }
 
 static bool uint64_t_equals(uint64_t elem1, uint64_t elem2) {
+    return elem1 == elem2;
+}
+
+static uint64_t uint16_t_hash(uint16_t elem) {
+    uint32_t temp = (uint32_t)elem;
+    temp = ((temp >> 8) ^ temp) * 0x45d9f3b;
+    temp = ((temp >> 8) ^ temp) * 0x45d9f3b;
+    temp = (temp >> 8) ^ temp;
+    return (uint64_t)temp;
+}
+
+static bool uint16_t_equals(uint16_t elem1, uint16_t elem2) {
     return elem1 == elem2;
 }
 

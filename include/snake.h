@@ -30,7 +30,7 @@ struct undo {
 } __attribute__((packed));
 
 typedef struct {
-    Listener<struct key_event *> key_listener;
+    // Listener<struct key_event *> key_listener;
 
     // snake info
     struct snake_t {
