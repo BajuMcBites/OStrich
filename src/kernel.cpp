@@ -113,6 +113,9 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
+    test_fs_requests();
+    // stringTest();
+
     // printf("All tests passed\n");
     heapTests();
     event_loop_tests();
@@ -121,11 +124,18 @@ extern "C" void kernel_main() {
     // user_paging_tests();
     blocking_atomic_tests();
     // ramfs_tests();
+<<<<<<< HEAD
     sdioTests();
     ring_buffer_tests();
     elf_load_test();
     partitionTests();
     stringTest();
+=======
+    // sdioTests();
+    // ring_buffer_tests();
+    // elf_load_test();
+    // partitionTests();
+>>>>>>> 61997f6 (fs_requests + tests)
     // test_fs();
     // testSnapshot();
 }
