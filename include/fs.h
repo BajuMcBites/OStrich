@@ -13,31 +13,78 @@
 #include "atomic.h"
 #include "function.h"
 #include "stdint.h"
+#include "string.h"
 
-struct inode;
+class mem_inode_t {
+   public:
+    mem_inode_t(uint64_t inode_number, uint64_t refs) : inode_number(inode_number), refs(refs) {
+    }
+    void increment_ref_count_atomic(uint64_t delta) {
+        LockGuard<SpinLock> guard(lock);
+        refs += delta;
+    }
 
-struct file {
-    struct inode* inode;
-};
-
-struct inode {
     SpinLock lock;
     uint64_t inode_number;
     uint64_t refs;
 };
 
-struct inodeListNode {
-    struct inode* inode;
-    char* file_name;
-    inodeListNode* next;
+// Serves as a cache that maps from a minified file name to inode.
+// Used by kopen and kclose.
+class FileListNode {
+   public:
+    FileListNode(mem_inode_t* inode, string file_name)
+        : inode(inode), file_name(K::move(file_name)), next(nullptr) {
+        file_hash = this->file_name.hash();
+    }
+    mem_inode_t* inode;
+    string file_name;
+    uint64_t file_hash;
+    FileListNode* next;
 };
 
-void kfopen(char* file_name, Function<void(file*)> w);
-void kfclose(file* file);
-void get_file_name(file* file, Function<void(char*)> w);
+enum class FileType {
+    FILESYSTEM,
+    DEVICE,
+    SWAP,
+    UNKNOWN,
+};
 
-void read(file* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
-void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
+// Represents a file that is opened by any process (user or kernel).
+class KFile {
+   public:
+    KFile() : file_type(FileType::UNKNOWN), offset(0) {
+    }
+    virtual ~KFile() = default;
+
+    FileType file_type;
+    int offset;
+};
+
+class FSFile : public KFile {
+   public:
+    FSFile() : inode(nullptr), perm(0) {
+        file_type = FileType::FILESYSTEM;
+    }
+
+    mem_inode_t* inode;
+    int perm;
+};
+
+class DeviceFile : public KFile {
+   public:
+    DeviceFile() {
+        file_type = FileType::DEVICE;
+    }
+
+    string name;
+};
+
+void kopen(string file_name, Function<void(KFile*)> w);
+void kclose(KFile* file);
+
+void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
+void kwrite(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
 
 // void write_dev();
 
