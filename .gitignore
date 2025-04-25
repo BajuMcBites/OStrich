@@ -10,3 +10,4 @@ gdb_start.sh
 *.qcow2
 *.dd
 !sdcard.dd
+*/.DS_Store

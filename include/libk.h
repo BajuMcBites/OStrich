@@ -21,6 +21,11 @@ class K {
     static void* memset(void* buf, unsigned char val, unsigned long n);
     static char* strntok(char* str, char c, int n);
 
+    template <typename T>
+    static T&& move(T&& arg) {
+        return static_cast<T&&>(arg);
+    }
+
     static bool check_stack();
 
     template <typename T>
