@@ -12,3 +12,7 @@ gdb_start.sh
 !sdcard_*.dd
 
 */.DS_Store
+
+# clangd ignores
+.cache/
+compile_commands.json
