@@ -17,7 +17,7 @@ void timer_init(void) {
 
 void local_timer_init() {
     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0
-    QA7->TimerControlStatus.ReloadValue = 50000000;       // Timer period set
+    QA7->TimerControlStatus.ReloadValue = 50000;          // Timer period set
     QA7->TimerControlStatus.TimerEnable = 1;              // Timer enabled
     QA7->TimerControlStatus.IntEnable = 1;                // Timer IRQ enabled
     QA7->TimerClearReload.IntClear = 1;                   // Clear interrupt

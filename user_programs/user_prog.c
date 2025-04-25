@@ -4,5 +4,9 @@
 
 int main() {
     pid_t pid = getpid();
+    int i = 0;
+    while (1) {
+        i++;
+    }
     return pid;
 }

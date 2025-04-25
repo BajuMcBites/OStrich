@@ -26,6 +26,12 @@ UserTCB* runningUserTCB[CORE_COUNT] = {nullptr};
 // use an array for multiple cores, index with getCoreId
 TCB* runningEvent[CORE_COUNT] = {nullptr};
 
+void init_dummy_tcb() {
+    for (int i = 0; i < CORE_COUNT; ++i) {
+        runningEvent[i] = new Event([] { printf("SHOULD NOT PRINT\n"); });
+    }
+}
+
 TCB* getNextEvent(int core) {
     auto& ready = readyQueue.forCPU(core);
     for (int i = 0; i < PRIORITY_LEVELS; i++) {
@@ -47,6 +53,7 @@ void run_events() {
     int me = getCoreID();
 
     while (true) {
+        bool was = Interrupts::disable();
         nextThread = getNextEvent(me);
 
         if (nextThread == nullptr) {
@@ -59,10 +66,11 @@ void run_events() {
             if (nextThread == nullptr)  // no other threads. I can keep working/spinning
             {
                 continue;
+                enable_irq();
             }
         }
         runningEvent[getCoreID()] = nextThread;
-        Interrupts::restore(nextThread->irq_was_disabled);
+        // Interrupts::restore(nextThread->irq_was_disabled);
         nextThread->run();
         if (!nextThread->kernel_event) {
             K::assert(false, "user event returned to event loop");
@@ -89,6 +97,7 @@ void enter_user_space(UserTCB* tcb) {
     tcb->pcb->page_table->use_page_table();
     runningUserTCB[getCoreID()] = tcb;
     runningEvent[getCoreID()] = tcb;
+    // it is now safe to preempt
     load_user_context(&tcb->context);
 }
 
@@ -137,9 +146,11 @@ void save_user_context(UserTCB* tcb, KernelEntryFrame* regs) {
 }
 
 void yield(KernelEntryFrame* frame) {
+    // return;
     K::assert(Interrupts::isDisabled(), "preempt happening with interrupts on uh oh\n");
     TCB* running = runningEvent[getCoreID()];
-    // printf("yield in core: %d\n", getCoreID());
+    K::assert(running != nullptr, "preempt a nullptr\n");
+    printf("yield in core: %d\n", getCoreID());
     if (running->kernel_event) {
         // check stack
         K::check_stack();
@@ -148,8 +159,9 @@ void yield(KernelEntryFrame* frame) {
     UserTCB* old = get_running_user_tcb(getCoreID());
     // force thread to change
     K::assert((running == old), "mismatched running event and user thread\n");
-
+    printf("preempt!\n");
     save_user_context(old, frame);
+    readyQueue.forCPU(1).queues[1].add(old);
     QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
     QA7->TimerClearReload.Reload = 1;    // Reload nows
 
@@ -157,15 +169,15 @@ void yield(KernelEntryFrame* frame) {
 
     // route to next core
     auto me = getCoreID();
-    if (me == 0) {
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
-    } else if (me == 1) {
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
-    } else if (me == 2) {
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
-    } else {
-        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
-    }
+    // if (me == 0) {
+    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+    // } else if (me == 1) {
+    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+    // } else if (me == 2) {
+    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+    // } else {
+    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+    // }
     enable_irq();
     event_loop();
 }

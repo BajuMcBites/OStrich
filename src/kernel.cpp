@@ -143,7 +143,7 @@ extern "C" void secondary_kernel_init() {
     init_mmu();
     enable_irq();
     event_listener_init();
-    // while (1);
+    while (1);
     mergeCores();
 }
 
@@ -185,6 +185,7 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
+    init_dummy_tcb();
     local_timer_init();
     wake_up_cores();
     enable_irq();
@@ -197,7 +198,7 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    if (number_awake == CORE_COUNT) {
+    if (number_awake == 1) {
         printf("creating kernel_main\n");
         create_event([] { kernel_main(); });
     }
