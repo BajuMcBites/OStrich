@@ -67,6 +67,7 @@ struct CPU_Queues {
 
 extern PerCPU<CPU_Queues> readyQueue;
 
+extern void init_dummy_tcb();
 extern void event_loop();
 extern void enter_user_space(struct UserTCB* tcb);
 extern void save_user_context(struct UserTCB* tcb, struct KernelEntryFrame* regs);
@@ -96,6 +97,8 @@ struct Event : public TCB {
     }
 
     void run() override {
+        Interrupts::restore(
+            irq_was_disabled);  // will always enable for first time user or kernel event
         w();
     }
 };
