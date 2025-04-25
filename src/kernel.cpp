@@ -2,16 +2,19 @@
 #include "core.h"
 #include "dcache.h"
 #include "dhcp.h"
+#include "dns.h"
 #include "dwc.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
 #include "framebuffer.h"
 #include "fs_init.h"
+#include "function.h"
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
 #include "keyboard.h"
+#include "ksocket.h"
 #include "libk.h"
 #include "listener.h"
 #include "mm.h"
@@ -117,13 +120,13 @@ extern char _frame_table_start[];
 extern "C" void kernel_main() {
     printf("All tests passed\n");
     // heapTests();
-    // event_loop_tests();
+    // sdioTests();
     // hash_test();
+    // event_loop_tests();
     // frame_alloc_tests();
     // user_paging_tests();
     // blocking_atomic_tests();
     // ramfs_tests();
-    // sdioTests();
     // ring_buffer_tests();
     elf_load_test();
     // partitionTests();
@@ -145,12 +148,9 @@ void mergeCores();
 extern "C" void secondary_kernel_init() {
     init_mmu();
     enable_irq();
-    event_listener_init();
     // while (1);
     mergeCores();
 }
-
-#include "dns.h"
 
 extern "C" void primary_kernel_init() {
     create_page_tables();
@@ -194,16 +194,6 @@ extern "C" void primary_kernel_init() {
     enable_irq();
     mergeCores();
 }
-
-#include "function.h"
-#include "socket.h"
-
-#include "function.h"
-#include "socket.h"
-
-#include "function.h"
-#include "ksocket.h"
-
 
 void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());

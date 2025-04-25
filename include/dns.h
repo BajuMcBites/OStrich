@@ -6,6 +6,8 @@
 #include "hash.h"
 #include "net_stack.h"
 
+#define DNS_IDENTIFICATION 0x0510
+
 typedef struct {
     net_uint16_t id;
     net_uint16_t flags;

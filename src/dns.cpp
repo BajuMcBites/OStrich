@@ -6,9 +6,8 @@
 #include "listener.h"
 #include "network_card.h"
 
-
 HashMap<const char*, server_group*>& get_dns_cache() {
-    static HashMap<const char*, server_group*> dns_cache(string_hash, string_equals, 30);
+    static HashMap<const char*, server_group*> dns_cache(string_hash, K::streq, 30);
     return dns_cache;
 }
 
@@ -93,7 +92,7 @@ void dns_query(usb_session* session, const char* domain, Function<void(server_gr
         uint8_t packet[512];
 
         dns_query_header* header = (dns_query_header*)packet;
-        header->id = 0x6969;
+        header->id = DNS_IDENTIFICATION;
         header->flags = (1 << 9);
         header->qdCount = 0x01;
         header->anCount = 0;
@@ -178,7 +177,7 @@ void handle_dns_response(usb_session* session,
 
         get_dns_cache().put(key, group);
 
-            get_event_handler().handle_event(
-                DNS_RESOLVED_EVENT | (string_hash(domain_name) & 0xFFFFFFFF), group);
+        get_event_handler().handle_event(
+            DNS_RESOLVED_EVENT | (string_hash(domain_name) & 0xFFFFFFFF), group);
     }
 }
