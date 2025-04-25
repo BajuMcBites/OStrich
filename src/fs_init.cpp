@@ -8,7 +8,7 @@
 #include "partition.h"
 #include "printf.h"
 #include "sdio.h"
-#include "utils.h"
+#include "string.h"
 
 using namespace fs;
 
