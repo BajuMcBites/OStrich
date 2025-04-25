@@ -128,10 +128,11 @@ extern "C" void kernel_main() {
     // blocking_atomic_tests();
     // ramfs_tests();
     // ring_buffer_tests();
-    elf_load_test();
+    // elf_load_test();
     // partitionTests();
     // test_fs();
     // testSnapshot();
+    blocking_sema_test();
 }
 
 extern char __heap_start[];
@@ -202,32 +203,32 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
-        // create_event([] { kernel_main(); });
+        create_event([] { kernel_main(); });
     }
 
     if (getCoreID() == 0) {
         // wait_msec(1000000);
         // printf("initializing network loop!\n");
-        create_event([=]() { network_loop(); });
+        // create_event([=]() { network_loop(); });
 
     } else if (getCoreID() == 1) {
-        create_event([=]() {
-            ServerSocket socket(100);
-            uint8_t __attribute__((aligned(8))) buffer[1516];
+        // create_event([=]() {
+        //     ServerSocket socket(100);
+        //     uint8_t __attribute__((aligned(8))) buffer[1516];
 
-            size_t received = 0;
-            uint32_t pckt_cnt = 0;
+        //     size_t received = 0;
+        //     uint32_t pckt_cnt = 0;
 
-            while (socket.is_alive()) {
-                size_t length = socket.recv(buffer);
-                pckt_cnt++;
-                received += length;
+        //     while (socket.is_alive()) {
+        //         size_t length = socket.recv(buffer);
+        //         pckt_cnt++;
+        //         received += length;
 
-                if (pckt_cnt % 8) socket.send(nullptr, 0, TCP_FLAG_ACK);
-            }
+        //         if (pckt_cnt % 8) socket.send(nullptr, 0, TCP_FLAG_ACK);
+        //     }
 
-            printf("socket no longer active, received %d bytes total!\n", received);
-        });
+        //     printf("socket no longer active, received %d bytes total!\n", received);
+        // });
     }
     event_loop();
     printf("PANIC I should not go here\n");

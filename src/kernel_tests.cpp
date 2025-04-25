@@ -1,5 +1,6 @@
 #include "kernel_tests.h"
 
+#include "timer.h"
 #include "atomic.h"
 #include "dns.h"
 #include "dwc.h"
@@ -587,6 +588,26 @@ void elf_load_test() {
         readyQueue.forCPU(1).queues[1].add(tcb);
         printf("end elf_load tests\n");
     });
+}
+
+void blocking_sema_test(){
+    BlockingSemaphore *sema = new BlockingSemaphore(0);
+    int upping_core = getCoreID() == 0 ? 1 : 0;
+    int downing_core = getCoreID() == 2 ? 3 : 2;
+
+    create_event_core([&](){
+        printf("BlockingSemaphore::down()\n");
+        sema->down();
+        printf("downing core has awoken!\n");
+    }, downing_core);
+
+    create_event_core([&](){
+        printf("sleeping for 1000 microseconds, then BlockingSemaphore::up()\n");
+        wait_msec(1000);
+        printf("BlockingSemaphore::up()\n");
+        sema->up();
+    }, upping_core);
+
 }
 
 void network_tests() {

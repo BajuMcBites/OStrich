@@ -11,6 +11,7 @@
 #include "sys.h"
 #include "utils.h"
 
+extern "C" void load_kernel_context(core_context* context);
 extern "C" void load_user_context(cpu_context* context);
 extern "C" uint64_t pickKernelStack(void);
 extern "C" uint64_t get_sp_el0();
@@ -136,6 +137,25 @@ void save_user_context(UserTCB* tcb, KernelEntryFrame* regs) {
     tcb->context.spsr = get_spsr_el1();
 }
 
+void kernel_yield() {
+    // route to next core
+    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+    QA7->TimerClearReload.Reload = 1;    // Reload nows
+
+    auto me = getCoreID();
+    if (me == 0) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+    } else if (me == 1) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+    } else if (me == 2) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+    } else {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+    }
+    enable_irq();
+    event_loop();
+}
+
 void yield(KernelEntryFrame* frame) {
     K::assert(Interrupts::isDisabled(), "preempt happening with interrupts on uh oh\n");
     TCB* running = runningEvent[getCoreID()];
@@ -150,8 +170,6 @@ void yield(KernelEntryFrame* frame) {
     K::assert((running == old), "mismatched running event and user thread\n");
 
     save_user_context(old, frame);
-    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;    // Reload nows
 
     // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
 

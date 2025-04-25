@@ -307,7 +307,6 @@ fiq_el0:
 serror_el0:
     mov     x0, #3
     handle_exception
-    
 
 // set up this way to test svc calls while in el1
 synchronous_el1:
