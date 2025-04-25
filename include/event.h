@@ -71,6 +71,7 @@ extern void event_loop();
 extern void enter_user_space(struct UserTCB* tcb);
 extern void save_user_context(struct UserTCB* tcb, struct KernelEntryFrame* regs);
 extern void yield(struct KernelEntryFrame* frame);
+extern void kernel_yield();
 
 struct UserTCB : public TCB {
     cpu_context context;

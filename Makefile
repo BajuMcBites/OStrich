@@ -77,7 +77,7 @@ $(FS_FILESYS_OBJ): $(BUILD_DIR)/fs_filesys_%_cpp.o : $(FS_DIR)/filesys/%.cpp | $
 
 $(RAMFS_IMG) : $(BUILD_DIR)
 	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
-	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | $(XARGS) -d '\n' -t ../../$(BUILD_DIR)/build_ramfs
+	cd $(RAMFS_DIR)/files && find . -type f -exec basename {} \; | xargs ../../$(BUILD_DIR)/build_ramfs
 	mv $(RAMFS_DIR)/ramfs.img $(BUILD_DIR)
 
 # Compile ramfs into source file
@@ -96,7 +96,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
-	qemu-system-aarch64 $(QEMU_ARGS)
+	qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0,hostfwd=tcp::25565-:100 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
 
 debug:
 	qemu-system-aarch64 $(QEMU_ARGS) -S -gdb tcp::1234

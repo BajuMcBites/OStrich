@@ -4,9 +4,14 @@ copy_kernel.sh
 Makefile
 gdb_start.sh
 .vscode/*
+.vs_code/*
 *.img
 *.dtb
 *.dts
 *.qcow2
 *.dd
 !sdcard.dd
+qemu/*
+*.log
+*.txt
+*.svg

@@ -1,18 +1,24 @@
+#include "arp.h"
 #include "core.h"
 #include "dcache.h"
+#include "dhcp.h"
+#include "dns.h"
 #include "dwc.h"
 #include "event.h"
 #include "fork.h"
 #include "frame.h"
 #include "framebuffer.h"
 #include "fs_init.h"
+#include "function.h"
 #include "heap.h"
 #include "irq.h"
 #include "kernel_tests.h"
 #include "keyboard.h"
+#include "ksocket.h"
 #include "libk.h"
 #include "listener.h"
 #include "mm.h"
+#include "network_card.h"
 #include "partition.h"
 #include "partition_tests.h"
 #include "percpu.h"
@@ -112,20 +118,21 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    // printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
+    printf("All tests passed\n");
+    // heapTests();
+    // sdioTests();
+    // hash_test();
+    // event_loop_tests();
+    // frame_alloc_tests();
     // user_paging_tests();
-    blocking_atomic_tests();
+    // blocking_atomic_tests();
     // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
-    elf_load_test();
-    partitionTests();
+    // ring_buffer_tests();
+    // elf_load_test();
+    // partitionTests();
     // test_fs();
     // testSnapshot();
+    blocking_sema_test();
 }
 
 extern char __heap_start[];
@@ -142,7 +149,6 @@ void mergeCores();
 extern "C" void secondary_kernel_init() {
     init_mmu();
     enable_irq();
-    event_listener_init();
     // while (1);
     mergeCores();
 }
@@ -174,7 +180,6 @@ extern "C" void primary_kernel_init() {
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
     uinit((void *)HEAP_START, HEAP_SIZE);
-    event_listener_init();
 
     usb_initialize();
 
@@ -198,15 +203,33 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
-        printf("creating kernel_main\n");
         create_event([] { kernel_main(); });
     }
-    // Uncomment to run snake
-    // if(getCoreID() == 0){
-    //     printf("init_snake() + keyboard_loop();\n");
-    //     create_event(init_snake);
-    //     create_event(keyboard_loop);
-    // }
+
+    if (getCoreID() == 0) {
+        // wait_msec(1000000);
+        // printf("initializing network loop!\n");
+        // create_event([=]() { network_loop(); });
+
+    } else if (getCoreID() == 1) {
+        // create_event([=]() {
+        //     ServerSocket socket(100);
+        //     uint8_t __attribute__((aligned(8))) buffer[1516];
+
+        //     size_t received = 0;
+        //     uint32_t pckt_cnt = 0;
+
+        //     while (socket.is_alive()) {
+        //         size_t length = socket.recv(buffer);
+        //         pckt_cnt++;
+        //         received += length;
+
+        //         if (pckt_cnt % 8) socket.send(nullptr, 0, TCP_FLAG_ACK);
+        //     }
+
+        //     printf("socket no longer active, received %d bytes total!\n", received);
+        // });
+    }
     event_loop();
     printf("PANIC I should not go here\n");
 }

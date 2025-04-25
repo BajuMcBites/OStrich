@@ -14,5 +14,7 @@ void ramfs_tests();
 void elf_load_test();
 void blocking_atomic_tests();
 void ring_buffer_tests();
+void network_tests();
+void blocking_sema_test();
 
 #endif /*_KERNEL_TESTS_H */

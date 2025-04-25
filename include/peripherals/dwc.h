@@ -1,7 +1,7 @@
 #ifndef _P_DWC_H
 #define _P_DWC_H
 
-#include "../dwc.h"
+#include "dwc.h"
 
 #define USB_BASE 0x3F980000
 // OTG Control and Status Register
@@ -101,7 +101,7 @@
 #define USB_HPRT ((volatile uint32_t *)(USB_BASE + 0x440))
 #define USB_HPRT_RESET() *USB_HPRT = 0x00000000;
 
-#define USB_CHANNEL(num) ((host_channel *)(USB_BASE + 0x500 + (num * 0x20)))
+#define USB_CHANNEL(num) ((host_channel *)(VA_START | USB_BASE + 0x500 + (num * 0x20)))
 
 // Host Channel #num Characteristics Register
 #define USB_HCCHAR(num) ((volatile uint32_t *)(USB_BASE + 0x500 + (num * 0x20)))
@@ -153,7 +153,7 @@
 #define USB_DIEPEMPMSK ((volatile uint32_t *)(USB_BASE + 0x834))
 #define USB_DIEPEMPMSK_RESET() *USB_DIEPEMPMSK = 0x00000000;
 
-#define USB_IN_EP(num) ((volatile uint32_t *)(USB_BASE + 0x900 + (num * 0x20)))
+#define USB_IN_EP(num) (( uint32_t *)(USB_BASE + 0x900 + (num * 0x20)))
 
 #define USB_OUT_EP(num) ((volatile uint32_t *)(USB_BASE + 0xB00 + (num * 0x20)))
 
@@ -193,6 +193,7 @@
 #define USB_SETUP_STAGE 0x1
 #define USB_DATA_STAGE 0x2
 #define USB_STATUS_STAGE 0x3
+#define USB_BULK_STAGE 0x4
 
 #define USB_DATA0 0x0
 #define USB_DATA2 0x1

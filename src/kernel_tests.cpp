@@ -1,6 +1,9 @@
 #include "kernel_tests.h"
 
+#include "timer.h"
 #include "atomic.h"
+#include "dns.h"
+#include "dwc.h"
 #include "elf_loader.h"
 #include "event.h"
 #include "frame.h"
@@ -9,6 +12,8 @@
 #include "libk.h"
 #include "locked_queue.h"
 #include "mmap.h"
+#include "net_stack.h"
+#include "network_card.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
@@ -583,4 +588,35 @@ void elf_load_test() {
         readyQueue.forCPU(1).queues[1].add(tcb);
         printf("end elf_load tests\n");
     });
+}
+
+void blocking_sema_test(){
+    BlockingSemaphore *sema = new BlockingSemaphore(0);
+    int upping_core = getCoreID() == 0 ? 1 : 0;
+    int downing_core = getCoreID() == 2 ? 3 : 2;
+
+    create_event_core([&](){
+        printf("BlockingSemaphore::down()\n");
+        sema->down();
+        printf("downing core has awoken!\n");
+    }, downing_core);
+
+    create_event_core([&](){
+        printf("sleeping for 1000 microseconds, then BlockingSemaphore::up()\n");
+        wait_msec(1000);
+        printf("BlockingSemaphore::up()\n");
+        sema->up();
+    }, upping_core);
+
+}
+
+void network_tests() {
+    // usb_session* session = network_usb_session(nullptr);
+    // dns_query(session, "google.com", [&session](server_group* group) {
+    //     printf("Got %d ips for \"google.com\"\n", group->count);
+    //     group->for_each([](uint32_t ip) {
+    //         printf("\t- %d.%d.%d.%d\n", (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF,
+    //                (ip >> 0) & 0xFF);
+    //     });
+    // });
 }

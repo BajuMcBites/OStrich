@@ -30,6 +30,9 @@ class Function<R(Args...)> {
     CallableBase* callable;  // Pointer to callable base class
 
    public:
+    Function() : callable(nullptr) {
+    }
+
     // Constructor accepting any callable
     template <typename T>
     Function(T f) : callable(new Callable<T>(f)) {

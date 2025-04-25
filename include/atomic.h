@@ -303,6 +303,72 @@ struct SemaphoreNode {
     SemaphoreNode *next;
 };
 
+struct core_context {
+    unsigned long int x0;
+    unsigned long int x1;
+    unsigned long int x2;
+    unsigned long int x3;
+    unsigned long int x4;
+    unsigned long int x5;
+    unsigned long int x6;
+    unsigned long int x7;
+    unsigned long int x8;
+    unsigned long int x9;
+    unsigned long int x10;
+    unsigned long int x11;
+    unsigned long int x12;
+    unsigned long int x13;
+    unsigned long int x14;
+    unsigned long int x15;
+    unsigned long int x16;
+    unsigned long int x17;
+    unsigned long int x18;
+    unsigned long int x19;
+    unsigned long int x20;
+    unsigned long int x21;
+    unsigned long int x22;
+    unsigned long int x23;
+    unsigned long int x24;
+    unsigned long int x25;
+    unsigned long int x26;
+    unsigned long int x27;
+    unsigned long int x28;
+    unsigned long int x29;
+    unsigned long int x30;
+    unsigned long int sp;
+    unsigned long int pc;
+    unsigned long int spsr;
+    unsigned long int id;
+};
+
+struct BlockingNode {
+    BlockingNode(core_context *frame) : frame(frame) {
+    }
+    core_context *frame;
+    BlockingNode *next;
+};
+
+class BlockingSemaphore {
+    SpinLock spin_lock;
+    Queue<BlockingNode> blocked_queue;
+    volatile int value;
+
+   public:
+    BlockingSemaphore(int initial_value) {
+        value = initial_value;
+    }
+
+    BlockingSemaphore() {
+        value = 0;
+    }
+
+    BlockingSemaphore(const BlockingSemaphore &) = delete;
+
+    void up();
+
+    void down();
+};
+
 class Semaphore {
     SpinLock spin_lock;
     Queue<SemaphoreNode> blocked_queue;
