@@ -4,6 +4,14 @@ LIB_DIR=$(LIBC_FILES)/lib
 LINKER_SCRIPT=app.ld
 TOOLCHAIN_PREFIX=aarch64-elf
 
+# aarch64-linux-gnu- for windows, aarch64-elf- for mac
+CURRENT_OS = $(strip $(shell uname -s)	) # semi portable ig.
+ifeq ($(findstring Darwin,$(CURRENT_OS)),Darwin) # MACOS
+    TOOLCHAIN_PREFIX = aarch64-elf
+else
+    TOOLCHAIN_PREFIX = aarch64-linux-gnu
+endif
+
 CC=$(TOOLCHAIN_PREFIX)-gcc
 LD=$(TOOLCHAIN_PREFIX)-ld
 OBJCOPY=$(TOOLCHAIN_PREFIX)-objcopy
