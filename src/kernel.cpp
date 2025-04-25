@@ -25,6 +25,7 @@
 #include "sdio_tests.h"
 #include "snake.h"
 #include "stdint.h"
+#include "string.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
@@ -124,6 +125,7 @@ extern "C" void kernel_main() {
     ring_buffer_tests();
     elf_load_test();
     partitionTests();
+    stringTest();
     // test_fs();
     // testSnapshot();
 }
