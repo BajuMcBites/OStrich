@@ -111,32 +111,31 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    // test_fs_requests();
     // stringTest();
 
     // printf("All tests passed\n");
-    // heapTests();
-    // event_loop_tests();
-    // hash_test();
-    // frame_alloc_tests();
-    user_paging_tests();
-    // blocking_atomic_tests();
+    heapTests();
+    event_loop_tests();
+    hash_test();
+    frame_alloc_tests();
+    // user_paging_tests();
+    blocking_atomic_tests();
     // ramfs_tests();
     sdioTests();
     ring_buffer_tests();
-    bitmap_tests();
-    swap_tests();
     elf_load_test();
     partitionTests();
     stringTest();
+
+    // filesystem
     // test_fs();
     // testSnapshot();
     // test_fs_requests();
 
-    // so they happen possibly in parallel.
-    create_event([] { kfs_simple_test(); });
-    create_event([] { kfs_kopen_uses_cache_test(); });
-    create_event([] { kfs_stress_test(10); });
+    // kernel file interface
+    kfs_simple_test();
+    kfs_kopen_uses_cache_test();
+    kfs_stress_test(10);
 }
 
 extern char __heap_start[];

@@ -597,7 +597,8 @@ void blocking_atomic_tests() {
 void elf_load_test() {
     printf("start elf_load tests\n");
     int elf_index = get_ramfs_index("user_prog");
-    PCB* pcb = new PCB();
+    K::assert(elf_index >= 0, "elf_load_test(): failed to find user_prog in ramfs");
+    PCB* pcb = new PCB;
     const int sz = ramfs_size(elf_index);
     char* buffer = (char*)kmalloc(sz);
     ramfs_read(buffer, 0, sz, elf_index);
@@ -694,6 +695,8 @@ void kfs_simple_test() {
                     K::assert(K::strcmp(buffer, DATA) == 0,
                               "kfs_simple_test(): data read from file is incorrect.");
 
+                    printf("END KFS SIMPLE TEST (1/2) \n");
+
                     // Close the file.
                     kclose(file);
                     kfree(buffer);
@@ -727,6 +730,7 @@ void kfs_simple_test() {
                     K::assert(K::strcmp(buffer, DATA) == 0,
                               "kfs_simple_test(): data read from file is incorrect.");
 
+                    printf("END KFS SIMPLE TEST (2/2) \n");
                     // Close the file.
                     kclose(file);
                     kfree(buffer);
