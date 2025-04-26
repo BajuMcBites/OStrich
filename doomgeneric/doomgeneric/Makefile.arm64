@@ -1,0 +1,63 @@
+###############################################################################
+# Makefile.os — build doomgeneric for aarch64 against only ostrich-libc + stubs
+###############################################################################
+
+CROSS       := aarch64-linux-gnu-
+CC          := $(CROSS)gcc
+LD          := $(CC)
+
+# ostrich-libc
+OSTRICH_DIR   := $(HOME)/OStrich/user_programs/ostrich-libc
+CRT0          := $(OSTRICH_DIR)/lib/crt0.o
+NEWLIB_STUBS  := $(HOME)/OStrich/user_programs/newlib_stubs.o
+LIBDIR        := $(OSTRICH_DIR)/lib
+INCDIR        := $(OSTRICH_DIR)/include
+
+COMMON := \
+-I$(INCDIR) \
+  -O2 -g -Wall \
+  -DNORMALUNIX -DLINUX -DSNDSERV -D_DEFAULT_SOURCE \
+  -fno-stack-protector
+
+CFLAGS := $(COMMON)
+
+# Doom sources (excluding non-Ostrich ports)
+EXCLUDE := \
+  doomgeneric_xlib.c doomgeneric_sdl.c \
+  doomgeneric_emscripten.c doomgeneric_allegro.c \
+  doomgeneric_sosox.c doomgeneric_soso.c \
+  doomgeneric_win.c i_sdlmusic.c i_sdlsound.c \
+  w_file.c w_file_lump.c w_file_stdio.c w_file_mmap.c \
+  i_allegromusic.c i_allegrosound.c
+
+ALL_C := $(wildcard *.c)
+C_SRCS := $(filter-out $(EXCLUDE),$(ALL_C))
+C_SRCS := $(filter-out wad_stub.c wad_data.c,$(C_SRCS)) wad_stub.c wad_data.c
+
+C_OBJS := $(C_SRCS:%.c=build/%.o)
+
+TARGET := doomgeneric
+
+.PHONY: all run clean
+all: $(TARGET)
+
+build:
+	@mkdir -p build
+
+build/%.o: %.c | build
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(TARGET): $(CRT0) $(NEWLIB_STUBS) $(C_OBJS)
+	$(LD) -static -nostdlib -Wl,-e,main \
+	    $(CRT0) \
+	    -Wl,--defsym,mkdir=_mkdir \
+	    $(C_OBJS) \
+	    $(NEWLIB_STUBS) \
+	    -L$(LIBDIR) -lc -lgcc \
+	    -o $@
+
+run: $(TARGET)
+	qemu-aarch64 ./$(TARGET)
+
+clean:
+	rm -rf build $(TARGET)
