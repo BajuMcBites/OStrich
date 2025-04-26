@@ -2,7 +2,6 @@
 #include "dcache.h"
 #include "dwc.h"
 #include "event.h"
-#include "fork.h"
 #include "frame.h"
 #include "framebuffer.h"
 #include "fs_init.h"
@@ -20,7 +19,6 @@
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
-#include "sched.h"
 #include "sdio.h"
 #include "sdio_tests.h"
 #include "snake.h"
@@ -113,7 +111,7 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    test_fs_requests();
+    // test_fs_requests();
     // stringTest();
 
     // printf("All tests passed\n");
@@ -126,6 +124,8 @@ extern "C" void kernel_main() {
     // ramfs_tests();
     sdioTests();
     ring_buffer_tests();
+    bitmap_tests();
+    swap_tests();
     elf_load_test();
     partitionTests();
     stringTest();
@@ -184,7 +184,7 @@ extern "C" void primary_kernel_init() {
 
     usb_initialize();
 
-    set_partition_table(1024 * 1024 /* Filesystem (Bytes) */, 1024 * 1024 /* Swap (Bytes) */);
+    set_partition_table(512 * 1024 /* Filesystem (Bytes) */, 512 * 1024 /* Swap (Bytes) */);
     fs_init();
 
     smpInitDone = true;
@@ -192,6 +192,7 @@ extern "C" void primary_kernel_init() {
     clean_dcache_line(&smpInitDone);
     init_page_cache();
     local_timer_init();
+    init_swap();
     wake_up_cores();
     enable_irq();
     mergeCores();

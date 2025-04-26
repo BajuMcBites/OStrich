@@ -56,3 +56,10 @@ memset_done:
 set_sp_and_jump:
     mov sp, x0     // Set stack pointer to first argument
     br  x1         // Branch to function pointer (no return)
+
+.globl flush_tlb
+flush_tlb:
+  isb
+  tlbi vmalle1
+  isb
+  ret

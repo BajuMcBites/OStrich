@@ -1,6 +1,7 @@
 #include "kernel_tests.h"
 
 #include "atomic.h"
+#include "bitmap.h"
 #include "elf_loader.h"
 #include "event.h"
 #include "frame.h"
@@ -14,8 +15,8 @@
 #include "ramfs.h"
 #include "rand.h"
 #include "ring_buffer.h"
-#include "sched.h"
 #include "stdint.h"
+#include "swap.h"
 #include "vm.h"
 
 #define NUM_TIMES 1000
@@ -32,6 +33,71 @@ void test_new_delete_basic() {
 
     delete p;
     printf("Test 1 passed.\n");
+}
+
+void swap_tests() {
+    printf("Starting Swap Tests\n");
+
+    Swap* swap = new Swap(32);
+    alloc_frame(0, [=](uint64_t paddr) {
+        uint64_t kvaddr = paddr_to_vaddr(paddr);
+        int* temp = (int*)kvaddr;
+        *temp = 1;
+        temp += 1;
+        *temp = 2;
+        temp += 1;
+        *temp = -1;
+
+        swap->write_swap(1, (void*)kvaddr, [=]() {
+            alloc_frame(0, [=](uint64_t new_paddr) {
+                // printf("GOT PHYSICAL ADDRESS %X%X\n", new_paddr >> 32, new_paddr);
+                void* new_kvaddr = (void*)paddr_to_vaddr(new_paddr);
+                // printf("GOT PHYSICAL ADDRESS %X%X\n", new_paddr >> 32, new_paddr);
+                swap->read_swap(1, new_kvaddr, [=]() {
+                    int* temp = (int*)new_kvaddr;
+                    K::assert(*temp == 1, "Read wrong value");
+                    temp += 1;
+
+                    K::assert(*temp == 2, "Read wrong value");
+                    temp += 1;
+
+                    K::assert(*temp == -1, "Read wrong value");
+
+                    free_frame(paddr);
+                    free_frame(new_paddr);
+
+                    printf("Swap Test passed\n");
+                });
+            });
+        });
+    });
+}
+
+void bitmap_tests() {
+    printf("Starting Bitmap Tests\n");
+
+    Bitmap* bitmap = new Bitmap(30);
+
+    printf("Filling up bitmap\n");
+    for (int i = 0; i < 30; i++) {
+        K::assert(bitmap->scan_and_flip() != -1, "Got -1, bitmap full when it shouldn't be");
+    }
+
+    printf("Freeing and reusing indexes\n");
+    bitmap->free(15);
+    bitmap->free(16);
+    K::assert(bitmap->scan_and_flip() == 15, "Got -1, bitmap full when it shouldn't be");
+    K::assert(bitmap->scan_and_flip() == 16, "Got -1, bitmap full when it shouldn't be");
+
+    for (int i = 0; i < 30; i++) {
+        bitmap->free(i);
+    }
+
+    for (int i = 0; i < 30; i++) {
+        K::assert(bitmap->scan_and_flip() != -1, "Got -1, bitmap full when it shouldn't be");
+    }
+
+    printf("Bitmap tests passed\n");
 }
 
 void ring_buffer_tests() {
@@ -528,7 +594,7 @@ void blocking_atomic_tests() {
 void elf_load_test() {
     printf("start elf_load tests\n");
     int elf_index = get_ramfs_index("user_prog");
-    PCB* pcb = new PCB;
+    PCB* pcb = new PCB();
     const int sz = ramfs_size(elf_index);
     char* buffer = (char*)kmalloc(sz);
     ramfs_read(buffer, 0, sz, elf_index);
@@ -576,11 +642,13 @@ void elf_load_test() {
         sema->up();
     });
     tcb->pcb = pcb;
+    // tcb->pcb->pid = 1;
     tcb->context.pc = (uint64_t)new_pc;
     tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
     printf("%x this is pc\n", tcb->context.pc);
     sema->down([=]() {
-        readyQueue.forCPU(1).queues[1].add(tcb);
-        printf("end elf_load tests\n");
+        tcb->state = TASK_RUNNING;
+        queue_user_tcb(tcb);
+        kfree(buffer);
     });
 }

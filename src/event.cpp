@@ -17,6 +17,10 @@ extern "C" uint64_t get_sp_el0();
 extern "C" uint64_t get_elr_el1();
 extern "C" uint64_t get_spsr_el1();
 
+struct PCB* task[NR_TASKS] = {nullptr};
+int curr_task = 0;
+int task_cnt = 0;
+
 // queue of TCBs ready to run
 PerCPU<CPU_Queues> readyQueue;
 
@@ -29,9 +33,40 @@ TCB* runningEvent[CORE_COUNT] = {nullptr};
 TCB* getNextEvent(int core) {
     auto& ready = readyQueue.forCPU(core);
     for (int i = 0; i < PRIORITY_LEVELS; i++) {
-        auto next = ready.queues[i].remove();
-        if (next != nullptr) {
-            return next;
+        TCB* next = nullptr;
+        while (next = ready.queues[i].remove()) {
+            if (next->state == TASK_RUNNING)
+                return next;
+            else if (next->state == TASK_STOPPED) {
+                ready.queues[4].add(next);
+            } else if (next->state == TASK_KILLED) {
+                delete next;
+                continue;
+            }
+
+            bool terminated = false;
+            if (!next->kernel_event) {
+                // check if any signals came that killed the process
+                Signal* sig;
+                Queue<Signal> leftover;
+                while (sig = ((UserTCB*)next)->pcb->sigs->remove()) {
+                    if (sig->val == SIGKILL) {
+                        terminated = true;
+                        break;
+                    } else {
+                        leftover.add(sig);
+                    }
+                }
+                sig = leftover.remove();
+                while (sig != nullptr && !terminated) {
+                    ((UserTCB*)next)->pcb->sigs->add(sig);
+                    sig = leftover.remove();
+                }
+            }
+            if (terminated) {
+                delete next;
+                continue;
+            }
         }
     }
     return nullptr;
@@ -87,6 +122,7 @@ void event_loop() {
  */
 void enter_user_space(UserTCB* tcb) {
     tcb->pcb->page_table->use_page_table();
+    flush_tlb();
     runningUserTCB[getCoreID()] = tcb;
     runningEvent[getCoreID()] = tcb;
     load_user_context(&tcb->context);
