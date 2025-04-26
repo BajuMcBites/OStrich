@@ -36,6 +36,7 @@ bool BlockManager::isInvalidSectorIndex(size_t sectorIndex) {
 }
 
 bool BlockManager::readBlock(size_t blockIndex, uint8_t* buffer) {
+    // printf("readBlock(): blockIndex %d, numBlocks %d\n", blockIndex, numBlocks);
     K::assert(blockIndex < numBlocks, "readBlock(): Invalid block index");
     int sectorIndex = blockToSectorIndex(blockIndex);
     if (isInvalidSectorIndex(sectorIndex)) {
@@ -48,6 +49,7 @@ bool BlockManager::readBlock(size_t blockIndex, uint8_t* buffer) {
 }
 
 bool BlockManager::writeBlock(size_t blockIndex, const uint8_t* buffer) {
+    // printf("writeBlock(): blockIndex %d, numBlocks %d\n", blockIndex, numBlocks);
     K::assert(blockIndex < numBlocks, "writeBlock(): Invalid block index");
     int sectorIndex = blockToSectorIndex(blockIndex);
     if (isInvalidSectorIndex(sectorIndex)) {

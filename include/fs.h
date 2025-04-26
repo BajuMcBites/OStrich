@@ -45,7 +45,7 @@ class FileListNode {
 
 enum class FileType {
     FILESYSTEM,
-    DEVICE,
+    DEV_RAMFS,
     SWAP,
     UNKNOWN,
 };
@@ -79,11 +79,11 @@ class FSFile : public KFile {
 class DeviceFile : public KFile {
    public:
     DeviceFile() {
-        file_type = FileType::DEVICE;
+        file_type = FileType::DEV_RAMFS;  // for now.
     }
 
     int get_inode_number() override {
-        return 69696969696;
+        return 6969;
     }
 
     string name;

@@ -136,6 +136,7 @@ extern "C" void kernel_main() {
     kfs_simple_test();
     kfs_kopen_uses_cache_test();
     kfs_stress_test(10);
+    sd_stress_test();
 }
 
 extern char __heap_start[];

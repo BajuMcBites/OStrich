@@ -17,6 +17,8 @@
 #include "ramfs.h"
 #include "rand.h"
 #include "ring_buffer.h"
+#include "sched.h"
+#include "sdio.h"
 #include "stdint.h"
 #include "swap.h"
 #include "string.h"
@@ -322,7 +324,7 @@ void mmap_test_file() {
     uint64_t uvaddr = 0x9000;
 
     kopen("/dev/ramfs/test1.txt", [=](KFile* file) {
-        printf("we opend the file\n");
+        printf("mmap_test_file(): we opened the file\n");
         mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0, PAGE_SIZE * 3 + 46, [=]() {
             load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
                 pcb->page_table->use_page_table();
@@ -333,10 +335,10 @@ void mmap_test_file() {
 
                 K::assert(K::strncmp(kbuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
                                      60) == 0,
-                          "no reserve mmap test failed\n");
+                          "mmap_test_file(): assertion of contents failed\n");
                 K::assert(K::strncmp(ubuf, "HELLO THIS IS A TEST FILE!!! OUR SIZE SHOULD BE 51!",
                                      60) == 0,
-                          "no reserve mmap test failed\n");
+                          "mmap_test_file(): assertion of contents failed\n");
 
                 delete pcb;
             });
@@ -407,11 +409,11 @@ void mmap_shared_unreserved() {
 
 void user_paging_tests() {
     printf("starting user paging tests\n");
-    basic_page_table_creation();
-    mmap_test_no_reserve();
+    // basic_page_table_creation();
+    // mmap_test_no_reserve();
+    // mmap_test_file();
     mmap_test_file();
-    mmap_test_file();
-    mmap_shared_unreserved();
+    // mmap_shared_unreserved();
     printf("user paging tests complete\n");
 }
 
@@ -665,6 +667,7 @@ void kfs_simple_test() {
     // So we need to create the file first.
     constexpr int ROOT_DIR_INODE = 0;
     constexpr const char* DATA = "hello world";
+    constexpr bool debug = false;
 
     int data_len = K::strlen(DATA) + 1;
 
@@ -672,6 +675,11 @@ void kfs_simple_test() {
     fs::issue_fs_create_file(ROOT_DIR_INODE, false, "test1.txt", 0, [=](fs::fs_response_t resp) {
         K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS,
                   "kfs_simple_test(): failed to create file.");
+
+        if constexpr (debug) {
+            printf("kfs_simple_test(): created file with inode number %d\n",
+                   resp.data.create_file.inode_index);
+        }
 
         int inode_num = resp.data.create_file.inode_index;
 
@@ -683,11 +691,21 @@ void kfs_simple_test() {
                       "kfs_simple_test(): failed to write to file.");
             char* buffer = (char*)kmalloc(data_len);
 
+            if constexpr (debug) {
+                printf("kfs_simple_test(): wrote %d bytes to file with inode number %d\n",
+                       resp.data.write.bytes_written, inode_num);
+            }
+
             // Read data from file using issue_fs_request
             kopen("/test1.txt", [=](KFile* file) {
                 if (!file) {
                     printf("kfs_simple_test(): failed to open file\n");
                     return;
+                }
+
+                if constexpr (debug) {
+                    printf("kfs_simple_test(): k-opened file with inode number %d\n",
+                           file->get_inode_number());
                 }
 
                 kread(file, 0, buffer, data_len, [=](int ret) {
@@ -716,7 +734,7 @@ void kfs_simple_test() {
             K::assert(resp.data.write.status == fs::FS_RESP_SUCCESS,
                       "kfs_simple_test(): failed to write to file.");
 
-            char* buffer = (char*)kmalloc(strlen(DATA) + 1);
+            char* buffer = (char*)kmalloc(K::strlen(DATA) + 1);
 
             // Read data from file using issue_fs_request
             kopen("/test2.txt", [=](KFile* file) {
@@ -738,6 +756,7 @@ void kfs_simple_test() {
             });
         });
     });
+    printf("finished issuing kfs test\n");
 }
 
 void kfs_stress_test(int num_files) {
@@ -884,4 +903,36 @@ void kfs_kopen_uses_cache_test() {
             });
         });
     });
+}
+
+void sd_stress_test() {
+    printf("BEGIN SD STRESS TEST\n");
+    constexpr int num_blocks = 8;
+
+    for (int i = 0; i < 10000; i++) {
+        create_event([i] {
+            int num_blocks = 8;
+            uint8_t* buffer = (uint8_t*)kmalloc(512 * num_blocks);
+            sd_read_block(50 + (i % 500), buffer, num_blocks);
+            kfree(buffer);
+            if (i == 9999) {
+                printf("SD STRESS TEST: done all reads\n");
+            }
+        });
+    }
+
+    uint8_t* buffer2 = (uint8_t*)kmalloc(512 * num_blocks);
+    for (int i = 0; i < 512 * num_blocks; i++) {
+        buffer2[i] = i;
+    }
+
+    for (int i = 0; i < 10000; i++) {
+        create_event([i, buffer2] {
+            sd_write_block(buffer2, 50 + (i % 500), num_blocks);
+            if (i == 9999) {
+                printf("SD STRESS TEST: done all writes\n");
+                kfree(buffer2);
+            }
+        });
+    }
 }

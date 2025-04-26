@@ -338,6 +338,13 @@ class Lock {
         sema.down(w);
     }
 
+    void lockAndRelease(Function<void()> w) {
+        sema.down([=]() mutable {
+            w();
+            this->unlock();
+        });
+    }
+
     void unlock() {
         sema.up();
     }

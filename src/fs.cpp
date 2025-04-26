@@ -18,6 +18,9 @@ Lock* file_list_lock = nullptr;
 volatile uint64_t inode_numbers = 0;
 SpinLock inode_number_lock;
 
+constexpr char* RAMFS_PREFIX = "/dev/ramfs/";
+constexpr int RAMFS_PREFIX_LEN = K::strlen(RAMFS_PREFIX);
+
 void init_file_list_lock() {
     if (file_list_lock == nullptr) {
         inode_number_lock.lock();
@@ -78,7 +81,7 @@ void kopen(string file_name, Function<void(KFile*)> w) {
     auto file_hash = cleaned_file_name.hash();
 
     /* TODO: verify file exists and get characteristics */
-    file_list_lock->lock([=]() {
+    file_list_lock->lockAndRelease([=]() {
         mem_inode_t* file_inode = nullptr;
         open_files.remove_if_and_free_node([&](FileListNode* n) {
             // Don't remove the inode if we are about to use it.
@@ -92,8 +95,6 @@ void kopen(string file_name, Function<void(KFile*)> w) {
         // We found the inode in the list.
         FSFile* f = new FSFile;
         if (file_inode != nullptr) {
-            file_list_lock->unlock();
-
             // Link file struct to pre-existing in-mem inode.
             f->inode = file_inode;
 
@@ -122,9 +123,6 @@ void kopen(string file_name, Function<void(KFile*)> w) {
                 // file_name is copied.
                 open_files.add(new FileListNode(f->inode, cleaned_file_name));
 
-                // Release list lock.
-                file_list_lock->unlock();
-
                 // Create event.
                 create_event<KFile*>(w, f);
             };
@@ -132,7 +130,7 @@ void kopen(string file_name, Function<void(KFile*)> w) {
             fs::issue_fs_open(cleaned_file_name, callback);
         } else if (cleaned_file_name.starts_with("/dev/ramfs/")) {
             DeviceFile* f = new DeviceFile;
-            f->file_type = FileType::DEVICE;
+            f->file_type = FileType::DEV_RAMFS;
             f->name = cleaned_file_name;
             create_event<KFile*>(w, f);
         } else {
@@ -167,35 +165,31 @@ void read_fs(FSFile* file, uint64_t offset, char* buf, uint64_t n, Function<void
     });
 }
 
-void read_dev(DeviceFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-    bool is_ramfs = false;
-    if (is_ramfs) { /* ramfs file */
-        int ramfs_index = get_ramfs_index(file->name.c_str());
-        if (ramfs_index == -1) {
-            create_event<int>(w, INVALID_FILE);
-            return;
-        }
-
-        uint64_t file_size = ramfs_size(ramfs_index);
-        if (offset >= file_size) {
-            create_event<int>(w, INVALID_OFFSET);
-            return;
-        }
-
-        int64_t read_n = K::min(n, file_size - offset);
-
-        int err = ramfs_read(buf, offset, read_n, ramfs_index);
-        if (err != 0) {
-            create_event<int>(w, OTHER_FAIL);
-            return;
-        }
-
-        create_event<int>(w, SUCCESSFUL_READ);
-        return; /* done reading from ramfs */
-    } else {
-        create_event<int>(w, NOT_IMPLEMENTED_FS);
+void read_ramfs(DeviceFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+    K::assert(file->file_type == FileType::DEV_RAMFS, "read_ramfs(): KFile type is incorrect");
+    printf("read_ramfs(): reading from ramfs file %s\n", file->name.c_str());
+    int ramfs_index = get_ramfs_index(&file->name[RAMFS_PREFIX_LEN]);
+    if (ramfs_index == -1) {
+        create_event<int>(w, INVALID_FILE);
         return;
     }
+
+    uint64_t file_size = ramfs_size(ramfs_index);
+    if (offset >= file_size) {
+        create_event<int>(w, INVALID_OFFSET);
+        return;
+    }
+
+    int64_t read_n = K::min(n, file_size - offset);
+
+    int err = ramfs_read(buf, offset, read_n, ramfs_index);
+    if (err != 0) {
+        create_event<int>(w, OTHER_FAIL);
+        return;
+    }
+
+    create_event<int>(w, SUCCESSFUL_READ);
+    return; /* done reading from ramfs */
 }
 
 /**
@@ -205,8 +199,8 @@ void read_dev(DeviceFile* file, uint64_t offset, char* buf, uint64_t n, Function
 void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     // characteristics are in file struct.
     switch (file->file_type) {
-        case FileType::DEVICE:
-            read_dev(static_cast<DeviceFile*>(file), offset, buf, n, w);
+        case FileType::DEV_RAMFS:
+            read_ramfs(static_cast<DeviceFile*>(file), offset, buf, n, w);
             break;
         case FileType::FILESYSTEM:
             read_fs(static_cast<FSFile*>(file), offset, buf, n, w);
@@ -239,8 +233,8 @@ void write_fs(FSFile* file, uint64_t offset, const char* buf, uint64_t n, Functi
 void kwrite(KFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w) {
     // characteristics are in file struct.
     switch (file->file_type) {
-        case FileType::DEVICE:
-            K::assert(false, "device write not supported");
+        case FileType::DEV_RAMFS:
+            K::assert(false, "kwrite(): ramfs files are read only.");
             break;
         case FileType::FILESYSTEM:
             write_fs(static_cast<FSFile*>(file), offset, buf, n, w);
