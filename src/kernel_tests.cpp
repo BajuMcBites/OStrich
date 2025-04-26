@@ -876,7 +876,6 @@ void kfs_kopen_uses_cache_test() {
                   "kfs_kopen_uses_cache_test(): failed to create file.");
 
         int inode_num = resp.data.create_file.inode_index;
-        printf("Opened test69.txt, inode number %d\n", inode_num);
         kopen(FULL_PATH, [=](KFile* file1) {
             if (!file1) {
                 printf("kfs_kopen_uses_cache_test(): failed to open file1\n");

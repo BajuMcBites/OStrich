@@ -339,7 +339,7 @@ class Lock {
     }
 
     void lockAndRelease(Function<void()> w) {
-        sema.down([=]() mutable {
+        this->lock([=]() mutable {
             w();
             this->unlock();
         });

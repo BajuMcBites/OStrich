@@ -419,8 +419,7 @@ void PageCache::get_or_add(KFile* file, uint64_t offset, uint64_t id, LocalPageL
 
             if (file_backed) {
                 location->location_type = FILESYSTEM;
-                location->location.filesystem =
-                    new FileLocation(static_cast<FSFile*>(file), offset);
+                location->location.filesystem = new FileLocation(file, offset);
             } else {
                 if (unbacked) {
                     location->location_type = UNBACKED;

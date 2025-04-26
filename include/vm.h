@@ -158,10 +158,10 @@ struct SwapLocation {
 };
 
 struct FileLocation {
-    FSFile* file;
+    KFile* file;
     uint64_t offset;
 
-    FileLocation(FSFile* f, uint64_t off) {
+    FileLocation(KFile* f, uint64_t off) {
         file = f;
         offset = off;
     }
@@ -271,10 +271,8 @@ static inline uint64_t pc_key_hash(PCKey key) {
         return hash_combine(uint64_t_hash(key.offset), uint64_t_hash(key.id));
     }
 
-    FSFile* fs_file = static_cast<FSFile*>(key.file);
-
     return hash_combine(
-        hash_combine(uint64_t_hash(fs_file->inode->inode_number), uint64_t_hash(key.offset)),
+        hash_combine(uint64_t_hash(key.file->get_inode_number()), uint64_t_hash(key.offset)),
         uint64_t_hash(key.id));
 }
 
@@ -292,7 +290,7 @@ static inline bool pc_key_equals(PCKey keya, PCKey keyb) {
     FSFile* fs_file_a = static_cast<FSFile*>(keya.file);
     FSFile* fs_file_b = static_cast<FSFile*>(keyb.file);
 
-    return uint64_t_equals(fs_file_a->inode->inode_number, fs_file_b->inode->inode_number) &&
+    return uint64_t_equals(fs_file_a->get_inode_number(), fs_file_b->get_inode_number()) &&
            uint64_t_equals(keya.offset, keyb.offset);
 }
 
