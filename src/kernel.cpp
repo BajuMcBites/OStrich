@@ -113,6 +113,9 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
+    test_fs_requests();
+    // stringTest();
+
     // printf("All tests passed\n");
     heapTests();
     event_loop_tests();
@@ -128,6 +131,7 @@ extern "C" void kernel_main() {
     stringTest();
     // test_fs();
     // testSnapshot();
+    // test_fs_requests();
 }
 
 extern char __heap_start[];
