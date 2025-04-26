@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "compare": "cpp",
+        "cstdint": "cpp",
+        "format": "cpp"
+    },
+    "cmake.sourceDirectory": "/home/diego/test/OStrich/filesystem"
+}
