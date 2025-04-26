@@ -87,7 +87,8 @@ struct PCB {
         sigs = new LockedQueue<Signal, SpinLock>;
     }
     PCB(int id) {
-        delete task[pid];
+        if (task[pid])
+            delete task[pid];
         task_cnt++;
         pid = id;
         task[pid] = this;
