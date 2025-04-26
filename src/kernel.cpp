@@ -184,13 +184,14 @@ extern "C" void primary_kernel_init() {
 
     usb_initialize();
 
-    constexpr int FILESYSTEM_SIZE_MB = 2;
-    constexpr int SWAP_SIZE_MB = 2;
+    constexpr int FILESYSTEM_SIZE_MB = 4;
+    constexpr int SWAP_SIZE_MB = 4;
 
     // Sector 0 is the partition table, so we really have SD_SIZE - 1 * SD_BLK_SIZE bytes available.
-    // But also, swap and filesystem operate at a page granularity, so we need to subtract 4096
-    // bytes from one of them.
-    set_partition_table(FILESYSTEM_SIZE_MB * 1024 * 1024, SWAP_SIZE_MB * 1024 * 1024 - 4096);
+    // But also, swap and filesystem operate at a page granularity, so we need to subtract a
+    // multiple of 4096 from one of them. I chose to subtract 256KB from the swap partition (also
+    // need extra space for partition tests).
+    set_partition_table(FILESYSTEM_SIZE_MB * 1024 * 1024, SWAP_SIZE_MB * 1024 * 1024 - 256 * 1024);
     fs_init();
 
     smpInitDone = true;
