@@ -25,3 +25,8 @@ void Semaphore::down(Function<void()> w) {
         blocked_queue.add(node);
     }
 }
+
+void Semaphore::kill() {
+    LockGuard<SpinLock> guard(spin_lock);
+    blocked_queue.remove_if_and_free_node([](SemaphoreNode* node) { return true; });
+}

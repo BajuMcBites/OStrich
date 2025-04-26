@@ -323,6 +323,8 @@ class Semaphore {
     void up();
 
     void down(Function<void()> w);
+
+    void kill();
 };
 
 class Lock {
