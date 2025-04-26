@@ -390,7 +390,8 @@ void unmap_refs(PageLocation* location) {
 
     while (n != nullptr) {
         // if (n->sharing_mode == PRIVATE) {
-        n->pcb->page_table->unmap_vaddr(n->uvaddr);
+        if (n->pcb != nullptr)
+            n->pcb->page_table->unmap_vaddr(n->uvaddr);
         // }
 
         n = n->next;
@@ -518,5 +519,24 @@ void SupplementalPageTable::copy_mappings(SupplementalPageTable* other, PCB* pcb
                 create_event(w);
             });
         });
+    });
+}
+
+void init_dev_mmaps() {
+
+    init_tty_mmap("/dev/tty1", vaddr_to_paddr(TTY1_VA_START), );
+
+}
+
+void init_tty_mmap(char* file_name, uint64_t paddr_start, uint64_t size) {
+    kfopen(file_name, [=](file* file) {
+        for (int paddr_offset = 0; paddr_offset < size; paddr_offset += PAGE_SIZE) {
+            LocalPageLocation* local = new LocalPageLocation(nullptr, READ_PERM | WRITE_PERM, SHARED, 0);
+            page_cache->get_or_add(file, paddr_offset, 0, local, [=](PageLocation* location) {
+                location->paddr = paddr_start + paddr_offset;
+                location->present = true;
+                location->owned = true;
+            });
+        }
     });
 }

@@ -35,9 +35,25 @@ SECTIONS
 
     /* Allocate heap size */
     . = . + 4M; /* 2MB heap, adjustable */
-    
     PROVIDE(__heap_end = .);
-    
+
+    . = ALIGN(4096);
+    PROVIDE(__tty1_start = .);
+    . = . + 1228800; /* 1.2MB framebuffer */
+    . = ALIGN(4096);
+    PROVIDE(__tty2_start = .);
+    . = . + 1228800; /* 1.2MB framebuffer */
+    . = ALIGN(4096);
+    PROVIDE(__tty3_start = .);
+    . = . + 1228800; /* 1.2MB framebuffer */
+    . = ALIGN(4096);
+    PROVIDE(__tty4_start = .);
+    . = . + 1228800; /* 1.2MB framebuffer */
+    . = ALIGN(4096);
+    PROVIDE(__tty5_start = .);
+    . = . + 1228800; /* 1.2MB framebuffer */
+    PROVIDE(__tty5_end = .);
+
     PROVIDE(_frame_table_start = .);
     
     /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }

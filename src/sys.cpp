@@ -31,6 +31,8 @@ int newlib_handle_unlink(KernelEntryFrame* frame);
 int newlib_handle_wait(KernelEntryFrame* frame);
 int newlib_handle_write(KernelEntryFrame* frame);
 int newlib_handle_time(KernelEntryFrame* frame);
+int newlib_handle_mmap(KernelEntryFrame* frame);
+
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 
 void syscall_handler(KernelEntryFrame* frame) {
@@ -94,6 +96,9 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             break;
         case NEWLIB_TIME:
             frame->X[0] = newlib_handle_time(frame);
+            break;
+        case NEWLIB_MMAP:
+            frame->X[0] = newlib_handle_mmap(frame);
             break;
         default:
             break;
@@ -356,3 +361,9 @@ int newlib_handle_time(KernelEntryFrame* frame) {
     // TODO: Implement time.
     return 0;
 }
+
+int newlib_handle_mmap(KernelEntryFrame* frame) {
+    // UserTCB* tcb = get_running_user_tcb(getCoreID());
+    // mmap()
+}
+

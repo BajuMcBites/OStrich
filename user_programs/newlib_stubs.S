@@ -110,6 +110,11 @@ _gettimeofday:
     svc #0
     ret
 
+_mmap:
+    mov x8, #NEWLIB_MMAP
+    svc #0
+    ret
+
 // Used during initialization and termination of libc.
 // Can call any functions if needed.
 .global _init

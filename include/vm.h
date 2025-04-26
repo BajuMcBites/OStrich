@@ -82,6 +82,12 @@
 
 #define DEVICE_LOWER_ATTRIBUTES 0x1 | (0x0 << 2) | (0x1 << 10) | (0x0 << 6) | (0x0 << 8)
 
+#define TTY1_VA_START ((uint64_t)__tty1_start)
+#define TTY2_VA_START ((uint64_t)__tty2_start)
+#define TTY3_VA_START ((uint64_t)__tty3_start)
+#define TTY4_VA_START ((uint64_t)__tty4_start)
+#define TTY5_VA_START ((uint64_t)__tty5_start)
+
 #ifndef __ASSEMBLER__
 
 #include "atomic.h"
@@ -327,6 +333,10 @@ uint64_t vaddr_to_paddr(uint64_t vaddr);
 uint64_t build_page_attributes(LocalPageLocation* local);
 
 void init_swap();
+
+void init_dev_mmaps();
+
+void init_tty_mmap(const char* file_name, uint64_t paddr_start, uint64_t size);
 
 #endif /*__ASSEMBLER__*/
 
