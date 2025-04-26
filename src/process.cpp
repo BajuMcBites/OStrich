@@ -4,6 +4,7 @@
 
 void fork(struct UserTCB* tcb) {
     PCB* child_pcb = new PCB();
+    child_pcb->data_end = tcb->pcb->data_end;
     tcb->pcb->add_child(child_pcb);
     child_pcb->supp_page_table->copy_mappings(tcb->pcb->supp_page_table, child_pcb, [=]() {
         UserTCB* child_tcb = new UserTCB();

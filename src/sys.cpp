@@ -31,6 +31,8 @@ int newlib_handle_unlink(KernelEntryFrame* frame);
 int newlib_handle_wait(KernelEntryFrame* frame);
 int newlib_handle_write(KernelEntryFrame* frame);
 int newlib_handle_time(KernelEntryFrame* frame);
+int newlib_handle_sbrk(KernelEntryFrame* frame);
+
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 
 void syscall_handler(KernelEntryFrame* frame) {
@@ -95,6 +97,8 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
         case NEWLIB_TIME:
             frame->X[0] = newlib_handle_time(frame);
             break;
+        case NEWLIB_SBRK:
+            newlib_handle_sbrk(frame);
         default:
             break;
     }
@@ -354,5 +358,14 @@ int newlib_handle_write(KernelEntryFrame* frame) {
 
 int newlib_handle_time(KernelEntryFrame* frame) {
     // TODO: Implement time.
+    return 0;
+}
+
+int newlib_handle_sbrk(KernelEntryFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    uint64_t ret_address = tcb->pcb->data_end;
+    uint64_t page_alligned_size = frame->X[0] + (PAGE_SIZE - (frame->X[0] % PAGE_SIZE));
+    tcb->pcb->data_end += page_alligned_size;
+    frame->X[0] = ret_address;
     return 0;
 }
