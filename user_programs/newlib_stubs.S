@@ -104,6 +104,12 @@ _write:
     svc #0
     ret
 
+.global _mkdir
+_mkdir:
+    mov x8, #NEWLIB_MKDIR
+    svc #0
+    ret
+
 .global _gettimeofday
 _gettimeofday:
     mov x8, #NEWLIB_TIME
