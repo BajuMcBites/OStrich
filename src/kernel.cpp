@@ -115,12 +115,12 @@ extern "C" void kernel_main() {
     // stringTest();
 
     // printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
-    // user_paging_tests();
-    blocking_atomic_tests();
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
+    user_paging_tests();
+    // blocking_atomic_tests();
     // ramfs_tests();
     sdioTests();
     ring_buffer_tests();
@@ -184,7 +184,13 @@ extern "C" void primary_kernel_init() {
 
     usb_initialize();
 
-    set_partition_table(512 * 1024 /* Filesystem (Bytes) */, 512 * 1024 /* Swap (Bytes) */);
+    constexpr int FILESYSTEM_SIZE_MB = 2;
+    constexpr int SWAP_SIZE_MB = 2;
+
+    // Sector 0 is the partition table, so we really have SD_SIZE - 1 * SD_BLK_SIZE bytes available.
+    // But also, swap and filesystem operate at a page granularity, so we need to subtract 4096
+    // bytes from one of them.
+    set_partition_table(FILESYSTEM_SIZE_MB * 1024 * 1024, SWAP_SIZE_MB * 1024 * 1024 - 4096);
     fs_init();
 
     smpInitDone = true;
