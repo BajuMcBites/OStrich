@@ -18,6 +18,7 @@
 #include "percpu.h"
 #include "peripherals/arm_devices.h"
 #include "printf.h"
+#include "profiler.h"
 #include "queue.h"
 #include "ramfs.h"
 #include "sched.h"
@@ -208,11 +209,12 @@ void mergeCores() {
         create_event([] { kernel_main(); });
     }
     // Uncomment to run snake
-    // if(getCoreID() == 0){
-    //     printf("init_snake() + keyboard_loop();\n");
-    //     create_event(init_snake);
-    //     create_event(keyboard_loop);
-    // }
+    if (getCoreID() == 1) {
+        //     printf("init_snake() + keyboard_loop();\n");
+        //     create_event(init_snake);
+        //     create_event(keyboard_loop);
+        profiler_flush_loop();
+    }
     event_loop();
     printf("PANIC I should not go here\n");
 }

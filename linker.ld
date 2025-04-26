@@ -23,6 +23,7 @@ SECTIONS
         __bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
+        . = . + 2M; /* 2MB heap, adjustable */
         __bss_end = .;
     }
     

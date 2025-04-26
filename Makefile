@@ -69,11 +69,12 @@ $(C_OBJ): $(BUILD_DIR)/%_c.o : $(SRC_DIR)/%.c | $(BUILD_DIR)
 
 # Compile the C++ source files
 $(CPP_OBJ): $(BUILD_DIR)/%_cpp.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -c $< -o $@ -finstrument-functions -lc -lrdimon
+
 
 # Compile the filesystem C++ source files
 $(FS_FILESYS_OBJ): $(BUILD_DIR)/fs_filesys_%_cpp.o : $(FS_DIR)/filesys/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -c $< -o $@ 
 
 $(RAMFS_IMG) : $(BUILD_DIR)
 	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
@@ -96,7 +97,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 run:
-	qemu-system-aarch64 $(QEMU_ARGS)
+	./qemu-system-aarch64 -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -serial file:uart1.log -usb -device usb-net,netdev=net0 -netdev user,id=net0,hostfwd=tcp::25565-:100 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
 
 debug:
 	qemu-system-aarch64 $(QEMU_ARGS) -S -gdb tcp::1234
