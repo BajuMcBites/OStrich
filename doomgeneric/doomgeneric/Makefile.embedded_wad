@@ -1,0 +1,99 @@
+###############################################################################
+# Cross-build doomgeneric for Raspberry Pi aarch64, embedding doom.wad
+###############################################################################
+
+# ─────────────────────── toolchain & sysroot ───────────────────────
+CROSS   := aarch64-linux-gnu-
+SYSROOT := $(HOME)/arm64-sysroot
+CC      := $(CROSS)gcc
+
+# ─────────────────────── choose backend ─────────────────────────────
+#   make            → Xlib/XCB backend
+#   make BACKEND=sdl → SDL2 backend
+BACKEND ?= xlib
+
+# ─────────────────────── compiler flags ────────────────────────────
+CPPFLAGS := \
+    --sysroot=$(SYSROOT)                    \
+    -I$(SYSROOT)/usr/include                \
+    -I$(SYSROOT)/usr/include/aarch64-linux-gnu \
+    -I.                                      # look here for wad_data.h
+
+ifeq ($(BACKEND),sdl)
+CPPFLAGS += -I$(SYSROOT)/usr/include/SDL2
+endif
+
+CFLAGS   := \
+    -O2 -g                                  \
+    -Wall                                  \
+    -DNORMALUNIX -DLINUX -DSNDSERV -D_DEFAULT_SOURCE
+
+# ─────────────────────── linker flags ─────────────────────────────
+# -static for a fully self-contained executable
+LDFLAGS := \
+    --sysroot=$(SYSROOT)                    \
+    -static                                 \
+    -L$(SYSROOT)/usr/lib/aarch64-linux-gnu  \
+    -L$(SYSROOT)/lib/aarch64-linux-gnu      \
+    -Wl,--gc-sections
+
+# ─────────────────────── libraries ────────────────────────────────
+LIBS := -lm -lc
+
+ifeq ($(BACKEND),sdl)
+  LIBS += -lSDL2
+else
+  LIBS += -lX11 -lxcb -lXau -lXdmcp -lbsd -lmd
+endif
+
+# ─────────────────── sources & objects ───────────────────────────
+ALL_SRCS := $(wildcard *.c)
+
+# drop backends we’re not using, and on-disk WAD loaders
+EXCLUDE := \
+    doomgeneric_emscripten.c \
+    doomgeneric_allegro.c     \
+    doomgeneric_sosox.c       \
+    doomgeneric_soso.c        \
+    doomgeneric_win.c         \
+    i_sdlmusic.c              \
+    i_sdlsound.c              \
+    w_file.c                  \
+    w_file_lump.c             \
+    w_file_stdio.c            \
+    w_file_mmap.c doomgeneric_ostrich.c 
+
+ifeq ($(BACKEND),xlib)
+  EXCLUDE += doomgeneric_sdl.c
+else
+  EXCLUDE += doomgeneric_xlib.c
+endif
+
+# filter and then append your embedded-WAD helpers
+SRCS := $(filter-out $(EXCLUDE),$(ALL_SRCS))
+SRCS += wad_data.c wad_stub.c
+
+OBJS  := $(patsubst %.c,build/%.o,$(SRCS))
+TARGET := doomgeneric
+
+.PHONY: all clean run
+
+all: build $(TARGET)
+
+build:
+	@mkdir -p build
+
+# compile each .c → build/%.o
+build/%.o: %.c | build
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+# link into one static binary
+$(TARGET): $(OBJS)
+	$(CC) $(LDFLAGS) $^ $(LIBS) -o $@
+
+clean:
+	rm -rf build $(TARGET)
+
+# convenience: run under QEMU with your Pi’s sysroot
+run: $(TARGET)
+	qemu-aarch64 ./$(TARGET)
