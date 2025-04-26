@@ -15,7 +15,7 @@ INCDIR        := $(OSTRICH_DIR)/include
 
 COMMON := \
 -I$(INCDIR) \
-  -O2 -g -Wall \
+  -g\
   -DNORMALUNIX -DLINUX -DSNDSERV -D_DEFAULT_SOURCE \
   -fno-stack-protector
 
@@ -57,7 +57,7 @@ $(TARGET): $(CRT0) $(NEWLIB_STUBS) $(C_OBJS)
 	    -o $@
 
 run: $(TARGET)
-	qemu-aarch64 ./$(TARGET)
+	qemu-system-aarch64 ./$(TARGET)
 
 clean:
 	rm -rf build $(TARGET)
