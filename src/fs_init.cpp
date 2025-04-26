@@ -114,6 +114,12 @@ void displayTree(const Directory* dir, const char* curPath) {
     }
 }
 
+void displayFileTree() {
+    auto* fileSystem = FileSystem::getInstance();
+    auto* rootDir = fileSystem->getRootDirectory();
+    displayTree(rootDir, "/");
+}
+
 void test_fs() {
     printf("FS TEST\n");
     auto* fileSystem = FileSystem::getInstance();

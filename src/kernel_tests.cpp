@@ -1,10 +1,12 @@
 #include "kernel_tests.h"
 
+#include "../filesystem/filesys/fs_requests.h"
 #include "atomic.h"
 #include "bitmap.h"
 #include "elf_loader.h"
 #include "event.h"
 #include "frame.h"
+#include "fs_init.h"
 #include "hash.h"
 #include "heap.h"
 #include "libk.h"
@@ -17,6 +19,7 @@
 #include "ring_buffer.h"
 #include "stdint.h"
 #include "swap.h"
+#include "string.h"
 #include "vm.h"
 
 #define NUM_TIMES 1000
@@ -318,7 +321,7 @@ void mmap_test_file() {
 
     uint64_t uvaddr = 0x9000;
 
-    kfopen("/dev/ramfs/test1.txt", [=](file* file) {
+    kopen("/dev/ramfs/test1.txt", [=](KFile* file) {
         printf("we opend the file\n");
         mmap(pcb, 0x9000, PROT_WRITE | PROT_READ, MAP_PRIVATE, file, 0, PAGE_SIZE * 3 + 46, [=]() {
             load_mmapped_page(pcb, uvaddr, [=](uint64_t kvaddr) {
@@ -650,5 +653,231 @@ void elf_load_test() {
         tcb->state = TASK_RUNNING;
         queue_user_tcb(tcb);
         kfree(buffer);
+    });
+}
+
+// Two concurrent open / write / read / closes..
+void kfs_simple_test() {
+    printf("START KFS TESTS.\n");
+    // Issue some FS requests to create some files.
+    // For rn, kopen assumes the file already exists.
+    // So we need to create the file first.
+    constexpr int ROOT_DIR_INODE = 0;
+    constexpr const char* DATA = "hello world";
+
+    int data_len = K::strlen(DATA) + 1;
+
+    // Create file using issue_fs_request
+    fs::issue_fs_create_file(ROOT_DIR_INODE, false, "test1.txt", 0, [=](fs::fs_response_t resp) {
+        K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS,
+                  "kfs_simple_test(): failed to create file.");
+
+        int inode_num = resp.data.create_file.inode_index;
+
+        // Write data to file using issue_fs_request
+        fs::issue_fs_write(inode_num, DATA, 0, data_len, [=](fs::fs_response_t resp) {
+            K::assert(resp.data.write.bytes_written == data_len,
+                      "kfs_simple_test(): failed to write to file.");
+            K::assert(resp.data.write.status == fs::FS_RESP_SUCCESS,
+                      "kfs_simple_test(): failed to write to file.");
+            char* buffer = (char*)kmalloc(data_len);
+
+            // Read data from file using issue_fs_request
+            kopen("/test1.txt", [=](KFile* file) {
+                if (!file) {
+                    printf("kfs_simple_test(): failed to open file\n");
+                    return;
+                }
+
+                kread(file, 0, buffer, data_len, [=](int ret) {
+                    K::assert(ret == data_len, "kfs_simple_test(): failed to read from file.");
+                    K::assert(K::strcmp(buffer, DATA) == 0,
+                              "kfs_simple_test(): data read from file is incorrect.");
+
+                    // Close the file.
+                    kclose(file);
+                    kfree(buffer);
+                });
+            });
+        });
+    });
+
+    // Create file using issue_fs_request
+    fs::issue_fs_create_file(ROOT_DIR_INODE, false, "test2.txt", 0, [=](fs::fs_response_t resp) {
+        K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS, "Failed to create file.");
+
+        int inode_num = resp.data.create_file.inode_index;
+
+        // Write data to file using issue_fs_request
+        fs::issue_fs_write(inode_num, DATA, 0, data_len, [=](fs::fs_response_t resp) {
+            K::assert(resp.data.write.status == fs::FS_RESP_SUCCESS,
+                      "kfs_simple_test(): failed to write to file.");
+
+            char* buffer = (char*)kmalloc(strlen(DATA) + 1);
+
+            // Read data from file using issue_fs_request
+            kopen("/test2.txt", [=](KFile* file) {
+                if (!file) {
+                    printf("kfs_simple_test(): failed to open file\n");
+                    return;
+                }
+
+                kread(file, 0, buffer, data_len, [=](int ret) {
+                    K::assert(ret == data_len, "kfs_simple_test(): failed to read from file.");
+                    K::assert(K::strcmp(buffer, DATA) == 0,
+                              "kfs_simple_test(): data read from file is incorrect.");
+
+                    // Close the file.
+                    kclose(file);
+                    kfree(buffer);
+                });
+            });
+        });
+    });
+}
+
+void kfs_stress_test(int num_files) {
+    constexpr const char* DATA = "hello world";
+    int data_len = K::strlen(DATA) + 1;
+
+    printf("START KFS STRESS TEST WITH %d FILES.\n", num_files);
+
+    auto to_string = [](int i) {
+        if (i == 0) {
+            return string("0");
+        }
+        string s = "";
+        while (i > 0) {
+            s += (char)(i % 10 + '0');
+            i /= 10;
+        }
+        return s;
+    };
+
+    constexpr int ROOT_DIR_INODE = 0;
+    constexpr const char* DATA_2 = "goodbye world :(";
+
+    // Create a large number of files.
+    auto setup_files = [=](bool should_create, auto callback) {
+        for (int i = 0; i < num_files; i++) {
+            string filename = string("test") + to_string(i) + string(".txt");
+            if (should_create) {
+                fs::issue_fs_create_file(
+                    ROOT_DIR_INODE, false, filename, 0, [=](fs::fs_response_t resp) {
+                        K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS,
+                                  "kfs_stress_test(): failed to create file.");
+                        if (i == num_files - 1) {
+                            callback();
+                        }
+                    });
+            } else {
+                fs::issue_fs_remove_file(ROOT_DIR_INODE, filename, [=](fs::fs_response_t resp) {
+                    K::assert(resp.data.remove_file.status == fs::FS_RESP_SUCCESS,
+                              "kfs_stress_test(): failed to remove file.");
+                    if (i == num_files - 1) {
+                        callback();
+                    }
+                });
+            }
+        }
+    };
+
+    // Open all files.
+    // Write to them.
+    // Read from them.
+    int* num_correct = (int*)kmalloc(sizeof(int));
+    *num_correct = 0;
+    auto run_test = [=]() {
+        for (int i = 0; i < num_files; i++) {
+            string filename = string("test") + to_string(i) + string(".txt");
+            string file_to_open = "/" + filename;
+
+            kopen(file_to_open, [=](KFile* file) {
+                if (!file) {
+                    printf("kfs_stress_test(): failed to open file %s\n", filename.c_str());
+                    return;
+                }
+
+                kwrite(file, 0, DATA, data_len, [=](int ret) {
+                    K::assert(ret == data_len, "kfs_stress_test(): failed to write to file.");
+                    char* buffer = (char*)kmalloc(data_len);
+                    kread(file, 0, buffer, data_len, [=](int ret) {
+                        K::assert(ret == data_len, "kfs_stress_test(): failed to read from file.");
+
+                        if (K::strcmp(buffer, DATA) == 0) {
+                            (*num_correct)++;
+                        } else {
+                            printf("kfs_stress_test(): data read from file %s is incorrect.\n",
+                                   filename.c_str());
+                        }
+
+                        // Close the file.
+                        kclose(file);
+                        kfree(buffer);
+
+                        if (i == num_files - 1) {
+                            printf("kfs_stress_test(): correctly read %d / %d files.\n",
+                                   *num_correct, num_files);
+                            printf("kfs_stress_test(): removing %d files.\n", num_files);
+                            setup_files(/* removes num_files files */ false,
+                                        [=](void) { printf("PASSED KFS STRESS TEST.\n"); });
+                        }
+                    });  // kread
+                });      // kwrite
+            });          // kopen
+        }
+    };
+
+    setup_files(/* creates num_files files */ true, run_test);
+}
+
+// test we can open the same file twice and hit the open file cache.
+void kfs_kopen_uses_cache_test() {
+    printf("START KOPEN CACHE TESTS.\n");
+
+    constexpr const char* FILENAME = "test69.txt";
+    constexpr const char* FULL_PATH = "/test69.txt";
+    constexpr const char* DATA = "hello world";
+    int data_len = K::strlen(DATA) + 1;
+
+    auto cleanup = [](KFile* file, int expected_status) {
+        fs::issue_fs_remove_file(0, FILENAME, [=](fs::fs_response_t resp) {
+            K::assert(resp.data.remove_file.status == expected_status,
+                      "kfs_kopen_uses_cache_test(): failed to remove file.");
+        });
+        kclose(file);
+    };
+
+    fs::issue_fs_create_file(0, false, FILENAME, 0, [=](fs::fs_response_t resp) {
+        K::assert(resp.data.create_file.status == fs::FS_RESP_SUCCESS,
+                  "kfs_kopen_uses_cache_test(): failed to create file.");
+
+        int inode_num = resp.data.create_file.inode_index;
+        printf("Opened test69.txt, inode number %d\n", inode_num);
+        kopen(FULL_PATH, [=](KFile* file1) {
+            if (!file1) {
+                printf("kfs_kopen_uses_cache_test(): failed to open file1\n");
+                return;
+            }
+
+            // file should be in memory now.
+            int outer_inode_num = file1->get_inode_number();
+            kopen(FULL_PATH, [=](KFile* file2) {
+                if (!file2) {
+                    printf("kfs_kopen_uses_cache_test(): failed to open file2\n");
+                    return;
+                }
+
+                // return inode should be the same
+                int inner_inode_num = file2->get_inode_number();
+                K::assert(inner_inode_num == outer_inode_num,
+                          "kfs_kopen_uses_cache_test(): inode numbers are different.");
+
+                cleanup(file1, fs::FS_RESP_SUCCESS);
+                cleanup(file2, fs::FS_RESP_ERROR_NOT_FOUND);
+
+                printf("PASSED KOPEN CACHE TESTS.\n");
+            });
+        });
     });
 }

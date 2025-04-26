@@ -56,6 +56,7 @@ class KFile {
     KFile() : file_type(FileType::UNKNOWN), offset(0) {
     }
     virtual ~KFile() = default;
+    virtual int get_inode_number() = 0;
 
     FileType file_type;
     int offset;
@@ -65,6 +66,10 @@ class FSFile : public KFile {
    public:
     FSFile() : inode(nullptr), perm(0) {
         file_type = FileType::FILESYSTEM;
+    }
+
+    int get_inode_number() override {
+        return inode->inode_number;
     }
 
     mem_inode_t* inode;
@@ -77,6 +82,10 @@ class DeviceFile : public KFile {
         file_type = FileType::DEVICE;
     }
 
+    int get_inode_number() override {
+        return 69696969696;
+    }
+
     string name;
 };
 
@@ -84,7 +93,7 @@ void kopen(string file_name, Function<void(KFile*)> w);
 void kclose(KFile* file);
 
 void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
-void kwrite(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w);
+void kwrite(KFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w);
 
 // void write_dev();
 

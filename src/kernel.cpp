@@ -132,6 +132,11 @@ extern "C" void kernel_main() {
     // test_fs();
     // testSnapshot();
     // test_fs_requests();
+
+    // so they happen possibly in parallel.
+    create_event([] { kfs_simple_test(); });
+    create_event([] { kfs_kopen_uses_cache_test(); });
+    create_event([] { kfs_stress_test(10); });
 }
 
 extern char __heap_start[];
