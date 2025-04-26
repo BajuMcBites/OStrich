@@ -123,7 +123,7 @@ extern "C" void kernel_main() {
     sdioTests();
     ring_buffer_tests();
     elf_load_test();
-    partitionTests();
+    // partitionTests();
     // test_fs();
     // testSnapshot();
 }
@@ -143,7 +143,7 @@ extern "C" void secondary_kernel_init() {
     init_mmu();
     enable_irq();
     event_listener_init();
-    while (1);
+    // while (1);
     mergeCores();
 }
 
@@ -198,9 +198,13 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    if (number_awake == 1) {
+    if (number_awake == CORE_COUNT) {
         printf("creating kernel_main\n");
         create_event([] { kernel_main(); });
+        // used to have multiple user tcbs running
+        // for (int i = 0; i < 10; i++) {
+        //     elf_load_test();
+        // }
     }
     // Uncomment to run snake
     // if(getCoreID() == 0){

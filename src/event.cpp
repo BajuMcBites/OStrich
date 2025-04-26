@@ -70,7 +70,6 @@ void run_events() {
             }
         }
         runningEvent[getCoreID()] = nextThread;
-        // Interrupts::restore(nextThread->irq_was_disabled);
         nextThread->run();
         if (!nextThread->kernel_event) {
             K::assert(false, "user event returned to event loop");
@@ -146,11 +145,10 @@ void save_user_context(UserTCB* tcb, KernelEntryFrame* regs) {
 }
 
 void yield(KernelEntryFrame* frame) {
-    // return;
     K::assert(Interrupts::isDisabled(), "preempt happening with interrupts on uh oh\n");
     TCB* running = runningEvent[getCoreID()];
     K::assert(running != nullptr, "preempt a nullptr\n");
-    printf("yield in core: %d\n", getCoreID());
+    // printf("yield in core: %d\n", getCoreID());
     if (running->kernel_event) {
         // check stack
         K::check_stack();
@@ -159,25 +157,22 @@ void yield(KernelEntryFrame* frame) {
     UserTCB* old = get_running_user_tcb(getCoreID());
     // force thread to change
     K::assert((running == old), "mismatched running event and user thread\n");
-    printf("preempt!\n");
+    //  printf("preempt!\n");
     save_user_context(old, frame);
-    readyQueue.forCPU(1).queues[1].add(old);
+    readyQueue.forCPU(getCoreID()).queues[1].add(old);
     QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;    // Reload nows
-
-    // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
-
     // route to next core
     auto me = getCoreID();
-    // if (me == 0) {
-    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
-    // } else if (me == 1) {
-    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
-    // } else if (me == 2) {
-    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
-    // } else {
-    //     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
-    // }
+    if (me == 0) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+    } else if (me == 1) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+    } else if (me == 2) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+    } else {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+    }
+    QA7->TimerClearReload.Reload = 1;  // Reload
     enable_irq();
     event_loop();
 }
