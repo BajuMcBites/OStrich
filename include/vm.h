@@ -287,10 +287,7 @@ static inline bool pc_key_equals(PCKey keya, PCKey keyb) {
         return uint64_t_equals(keya.offset, keyb.offset) && uint64_t_equals(keya.id, keyb.id);
     }
 
-    FSFile* fs_file_a = static_cast<FSFile*>(keya.file);
-    FSFile* fs_file_b = static_cast<FSFile*>(keyb.file);
-
-    return uint64_t_equals(fs_file_a->get_inode_number(), fs_file_b->get_inode_number()) &&
+    return uint64_t_equals(keya.file->get_inode_number(), keyb.file->get_inode_number()) &&
            uint64_t_equals(keya.offset, keyb.offset);
 }
 

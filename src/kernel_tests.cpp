@@ -409,11 +409,11 @@ void mmap_shared_unreserved() {
 
 void user_paging_tests() {
     printf("starting user paging tests\n");
-    // basic_page_table_creation();
-    // mmap_test_no_reserve();
-    // mmap_test_file();
+    basic_page_table_creation();
+    mmap_test_no_reserve();
     mmap_test_file();
-    // mmap_shared_unreserved();
+    mmap_test_file();
+    mmap_shared_unreserved();
     printf("user paging tests complete\n");
 }
 

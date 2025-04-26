@@ -156,19 +156,17 @@ void read_fs(FSFile* file, uint64_t offset, char* buf, uint64_t n, Function<void
     }
 
     fs::issue_fs_read(file->get_inode_number(), buf, offset, n, [=](fs::fs_response_t resp) {
-        if (resp.data.read.status == fs::FS_RESP_SUCCESS) {
-            // printf("read_fs(): Successfully read %d bytes\n", resp.data.read.bytes_read);
-        } else {
-            K::assert(false, "read_fs(): Failed to read from file");
-        }
+        K::assert(resp.data.read.status == fs::FS_RESP_SUCCESS,
+                  "read_fs(): Failed to read from file");
         create_event<int>(w, resp.data.read.bytes_read);
     });
 }
 
 void read_ramfs(DeviceFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     K::assert(file->file_type == FileType::DEV_RAMFS, "read_ramfs(): KFile type is incorrect");
-    printf("read_ramfs(): reading from ramfs file %s\n", file->name.c_str());
-    int ramfs_index = get_ramfs_index(&file->name[RAMFS_PREFIX_LEN]);
+    const char* name_without_prefix =
+        &file->name[RAMFS_PREFIX_LEN];  // file->name would look like "/dev/ramfs/file.txt"
+    int ramfs_index = get_ramfs_index(name_without_prefix);
     if (ramfs_index == -1) {
         create_event<int>(w, INVALID_FILE);
         return;
