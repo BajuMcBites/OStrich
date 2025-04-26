@@ -2,6 +2,7 @@
 #define _ATOMIC_H_
 
 #include "function.h"
+#include "irq.h"
 #include "queue.h"
 #include "stdint.h"
 
@@ -122,24 +123,29 @@ class Atomic<int64_t> {
     Atomic(int64_t) = delete;
 };
 
-/*
 class Interrupts {
-public:
+    static inline uint64_t getFlags() {
+        uint64_t daif;
+        asm volatile("mrs %0, daif" : "=r"(daif));
+        return (uint64_t)daif;
+    }
+
+   public:
     static bool isDisabled() {
-        uint32_t oldFlags = getFlags();
-        return (oldFlags & 0x200) == 0;
+        uint64_t oldFlags = getFlags();
+        // double check this is the correct bit
+        return (oldFlags & (1 << 7)) != 0;  // I-bit = IRQ disable
     }
 
     static bool disable() {
         bool wasDisabled = isDisabled();
-        if (!wasDisabled)
-            cli();
+        if (!wasDisabled) disable_irq();
         return wasDisabled;
     }
 
     static void restore(bool wasDisabled) {
         if (!wasDisabled) {
-            sti();
+            enable_irq();
         }
     }
 
@@ -149,9 +155,7 @@ public:
         work();
         restore(was);
     }
-
 };
-*/
 
 template <typename T>
 class LockGuard {

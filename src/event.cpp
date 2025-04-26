@@ -4,9 +4,11 @@
 #include "atomic.h"
 #include "libk.h"
 #include "percpu.h"
+#include "peripherals/arm_devices.h"
 #include "printf.h"
 #include "queue.h"
 #include "stdint.h"
+#include "sys.h"
 #include "utils.h"
 
 extern "C" void load_user_context(cpu_context* context);
@@ -24,6 +26,9 @@ PerCPU<CPU_Queues> readyQueue;
 
 // use an array for multiple cores, index with getCoreId
 UserTCB* runningUserTCB[CORE_COUNT] = {nullptr};
+
+// use an array for multiple cores, index with getCoreId
+TCB* runningEvent[CORE_COUNT] = {nullptr};
 
 TCB* getNextEvent(int core) {
     auto& ready = readyQueue.forCPU(core);
@@ -91,6 +96,8 @@ void run_events() {
                 continue;
             }
         }
+        runningEvent[getCoreID()] = nextThread;
+        Interrupts::restore(nextThread->irq_was_disabled);
         nextThread->run();
         if (!nextThread->kernel_event) {
             K::assert(false, "user event returned to event loop");
@@ -117,6 +124,7 @@ void enter_user_space(UserTCB* tcb) {
     tcb->pcb->page_table->use_page_table();
     flush_tlb();
     runningUserTCB[getCoreID()] = tcb;
+    runningEvent[getCoreID()] = tcb;
     load_user_context(&tcb->context);
 }
 
@@ -126,42 +134,76 @@ void enter_user_space(UserTCB* tcb) {
  * spsr, these registers should be saved immidiatly upon entering kernel space
  * so call this function at the start of the saved register memory.
  */
-void save_user_context(UserTCB* tcb, uint64_t* regs) {
-    tcb->context.x0 = regs[0];
-    tcb->context.x1 = regs[1];
-    tcb->context.x2 = regs[2];
-    tcb->context.x3 = regs[3];
-    tcb->context.x4 = regs[4];
-    tcb->context.x5 = regs[5];
-    tcb->context.x6 = regs[6];
-    tcb->context.x7 = regs[7];
-    tcb->context.x8 = regs[8];
-    tcb->context.x9 = regs[9];
-    tcb->context.x10 = regs[10];
-    tcb->context.x11 = regs[11];
-    tcb->context.x12 = regs[12];
-    tcb->context.x13 = regs[13];
-    tcb->context.x14 = regs[14];
-    tcb->context.x15 = regs[15];
-    tcb->context.x16 = regs[16];
-    tcb->context.x17 = regs[17];
-    tcb->context.x18 = regs[18];
-    tcb->context.x19 = regs[19];
-    tcb->context.x20 = regs[20];
-    tcb->context.x21 = regs[21];
-    tcb->context.x22 = regs[22];
-    tcb->context.x23 = regs[23];
-    tcb->context.x24 = regs[24];
-    tcb->context.x25 = regs[25];
-    tcb->context.x26 = regs[26];
-    tcb->context.x27 = regs[27];
-    tcb->context.x28 = regs[28];
-    tcb->context.x29 = regs[29];
-    tcb->context.x30 = regs[30];
+void save_user_context(UserTCB* tcb, KernelEntryFrame* regs) {
+    tcb->context.x0 = regs->X[0];
+    tcb->context.x1 = regs->X[1];
+    tcb->context.x2 = regs->X[2];
+    tcb->context.x3 = regs->X[3];
+    tcb->context.x4 = regs->X[4];
+    tcb->context.x5 = regs->X[5];
+    tcb->context.x6 = regs->X[6];
+    tcb->context.x7 = regs->X[7];
+    tcb->context.x8 = regs->X[8];
+    tcb->context.x9 = regs->X[9];
+    tcb->context.x10 = regs->X[10];
+    tcb->context.x11 = regs->X[11];
+    tcb->context.x12 = regs->X[12];
+    tcb->context.x13 = regs->X[13];
+    tcb->context.x14 = regs->X[14];
+    tcb->context.x15 = regs->X[15];
+    tcb->context.x16 = regs->X[16];
+    tcb->context.x17 = regs->X[17];
+    tcb->context.x18 = regs->X[18];
+    tcb->context.x19 = regs->X[19];
+    tcb->context.x20 = regs->X[20];
+    tcb->context.x21 = regs->X[21];
+    tcb->context.x22 = regs->X[22];
+    tcb->context.x23 = regs->X[23];
+    tcb->context.x24 = regs->X[24];
+    tcb->context.x25 = regs->X[25];
+    tcb->context.x26 = regs->X[26];
+    tcb->context.x27 = regs->X[27];
+    tcb->context.x28 = regs->X[28];
+    tcb->context.x29 = regs->X[29];
+    tcb->context.x30 = regs->X[30];
 
     tcb->context.sp = get_sp_el0();
     tcb->context.pc = get_elr_el1();
     tcb->context.spsr = get_spsr_el1();
+}
+
+void yield(KernelEntryFrame* frame) {
+    K::assert(Interrupts::isDisabled(), "preempt happening with interrupts on uh oh\n");
+    TCB* running = runningEvent[getCoreID()];
+    // printf("yield in core: %d\n", getCoreID());
+    if (running->kernel_event) {
+        // check stack
+        K::check_stack();
+        return;
+    }
+    UserTCB* old = get_running_user_tcb(getCoreID());
+    // force thread to change
+    K::assert((running == old), "mismatched running event and user thread\n");
+
+    save_user_context(old, frame);
+    QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
+    QA7->TimerClearReload.Reload = 1;    // Reload nows
+
+    // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
+
+    // route to next core
+    auto me = getCoreID();
+    if (me == 0) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE1_IRQ;
+    } else if (me == 1) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE2_IRQ;
+    } else if (me == 2) {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE3_IRQ;
+    } else {
+        QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
+    }
+    enable_irq();
+    event_loop();
 }
 
 void set_return_value(UserTCB* tcb, uint64_t ret_val) {
@@ -170,4 +212,8 @@ void set_return_value(UserTCB* tcb, uint64_t ret_val) {
 
 UserTCB* get_running_user_tcb(int core) {
     return runningUserTCB[core];
+}
+
+TCB* get_running_task(int core) {
+    return runningEvent[core];
 }

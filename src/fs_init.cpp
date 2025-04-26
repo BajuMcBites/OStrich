@@ -1,13 +1,14 @@
 #include "fs_init.h"
 
 #include "../filesystem/filesys/FileSystem.h"
+#include "../filesystem/filesys/fs_requests.h"
 #include "../filesystem/interface/BlockManager.h"
 #include "heap.h"
 #include "libk.h"
 #include "partition.h"
 #include "printf.h"
 #include "sdio.h"
-#include "utils.h"
+#include "string.h"
 
 using namespace fs;
 
@@ -48,6 +49,27 @@ void fs_init() {
     FileSystem::getInstance(blockManager);
 
     auto* fileSystem = FileSystem::getInstance();
+}
+
+static string readFile(inode_index_t inode, int nBytes) {
+    char buffer[256] = {};
+    auto rdr = fs::fs_req_read(inode, buffer, 0, nBytes);
+    buffer[nBytes - 1] = '\0';
+    K::assert(rdr.status == fs::FS_RESP_SUCCESS, "");
+    return string(buffer);
+}
+
+static bool dirContains(inode_index_t dirInode, const char* name) {
+    auto resp = fs::fs_req_read_dir(dirInode);
+    printf("dirContains: %d entries in inode %u\n", resp.entry_count, dirInode);
+    K::assert(resp.status == fs::FS_RESP_SUCCESS, "Failed to read directory.");
+    for (int i = 0; i < resp.entry_count; i++) {
+        printf("entry %d: %s\n", i, resp.entries[i].name);
+        if (K::strcmp(resp.entries[i].name, name) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Test stuff down here.
@@ -92,27 +114,8 @@ void displayTree(const Directory* dir, const char* curPath) {
     }
 }
 
-void displayFilesystem() {
-    FileSystem* fileSystem = FileSystem::getInstance();
-    printf("Loading root directory...\n");
-    auto* rootDir = fileSystem->getRootDirectory();
-    displayTree(rootDir, "/");
-    FileSystem* snapshotFS = fileSystem->mountReadOnlySnapshot(2);
-    if (snapshotFS == nullptr) {
-        printf("Failed to mount read-only snapshot.\n");
-        return;
-    }
-    auto* snapRoot = snapshotFS->getRootDirectory();
-    printf("\nSnapshot filesystem (checkpoint 2):\n");
-    displayTree(snapRoot, "/");
-
-    printf("Unmounting snapshot filesystem...\n");
-    delete snapRoot;
-    delete snapshotFS;
-    delete rootDir;
-}
-
 void test_fs() {
+    printf("FS TEST\n");
     auto* fileSystem = FileSystem::getInstance();
 
     printf("Loading root directory\n");
@@ -172,7 +175,7 @@ void test_fs() {
     printf("Deleting /dir2/tmpfile\n");
     dir2->removeDirectoryEntry("tmpfile");
 
-    displayFilesystem();
+    displayTree(rootDir, "/");
 
     delete[] buffer;
     delete tmpFile;
@@ -184,54 +187,204 @@ void test_fs() {
     delete dir3;
     delete rootDir;
 
-    printf("Filesystem test finished!\n");
+    printf("FS TEST FINISHED!\n");
 }
 
 void testSnapshot() {
     printf("FS SNAPSHOT TEST\n");
-    // Create live filesystem instance and display its state.
+    // // Create live filesystem instance and display its state.
     FileSystem* liveFS = FileSystem::getInstance();
     Directory* liveRoot = liveFS->getRootDirectory();
+    displayTree(liveRoot, "/");
     printf("Live filesystem:\n");
     displayTree(liveRoot, "/");
-    delete liveRoot;
 
     // Mount a read-only snapshot based on a checkpoint.
     // (Adjust the checkpointID as needed; here we use 2 as an example.)
-    FileSystem* snapshotFS = liveFS->mountReadOnlySnapshot(2);
-    if (snapshotFS == nullptr) {
+    if (!liveFS->mountReadOnlySnapshot(2)) {
         printf("Failed to mount read-only snapshot.\n");
         return;
     }
 
-    Directory* snapRoot = snapshotFS->getRootDirectory();
+    Directory* snapRoot = liveFS->getRootDirectory();
     printf("\nRead-only snapshot (checkpoint 2):\n");
     displayTree(snapRoot, "/");
     delete snapRoot;
 
-    FileSystem* snapshotFS2 = liveFS->mountReadOnlySnapshot(3);
-    if (snapshotFS2 == nullptr) {
+    if (!liveFS->mountReadOnlySnapshot(3)) {
         printf("Failed to mount read-only snapshot.\n");
         return;
     }
-    auto* snapRoot2 = snapshotFS2->getRootDirectory();
+    auto* snapRoot2 = liveFS->getRootDirectory();
     printf("\nRead-only snapshot (checkpoint 3):\n");
     displayTree(snapRoot2, "/");
     delete snapRoot2;
 
-    // Optionally, try a write operation on the snapshot to ensure it is read-only.
-    // For example:
-    // Directory* snapDir = (Directory*)snapshotFS->getRootDirectory()->getFile("dir1");
-    // if (snapDir) {
-    //     if (!snapDir->createFile("illegalWrite")) {
-    //         printf("\nWrite operation correctly rejected in snapshot.\n");
-    //     } else {
-    //         printf("\nError: Write operation succeeded in snapshot!\n");
-    //     }
-    //     delete snapDir;
-    // }
+    if (!liveFS->mountReadOnlySnapshot(0)) {
+        printf("Failed to mount latest FS state.\n");
+        return;
+    }
 
-    // Clean up the snapshot instance.
-    delete snapshotFS;
-    delete snapshotFS2;
+    printf("FS SNAPSHOT TEST FINISHED!\n");
+}
+
+void test_fs_requests() {
+    auto* fileSystem = FileSystem::getInstance();
+
+    printf("FS REQUESTS TEST\n");
+    constexpr int ROOT_DIR_INODE = 0;
+
+    // 1) CREATE file1 in root directory.
+    printf("STEP 1\n");
+    printf("Creating file1 in root directory...\n");
+    auto r1 = fs_req_create_file(ROOT_DIR_INODE, false, "file1", 0);
+    K::assert(r1.status == FS_RESP_SUCCESS, "Failed to create file1 in root directory.");
+    printf("File1 created successfully.\n");
+
+    // assert it shows up in root
+    K::assert(dirContains(ROOT_DIR_INODE, "file1"), "file1 not foundin root dir.");
+    printf("File1 found in root directory.\n");
+
+    printf("STEP 2\n");
+    // 2) WRITE "hello"
+    // open to fetch inode number
+    auto r2 = fs_req_open("/file1");
+    K::assert(r2.status == FS_RESP_SUCCESS, "Failed to open file1.");
+    inode_index_t file1Inode = r2.inode_index;
+    printf("File1 opened successfully.\n");
+
+    const char* msg = "hello";
+    int len = K::strlen(msg) + 1;  // includes null terminator
+    auto r3 = fs_req_write(file1Inode, msg, 0, len);
+    K::assert(r3.status == FS_RESP_SUCCESS, "Failed to write to file1.");
+    printf("Data written to file1 successfully.\n");
+
+    // assert read returns the same data
+    string got = readFile(file1Inode, len);
+    K::assert(got == "hello", "contents were incorrect.");
+    printf("File1 contents verified successfully.\n");
+
+    printf("STEP 3\n");
+    auto r4 = fs_req_remove_file(0, "file1");
+    K::assert(r4.status == FS_RESP_SUCCESS, "Failed to remove file1.");
+
+    // assert it's gone
+    K::assert(!dirContains(0, "file1"), "file1 still exists.");
+
+    printf("STEP 4\n");
+    // recreate
+    auto r5 = fs_req_create_file(0, false, "file2", 0);
+    K::assert(r5.status == FS_RESP_SUCCESS, "Failed to create file2.");
+    file1Inode = r5.inode_index;
+    // check that file exists
+
+    // assert it shows up in root
+    K::assert(dirContains(ROOT_DIR_INODE, "file2"), "file2 not foundin root dir.");
+    printf("File2 found in root directory.\n");
+
+    printf("STEP 5\n");
+    auto r6 = fs_req_open("/file2");
+    K::assert(r6.status == FS_RESP_SUCCESS, "Failed to open file2.");
+    inode_index_t checkInode = r6.inode_index;
+    K::assert(checkInode == file1Inode, "file2 inode number mismatch.");
+
+    // write first
+    printf("STEP 6\n");
+    const char* m1 = "first";
+    len = K::strlen(m1) + 1;
+    auto r7 = fs_req_write(file1Inode, m1, 0, len);
+    K::assert(r7.status == FS_RESP_SUCCESS, "Failed to write to file2.");
+
+    // checkpoint (2)
+    K::assert(fileSystem->createCheckpoint(), "Failed to create checkpoint.");
+
+    // overwrite
+    printf("STEP 7\n");
+    const char* m2 = "second";
+    len = K::strlen(m2) + 1;
+    auto r8 = fs_req_write(file1Inode, m2, 0, len);
+    K::assert(r8.status == FS_RESP_SUCCESS, "Failed to write to file2.");
+
+    // checkpoint (3)
+    K::assert(fileSystem->createCheckpoint(), "Failed to create checkpoint.");
+
+    // delete
+    printf("STEP 8\n");
+    auto r9 = fs_req_remove_file(0, "file2");
+    K::assert(r9.status == FS_RESP_SUCCESS, "Failed to remove file2.");
+
+    // checkpoint (4)
+    K::assert(fileSystem->createCheckpoint(), "Failed to create checkpoint.");
+
+    // helper to test
+    auto validate = [&](int cp, bool exists, const char* expected) {
+        printf("----- VALIDATING SNAPSHOT %d -----\n", cp);
+        auto resp = fs_req_mount_snapshot(cp);
+        K::assert(resp.status == FS_RESP_SUCCESS, "Failed to mount snapshot.");
+        printf("snapshot mounted successfully.\n");
+        bool found = dirContains(0, "file2");
+        K::assert(found == exists, "file2 not found in snapshot.");
+        if (exists) {
+            int expectedLen = K::strlen(expected) + 1;
+            string content = readFile(file1Inode, expectedLen);
+            K::assert(content == expected, "contents were incorrect.");
+        }
+    };
+
+    // TODO: fix this once snapshotting is fixed.
+    // validate(2, true, "first");
+    // validate(3, true, "second");
+    // validate(4, false, nullptr);
+    printf("Mounting latest FS state...\n");
+    auto resp = fs_req_mount_snapshot(0);
+    K::assert(resp.status == FS_RESP_SUCCESS, "Failed to mount snapshot.");
+
+    {
+        // Create file named "test1.txt" in root directory.
+        printf("Creating test1.txt in root directory...\n");
+        auto r1 = fs_req_create_file(0, false, "test1.txt", 0);
+        K::assert(r1.status == FS_RESP_SUCCESS, "Failed to create test1.txt in root directory.");
+        printf("test1.txt created successfully.\n");
+
+        inode_index_t fileInode = r1.inode_index;
+        printf("fileInode: %d\n", fileInode);
+        // Write "Hello, World!" to the file.
+        const char* msg = "Hello, World!";
+        int len = K::strlen(msg) + 1;  // includes null terminator
+        auto r3 = fs_req_write(fileInode, msg, 0, len);
+        K::assert(r3.status == FS_RESP_SUCCESS, "Failed to write to test1.txt.");
+        printf("Data written to test1.txt successfully.\n");
+
+        // Read the data back from the file.
+        char buffer[256];
+        auto r4 = fs_req_read(fileInode, buffer, 0, len);
+        K::assert(r4.status == FS_RESP_SUCCESS, "Failed to read from test1.txt.");
+        string readData = string(buffer);
+        printf("Read data: %s\n", readData.c_str());
+        K::assert(readData == msg, "Data read from test1.txt is incorrect.");
+        printf("Data read from test1.txt successfully.\n");
+
+        // Modify the file.
+        const char* newMsg = "Hello, Universe!";
+        int newLen = K::strlen(newMsg) + 1;
+        auto r5 = fs_req_write(fileInode, newMsg, 0, newLen);
+        K::assert(r5.status == FS_RESP_SUCCESS, "Failed to modify test1.txt.");
+        printf("test1.txt modified successfully.\n");
+
+        // Open the file again.
+        auto r6 = fs_req_open("/test1.txt");
+        K::assert(r6.status == FS_RESP_SUCCESS, "Failed to open test1.txt.");
+        inode_index_t checkInode = r6.inode_index;
+        if (checkInode != fileInode) {
+            printf("inode number mismatch.\n");
+        }
+
+        // Read the modified data back.
+        auto r7 = fs_req_read(checkInode, buffer, 0, newLen);
+        K::assert(r7.status == FS_RESP_SUCCESS, "Failed to read from test1.txt.");
+        string readData2 = string(buffer);
+        printf("Read data: %s\n", readData2.c_str());
+        K::assert(readData2 == newMsg, "Data read from test1.txt is incorrect.");
+        printf("Data read from test1.txt successfully.\n");
+    }
 }

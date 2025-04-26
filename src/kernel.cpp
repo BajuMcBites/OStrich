@@ -15,6 +15,7 @@
 #include "partition.h"
 #include "partition_tests.h"
 #include "percpu.h"
+#include "peripherals/arm_devices.h"
 #include "printf.h"
 #include "queue.h"
 #include "ramfs.h"
@@ -22,12 +23,45 @@
 #include "sdio_tests.h"
 #include "snake.h"
 #include "stdint.h"
+#include "string.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
 
 void mergeCores();
+
+struct __attribute__((__packed__, aligned(4))) SystemTimerRegisters {
+    uint32_t ControlStatus;  // 0x00
+    uint32_t TimerLo;        // 0x04
+    uint32_t TimerHi;        // 0x08
+    uint32_t Compare0;       // 0x0C
+    uint32_t Compare1;       // 0x10
+    uint32_t Compare2;       // 0x14
+    uint32_t Compare3;       // 0x18
+};
+
+#define SYSTEMTIMER \
+    ((volatile      \
+      __attribute__((aligned(4))) struct SystemTimerRegisters *)(uintptr_t)(PBASE + 0x3000))
+
+uint64_t timer_getTickCount64(void) {
+    uint64_t resVal;
+    uint32_t lowCount;
+    do {
+        resVal = SYSTEMTIMER->TimerHi;    // Read Arm system timer high count
+        lowCount = SYSTEMTIMER->TimerLo;  // Read Arm system timer low count
+    } while (resVal !=
+             (uint64_t)SYSTEMTIMER->TimerHi);  // Check hi counter hasn't rolled in that time
+    resVal = (uint64_t)resVal << 32 | lowCount;  // Join the 32 bit values to a full 64 bit
+    return (resVal);                             // Return the uint64_t timer tick count
+}
+
+void timer_wait(uint64_t us) {
+    us += timer_getTickCount64();  // Add current tickcount onto delay
+    while (timer_getTickCount64() < us) {
+    };  // Loop on timeout function until timeout
+}
 
 struct Stack {
     static constexpr int BYTES = 16384;
@@ -77,7 +111,10 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    printf("All tests passed\n");
+    // test_fs_requests();
+    // stringTest();
+
+    // printf("All tests passed\n");
     heapTests();
     event_loop_tests();
     hash_test();
@@ -90,9 +127,11 @@ extern "C" void kernel_main() {
     bitmap_tests();
     swap_tests();
     elf_load_test();
-    // partitionTests();
+    partitionTests();
+    stringTest();
     // test_fs();
     // testSnapshot();
+    // test_fs_requests();
 }
 
 extern char __heap_start[];
@@ -108,7 +147,9 @@ void mergeCores();
 
 extern "C" void secondary_kernel_init() {
     init_mmu();
+    enable_irq();
     event_listener_init();
+    // while (1);
     mergeCores();
 }
 
@@ -118,9 +159,6 @@ extern "C" void primary_kernel_init() {
     init_mmu();
     uart_init();
     init_printf(nullptr, uart_putc_wrapper);
-    // timer_init();
-    // enable_interrupt_controller();
-    // enable_irq();
     printf("printf initialized!!!\n");
     if (fb_init()) {
         printf("Framebuffer initialization successful!\n");
@@ -137,6 +175,7 @@ extern "C" void primary_kernel_init() {
     // making that bit making that bit 0 will allow ramfs to be initalized. (will get ESR_EL1 value
     // of 0x96000021)
     init_ramfs();
+
     create_frame_table(frame_table_start,
                        0x40000000);  // assuming 1GB memory (Raspberry Pi 3b)
     printf("frame table initialized! \n");
@@ -152,8 +191,10 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
+    local_timer_init();
     init_swap();
     wake_up_cores();
+    enable_irq();
     mergeCores();
 }
 
@@ -164,9 +205,9 @@ void mergeCores() {
     K::check_stack();
 
     if (number_awake == CORE_COUNT) {
+        printf("creating kernel_main\n");
         create_event([] { kernel_main(); });
     }
-
     // Uncomment to run snake
     // if(getCoreID() == 0){
     //     printf("init_snake() + keyboard_loop();\n");

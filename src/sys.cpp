@@ -13,39 +13,27 @@
 #include "vm.h"
 // #include "trap_frame.h"
 
-// SyscallFrame structure.
-// X[0] - return value
-struct SyscallFrame {
-    union {
-        /* X[0] ... X[5] - arguments
-        once function is called, X[0] will be the return value.
-        */
-        uint64_t X[31];  // 0 ... 30
-    };
-};
-
 // Function prototypes
-void newlib_handle_exit(SyscallFrame* frame);
-int newlib_handle_close(SyscallFrame* frame);
-int newlib_handle_exec(SyscallFrame* frame);
-int newlib_handle_fork(SyscallFrame* frame);
-int newlib_handle_fstat(SyscallFrame* frame);
-int newlib_handle_getpid(SyscallFrame* frame);
-int newlib_handle_isatty(SyscallFrame* frame);
-int newlib_handle_kill(SyscallFrame* frame);
-int newlib_handle_link(SyscallFrame* frame);
-int newlib_handle_lseek(SyscallFrame* frame);
-int newlib_handle_open(SyscallFrame* frame);
-int newlib_handle_read(SyscallFrame* frame);
-int newlib_handle_stat(SyscallFrame* frame);
-int newlib_handle_unlink(SyscallFrame* frame);
-int newlib_handle_wait(SyscallFrame* frame);
-int newlib_handle_write(SyscallFrame* frame);
-int newlib_handle_time(SyscallFrame* frame);
-void handle_newlib_syscall(int opcode, SyscallFrame* frame);
+void newlib_handle_exit(KernelEntryFrame* frame);
+int newlib_handle_close(KernelEntryFrame* frame);
+int newlib_handle_exec(KernelEntryFrame* frame);
+int newlib_handle_fork(KernelEntryFrame* frame);
+int newlib_handle_fstat(KernelEntryFrame* frame);
+int newlib_handle_getpid(KernelEntryFrame* frame);
+int newlib_handle_isatty(KernelEntryFrame* frame);
+int newlib_handle_kill(KernelEntryFrame* frame);
+int newlib_handle_link(KernelEntryFrame* frame);
+int newlib_handle_lseek(KernelEntryFrame* frame);
+int newlib_handle_open(KernelEntryFrame* frame);
+int newlib_handle_read(KernelEntryFrame* frame);
+int newlib_handle_stat(KernelEntryFrame* frame);
+int newlib_handle_unlink(KernelEntryFrame* frame);
+int newlib_handle_wait(KernelEntryFrame* frame);
+int newlib_handle_write(KernelEntryFrame* frame);
+int newlib_handle_time(KernelEntryFrame* frame);
+void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 
-void syscall_handler(void* syscall_frame) {
-    auto* frame = (SyscallFrame*)(syscall_frame);
+void syscall_handler(KernelEntryFrame* frame) {
     int opcode = frame->X[8];
 
     // Right now, calling any variant of "printf" breaks the kernel causing an infinite exception
@@ -54,7 +42,7 @@ void syscall_handler(void* syscall_frame) {
     // handle_linux_syscall(opcode, frame);
 }
 
-void handle_newlib_syscall(int opcode, SyscallFrame* frame) {
+void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
     switch (opcode) {
         case NEWLIB_EXIT:
             newlib_handle_exit(frame);
@@ -112,7 +100,7 @@ void handle_newlib_syscall(int opcode, SyscallFrame* frame) {
     }
 }
 
-void handle_linux_syscall(int opcode, SyscallFrame* frame) {
+void handle_linux_syscall(int opcode, KernelEntryFrame* frame) {
     // TODO: Implement Linux syscalls.
     switch (opcode) {
         default:
@@ -123,7 +111,7 @@ void handle_linux_syscall(int opcode, SyscallFrame* frame) {
 // Parse arguments from the frame and call the appropriate function.
 // frame[0] ... frame[5] would be where the first 6 arguments are.
 // See https://sourceware.org/newlib/libc.html#Stubs for the specific arguments for each call.
-void newlib_handle_exit(SyscallFrame* frame) {
+void newlib_handle_exit(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     printf("exit has ran, returning %d\n", frame->X[0]);
     if (tcb->pcb->parent != nullptr) {
@@ -147,12 +135,12 @@ void newlib_handle_exit(SyscallFrame* frame) {
     event_loop();
 }
 
-int newlib_handle_close(SyscallFrame* frame) {
+int newlib_handle_close(KernelEntryFrame* frame) {
     // TODO: Implement close.
     return 0;
 }
 
-int newlib_handle_exec(SyscallFrame* frame) {
+int newlib_handle_exec(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     tcb->state = TASK_STOPPED;
     PCB* pcb = tcb->pcb;
@@ -212,31 +200,31 @@ int newlib_handle_exec(SyscallFrame* frame) {
     return 0;
 }
 
-int newlib_handle_fork(SyscallFrame* frame) {
+int newlib_handle_fork(KernelEntryFrame* frame) {
     // printf("called fork\n");
     UserTCB* tcb = get_running_user_tcb(getCoreID());
-    save_user_context(tcb, frame->X);
+    save_user_context(tcb, frame);
     fork(tcb);
     event_loop();
     return 0;
 }
 
-int newlib_handle_fstat(SyscallFrame* frame) {
+int newlib_handle_fstat(KernelEntryFrame* frame) {
     // TODO: Implement fstat.
     return 0;
 }
 
-int newlib_handle_getpid(SyscallFrame* frame) {
+int newlib_handle_getpid(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     return tcb->pcb->pid;
 }
 
-int newlib_handle_isatty(SyscallFrame* frame) {
+int newlib_handle_isatty(KernelEntryFrame* frame) {
     // TODO: Implement isatty.
     return 0;
 }
 
-int newlib_handle_kill(SyscallFrame* frame) {
+int newlib_handle_kill(KernelEntryFrame* frame) {
     int pid = frame->X[0];
     int sig = frame->X[1];
     if (pid < 1) {
@@ -256,39 +244,39 @@ int newlib_handle_kill(SyscallFrame* frame) {
     return 0;
 }
 
-int newlib_handle_link(SyscallFrame* frame) {
+int newlib_handle_link(KernelEntryFrame* frame) {
     // TODO: Implement link.
     return 0;
 }
 
-int newlib_handle_lseek(SyscallFrame* frame) {
+int newlib_handle_lseek(KernelEntryFrame* frame) {
     // TODO: Implement lseek.
     return 0;
 }
 
-int newlib_handle_open(SyscallFrame* frame) {
+int newlib_handle_open(KernelEntryFrame* frame) {
     // TODO: Implement open.
     return 0;
 }
 
-int newlib_handle_read(SyscallFrame* frame) {
+int newlib_handle_read(KernelEntryFrame* frame) {
     // TODO: Implement read.
     return 0;
 }
 
-int newlib_handle_stat(SyscallFrame* frame) {
+int newlib_handle_stat(KernelEntryFrame* frame) {
     // TODO: Implement stat.
     return 0;
 }
 
-int newlib_handle_unlink(SyscallFrame* frame) {
+int newlib_handle_unlink(KernelEntryFrame* frame) {
     // TODO: Implement unlink.
     return 0;
 }
 
-int newlib_handle_wait(SyscallFrame* frame) {
+int newlib_handle_wait(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
-    save_user_context(tcb, frame->X);
+    save_user_context(tcb, frame);
     tcb->state = TASK_STOPPED;
     PCB* cur = tcb->pcb;
     int* status_location = (int*)frame->X[0];
@@ -359,12 +347,12 @@ int newlib_handle_wait(SyscallFrame* frame) {
     return 0;
 }
 
-int newlib_handle_write(SyscallFrame* frame) {
+int newlib_handle_write(KernelEntryFrame* frame) {
     // TODO: Implement write.
     return 0;
 }
 
-int newlib_handle_time(SyscallFrame* frame) {
+int newlib_handle_time(KernelEntryFrame* frame) {
     // TODO: Implement time.
     return 0;
 }

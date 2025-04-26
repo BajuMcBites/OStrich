@@ -3,6 +3,7 @@
 #include "mmap.h"
 #include "printf.h"
 #include "swap.h"
+#include "sys.h"
 #include "trap_frame.h"
 
 extern "C" uint64_t get_sp_el0();
@@ -14,15 +15,15 @@ extern "C" uint64_t get_esr_el1();
 extern PageCache* page_cache;
 extern Swap* swap;
 
-void handle_translation_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
+void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
                               uint64_t far);
-void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
+void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
                               uint64_t far);
 
-extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr, uint64_t elr,
+extern "C" void page_fault_handler(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
                                    uint64_t spsr, uint64_t far) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
-    save_user_context(tcb, &trap_frame->X[0]);
+    save_user_context(tcb, trap_frame);
 
     switch ((esr >> 2) & 0x3) {
         case 0:
@@ -57,12 +58,12 @@ extern "C" void page_fault_handler(trap_frame* trap_frame, uint64_t esr, uint64_
     K::assert(false, "Shouldnt Get Here\n");
 }
 
-void handle_translation_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
+void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
                               uint64_t far) {
     uint64_t user_sp = get_sp_el0();
 
     UserTCB* tcb = get_running_user_tcb(getCoreID());
-    save_user_context(tcb, &trap_frame->X[0]);
+    save_user_context(tcb, trap_frame);
 
     if (far == nullptr) {
         kill_process(tcb->pcb);
@@ -89,14 +90,14 @@ void handle_translation_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr
     event_loop();
 }
 
-void handle_permissions_fault(trap_frame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
+void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
                               uint64_t far) {
     uint64_t user_sp = get_sp_el0();
 
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     PCB* pcb = tcb->pcb;
 
-    save_user_context(tcb, trap_frame->X);
+    save_user_context(tcb, trap_frame);
 
     pcb->supp_page_table->lock.lock([=]() {
         LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(far & ~0xFFF);

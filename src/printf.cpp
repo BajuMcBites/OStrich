@@ -338,7 +338,7 @@ void tfp_error_printf(const char* fmt, ...) {
     va_end(va);
 
     // print the buffer to the framebuffer in red
-    // fb_print(buffer, RED);
+    fb_print(buffer, RED);
     printf_err_lock.unlock();
 }
 
@@ -355,7 +355,7 @@ void tfp_printf_no_lock(const char* fmt, unsigned int color, ...) {
     va_end(va_copy_list);
     va_end(va);
 
-    // fb_print(buffer, color);
+    fb_print(buffer, color);
 }
 
 __attribute__((noreturn)) void tfp_panic(const char* fmt, ...) {

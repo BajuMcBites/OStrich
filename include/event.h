@@ -11,6 +11,7 @@
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
+#define CORE_STACK_SIZE 16384
 
 #define TASK_RUNNING 0
 #define TASK_STOPPED 1
@@ -59,6 +60,7 @@ struct cpu_context {
 
 struct TCB {
     TCB* next = nullptr;
+    bool irq_was_disabled = false;  // always start with allowing interrupts
     bool kernel_event = true;
     uint32_t state;
     virtual void run() = 0;  // Abstract/virtual function that must be overridden
@@ -72,7 +74,8 @@ extern PerCPU<CPU_Queues> readyQueue;
 
 extern void event_loop();
 extern void enter_user_space(struct UserTCB* tcb);
-extern void save_user_context(struct UserTCB* tcb, uint64_t* regs);
+extern void save_user_context(struct UserTCB* tcb, struct KernelEntryFrame* regs);
+extern void yield(struct KernelEntryFrame* frame);
 
 struct UserTCB : public TCB {
     cpu_context context;
@@ -166,5 +169,7 @@ inline void create_event_core(
 void set_return_value(UserTCB* tcb, uint64_t ret_val);
 
 UserTCB* get_running_user_tcb(int core);
+
+TCB* get_running_task(int core);
 
 #endif
