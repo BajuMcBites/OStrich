@@ -1,12 +1,26 @@
 #include <fcntl.h>
+#include <stdio.h>
 
 int main() {
-    int fd = open("test.txt", O_CREAT | O_WRONLY, 0644);
-    if (fd < 0) {
+    FILE* fd = fopen("test.txt", "w");
+    if (fd == NULL) {
         printf("Failed to open file\n");
         return 1;
     }
 
-    write(fd, "Hello, world!\n", 14);
-    close(fd);
+    // fwrite("Hello, world!\n", 1, 14, fd);
+    // fclose(fd);
+
+    // FILE* fd2 = fopen("test.txt", "r");
+    // if (fd2 == NULL) {
+    //     printf("Failed to open file\n");
+    //     return 1;
+    // }
+
+    // char buffer[14];
+    // fread(buffer, 1, 14, fd2);
+    // printf("Read: %s\n", buffer);
+    // fclose(fd2);
+
+    return 0;
 }
