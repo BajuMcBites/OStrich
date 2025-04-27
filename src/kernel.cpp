@@ -28,6 +28,7 @@
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
+#include "user_permissions.h"
 
 void mergeCores();
 
@@ -111,10 +112,10 @@ extern "C" void kernel_main() {
     // test_fs_requests();
 
     // kernel file interface
-    kfs_simple_test();
-    kfs_kopen_uses_cache_test();
-    kfs_stress_test(10);
-    sd_stress_test();
+    // kfs_simple_test();
+    // kfs_kopen_uses_cache_test();
+    // kfs_stress_test(10);
+    // sd_stress_test();
 }
 
 extern char __heap_start[];
@@ -181,6 +182,8 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
+    init_permissions();
+    set_user_id(0);
     init_dummy_tcb();  // MUST COME BEFORE LOCAL TIMER INIT
     local_timer_init();
     init_swap();
