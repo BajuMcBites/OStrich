@@ -191,7 +191,7 @@ extern "C" void primary_kernel_init() {
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
-    local_timer_init();
+    // local_timer_init();
     init_swap();
     wake_up_cores();
     enable_irq();
@@ -204,16 +204,16 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    if (number_awake == CORE_COUNT) {
-        printf("creating kernel_main\n");
-        create_event([] { kernel_main(); });
-    }
-    // Uncomment to run snake
-    // if(getCoreID() == 0){
-    //     printf("init_snake() + keyboard_loop();\n");
-    //     create_event(init_snake);
-    //     create_event(keyboard_loop);
+    // if (number_awake == CORE_COUNT) {
+    //     printf("creating kernel_main\n");
+    //     create_event([] { kernel_main(); });
     // }
+    // Uncomment to run snake
+    if (getCoreID() == 0) {
+        printf("init_snake() + keyboard_loop();\n");
+        create_event(init_snake);
+        create_event(keyboard_loop);
+    }
     event_loop();
     printf("PANIC I should not go here\n");
 }

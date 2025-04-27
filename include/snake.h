@@ -14,7 +14,7 @@
 #define DIRECTION_RIGHT ((2 << 4) | (1 << 0))
 #define DIRECTION_LEFT ((0 << 4) | (1 << 0))
 #define QUEUE_SIZE 680
-#define FPS 10
+#define FPS 30
 
 struct undo {
     union undo_u {
