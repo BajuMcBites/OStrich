@@ -78,30 +78,24 @@ void kopen(string file_name, Function<void(KFile*)> w) {
     string cleaned_file_name = clean_path_string(file_name);
 
     // Get file hash.
-    auto file_hash = cleaned_file_name.hash();
+    auto name_hash = cleaned_file_name.hash();
 
     /* TODO: verify file exists and get characteristics */
     file_list_lock->lockAndRelease([=]() {
-        mem_inode_t* file_inode = nullptr;
+        KFile* file = nullptr;
         open_files.remove_if_and_free_node([&](FileListNode* n) {
             // Don't remove the inode if we are about to use it.
-            if (n->file_hash == file_hash) {
-                file_inode = n->inode;
+            if (n->name_hash == name_hash) {
+                file = n->file;
                 return false;
             }
-            return n->inode->refs == 0;
+            return n->file->get_ref_count() == 0;
         });
 
         // We found the inode in the list.
-        FSFile* f = new FSFile;
-        if (file_inode != nullptr) {
-            // Link file struct to pre-existing in-mem inode.
-            f->inode = file_inode;
-
-            // Update inode ref count.
-            file_inode->increment_ref_count_atomic(1);
-
-            create_event<KFile*>(w, f);
+        if (file != nullptr) {
+            file->increment_ref_count_atomic();
+            create_event<KFile*>(w, file);
             return;
         }
 
@@ -116,22 +110,18 @@ void kopen(string file_name, Function<void(KFile*)> w) {
                     return;
                 }
 
-                // Populate file / inode.
-                f->inode = new mem_inode_t(resp.data.open.inode_index, 1);
-                f->file_type = FileType::FILESYSTEM;
-
-                // file_name is copied.
-                open_files.add(new FileListNode(f->inode, cleaned_file_name));
+                // Create file and add to file list node.
+                // Ref count is 1 by default.
+                file = new FSFile(resp.data.open.inode_index, resp.data.open.permissions);
+                open_files.add(new FileListNode(file, cleaned_file_name.hash()));
 
                 // Create event.
-                create_event<KFile*>(w, f);
+                create_event<KFile*>(w, file);
             };
 
             fs::issue_fs_open(cleaned_file_name, callback);
         } else if (cleaned_file_name.starts_with("/dev/ramfs/")) {
-            DeviceFile* f = new DeviceFile;
-            f->file_type = FileType::DEV_RAMFS;
-            f->name = cleaned_file_name;
+            DeviceFile* f = new DeviceFile(cleaned_file_name);
             create_event<KFile*>(w, f);
         } else {
             K::assert(false, "other device files not supported!");
@@ -140,17 +130,13 @@ void kopen(string file_name, Function<void(KFile*)> w) {
 }
 
 void kclose(KFile* file) {
-    if (file->file_type == FileType::FILESYSTEM) {
-        FSFile* fs_file = static_cast<FSFile*>(file);
-        fs_file->inode->increment_ref_count_atomic(-1);
-    }
-    delete file;
+    file->decrement_ref_count_atomic();  // cleaned up automatically.
 }
 
 void read_fs(FSFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     K::assert(file->file_type == FileType::FILESYSTEM, "read_fs(): KFile type is incorrect");
 
-    if (!file->inode) {
+    if (file->get_inode_number() == -1) {
         create_event<int>(w, INVALID_FILE);
         return;
     }
@@ -165,7 +151,7 @@ void read_fs(FSFile* file, uint64_t offset, char* buf, uint64_t n, Function<void
 void read_ramfs(DeviceFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
     K::assert(file->file_type == FileType::DEV_RAMFS, "read_ramfs(): KFile type is incorrect");
     const char* name_without_prefix =
-        &file->name[RAMFS_PREFIX_LEN];  // file->name would look like "/dev/ramfs/file.txt"
+        &file->get_name()[RAMFS_PREFIX_LEN];  // file->name would look like "/dev/ramfs/file.txt"
     int ramfs_index = get_ramfs_index(name_without_prefix);
     if (ramfs_index == -1) {
         create_event<int>(w, INVALID_FILE);
@@ -211,7 +197,7 @@ void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(in
 void write_fs(FSFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w) {
     K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): KFile type is incorrect");
 
-    if (!file->inode) {
+    if (file->get_inode_number() == -1) {
         create_event<int>(w, INVALID_FILE);
         return;
     }
