@@ -1,13 +1,16 @@
 #ifndef _threads_h_
 #define _threads_h_
 #include "atomic.h"
+#include "framebuffer.h"
 #include "function.h"
 #include "heap.h"
 #include "locked_queue.h"
 #include "percpu.h"
 #include "printf.h"
 #include "process.h"
+#include "shared.h"
 #include "vm.h"
+
 #define CORE_COUNT 4
 #define THREAD_CPU_CONTEXT 0
 #define PRIORITY_LEVELS 5
@@ -63,9 +66,11 @@ struct TCB {
     bool irq_was_disabled = false;  // always start with allowing interrupts
     bool kernel_event = true;
     uint32_t state;
+    Shared<Framebuffer> frameBuffer;
     virtual void run() = 0;  // Abstract/virtual function that must be overridden
     virtual ~TCB() {};       // Allows child classes to be deleted
 };
+
 struct CPU_Queues {
     LockedQueue<TCB, SpinLock> queues[PRIORITY_LEVELS];
 };
@@ -100,6 +105,7 @@ struct Event : public TCB {
     Event(lambda w) : w(w) {
         kernel_event = true;
         state = TASK_RUNNING;
+        frameBuffer = get_kernel_fb();
     }
 
     void run() override {

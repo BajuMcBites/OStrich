@@ -1,5 +1,5 @@
-#ifndef FRAMEBUFFER_H
-#define FRAMEBUFFER_H
+#ifndef _FRAMEBUFFER_H
+#define _FRAMEBUFFER_H
 
 #include "mailbox.h"
 
@@ -120,11 +120,18 @@ struct Framebuffer {
     unsigned int isrgb;  // pixel format
     void* buffer;        // pointer to the buffer
     unsigned int size;   // size of buffer in bytes
+    Atomic<int> ref_count = 0;
 };
 
 int fb_init(void);
 
 Framebuffer* fb_get(void);
+
+void* get_fb_addr(void);  // pointer to the buffer
+
+Framebuffer* get_kernel_fb(void);
+
+Framebuffer* get_real_fb(void);
 
 void fb_clear(unsigned int color);
 void fb_print(const char* str, unsigned int color);

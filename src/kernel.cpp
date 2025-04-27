@@ -25,6 +25,7 @@
 #include "stdint.h"
 #include "string.h"
 #include "timer.h"
+#include "tty.h"
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
@@ -193,6 +194,7 @@ extern "C" void primary_kernel_init() {
     init_page_cache();
     // local_timer_init();
     init_swap();
+    init_tty();
     wake_up_cores();
     enable_irq();
     mergeCores();
@@ -211,8 +213,10 @@ void mergeCores() {
     // Uncomment to run snake
     if (getCoreID() == 0) {
         printf("init_snake() + keyboard_loop();\n");
-        create_event(init_snake);
+        // create_event(init_snake);
+        create_event(run_tty);
         create_event(keyboard_loop);
+        // create_event(run_tty);
     }
     event_loop();
     printf("PANIC I should not go here\n");
