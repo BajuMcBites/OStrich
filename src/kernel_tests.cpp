@@ -20,8 +20,8 @@
 #include "sched.h"
 #include "sdio.h"
 #include "stdint.h"
-#include "swap.h"
 #include "string.h"
+#include "swap.h"
 #include "vm.h"
 
 #define NUM_TIMES 1000
