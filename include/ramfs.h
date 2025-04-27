@@ -27,7 +27,7 @@ void init_ramfs();
  * gets the index of a ramfs file in the directory, returns the index, -1 if it
  * isn't in the directory
  */
-int get_ramfs_index(char* file_name);
+int get_ramfs_index(const char* file_name);
 
 /**
  * gets the size of a ramfs file

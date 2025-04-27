@@ -90,8 +90,7 @@ struct PCB {
         data_end = ~VA_START - (10000 * PAGE_SIZE); /* preferrable set this after bss segment */
     }
     PCB(int id) {
-        if (task[pid])
-            delete task[pid];
+        if (task[pid]) delete task[pid];
         task_cnt++;
         pid = id;
         task[pid] = this;

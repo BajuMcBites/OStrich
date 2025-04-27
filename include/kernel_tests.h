@@ -16,5 +16,9 @@ void blocking_atomic_tests();
 void ring_buffer_tests();
 void bitmap_tests();
 void swap_tests();
+void kfs_simple_test();
+void kfs_stress_test(int num_files);
+void kfs_kopen_uses_cache_test();
+void sd_stress_test();
 
 #endif /*_KERNEL_TESTS_H */

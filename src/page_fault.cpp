@@ -15,10 +15,10 @@ extern "C" uint64_t get_esr_el1();
 extern PageCache* page_cache;
 extern Swap* swap;
 
-void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
-                              uint64_t far);
-void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
-                              uint64_t far);
+void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far);
+void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far);
 
 extern "C" void page_fault_handler(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
                                    uint64_t spsr, uint64_t far) {
@@ -58,8 +58,8 @@ extern "C" void page_fault_handler(KernelEntryFrame* trap_frame, uint64_t esr, u
     K::assert(false, "Shouldnt Get Here\n");
 }
 
-void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
-                              uint64_t far) {
+void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far) {
     uint64_t user_sp = get_sp_el0();
 
     UserTCB* tcb = get_running_user_tcb(getCoreID());
@@ -90,8 +90,8 @@ void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64
     event_loop();
 }
 
-void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr, uint64_t spsr,
-                              uint64_t far) {
+void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far) {
     uint64_t user_sp = get_sp_el0();
 
     UserTCB* tcb = get_running_user_tcb(getCoreID());

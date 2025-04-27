@@ -86,6 +86,47 @@ class Queue {
             it = it->next;
         }
     }
+
+    void remove_if_and_free_node(Function<bool(T *t)> predicate) {
+        if (first == nullptr) return;
+        T *prior = nullptr;
+        T *it = first;
+        T *tmp = nullptr;
+        while (it != nullptr) {
+            bool should_remove = predicate(it);
+            if (should_remove) {
+                if (prior == nullptr) {
+                    // removing head
+                    tmp = first;
+                    first = first->next;
+
+                    // Reset iterators.
+                    prior = nullptr;
+                    it = first;
+                } else if (it->next == nullptr && prior != nullptr) {
+                    // removing tail
+                    tmp = it;
+                    last = prior;
+                    prior->next = nullptr;
+
+                    // Reset iterators.
+                    prior = last;
+                    it = nullptr;
+                } else {
+                    // removing in between
+                    tmp = it;
+                    prior->next = it->next;
+
+                    // Reset iterators.
+                    it = it->next;
+                }
+                delete tmp;
+            } else {
+                prior = it;
+                it = it->next;
+            }
+        }
+    }
 };
 
 #endif
