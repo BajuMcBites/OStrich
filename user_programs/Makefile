@@ -28,8 +28,14 @@ LDFLAGS=-z max-page-size=0x1000 -L $(LIB_DIR)
 
 all: user_prog
 
+libc_patching.o: libc_patching.c
+	$(CC) $(CFLAGS) -c libc_patching.c -o libc_patching.o
+
 user_prog.o: user_prog.c
 	$(CC) $(CFLAGS) -c user_prog.c -o user_prog.o 
+
+fs_syscall_test.o: fs_syscall_test.c
+	$(CC) $(CFLAGS) -c fs_syscall_test.c -o fs_syscall_test.o
 
 exit.o: exit.c
 	$(CC) $(CFLAGS) -c exit.c -o exit.o 
@@ -42,6 +48,10 @@ user_prog: $(LIB_DIR)/crt0.o user_prog.o newlib_stubs.o
 
 exit: $(LIB_DIR)/crt0.o exit.o newlib_stubs.o
 	$(LD) $(LDFLAGS) -o exit $(LIB_DIR)/crt0.o exit.o newlib_stubs.o -lc -entry=main
+
+fs_syscall_test: $(LIB_DIR)/crt0.o fs_syscall_test.o newlib_stubs.o libc_patching.o
+	$(LD) $(LDFLAGS) -o fs_syscall_test $(LIB_DIR)/crt0.o fs_syscall_test.o newlib_stubs.o libc_patching.o -lc -entry=main
+	cp fs_syscall_test ../ramfs/files/
 
 clean:
 	rm -f user_prog.o user_prog 
