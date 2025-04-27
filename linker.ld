@@ -23,6 +23,7 @@ SECTIONS
         __bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
+        . = . + 2M;
         __bss_end = .;
     }
     
@@ -34,7 +35,7 @@ SECTIONS
     PROVIDE(__heap_start = .);
 
     /* Allocate heap size */
-    . = . + 2M; /* 2MB heap, adjustable */
+    . = . + 4M; /* 2MB heap, adjustable */
     
     PROVIDE(__heap_end = .);
     

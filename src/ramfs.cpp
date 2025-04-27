@@ -21,7 +21,7 @@ void init_ramfs() {
     ramfs_files_start = ptr + (sizeof(ramfs_file) * ramfs_num_files);
 }
 
-int get_ramfs_index(char* file_name) {
+int get_ramfs_index(const char* file_name) {
     for (uint64_t i = 0; i < ramfs_num_files; i++) {
         if (K::strncmp(file_name, ramfs_dir_start[i].file_name, 16) == 0) {
             return i;
@@ -31,16 +31,16 @@ int get_ramfs_index(char* file_name) {
 }
 
 uint64_t ramfs_size(int file_index) {
-    K::assert(file_index < ramfs_num_files, "accesssing invalid file index on size");
+    K::assert(file_index < ramfs_num_files, "accesssing invalid file index on size\n");
     ramfs_file* file = ramfs_dir_start + file_index;
     return file->size;
 }
 
 int ramfs_read(void* buffer, uint64_t offset, uint64_t nbytes, int file_index) {
-    K::assert(file_index < ramfs_num_files, "accesssing invalid file index on read");
+    K::assert(file_index < ramfs_num_files, "accesssing invalid file index on read\n");
     ramfs_file* file = ramfs_dir_start + file_index;
 
-    K::assert(offset + nbytes <= file->size, "reading bytes that aren't a part of the file");
+    K::assert(offset + nbytes <= file->size, "reading bytes that aren't a part of the file\n");
     char* read_ptr = ramfs_files_start + file->start + offset;
     K::memcpy(buffer, read_ptr, nbytes);
     return 0;

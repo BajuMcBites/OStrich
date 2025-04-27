@@ -4,4 +4,6 @@
 void fs_init();
 void test_fs();
 void testSnapshot();
+void test_fs_requests();
+void displayFileTree();
 #endif

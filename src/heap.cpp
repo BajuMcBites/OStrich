@@ -113,6 +113,7 @@ memory_block_t* find(size_t size) {
  * returns memory block that we added.
  */
 memory_block_t* extend(size_t size) {
+    K::assert(false, "we are out of heap space");
     return nullptr;
     /*
     size = ALIGN(size);
@@ -246,8 +247,7 @@ void* kmalloc(size_t size) {
 }
 
 /**
- * kcalloc -  allocates size bytes and returns a pointer to the allocated
- * memory, fills in bytes with val.
+ * kcalloc -  count amount of size objects all zeroed.
  */
 void* kcalloc(size_t count, size_t size) {
     void* block = kmalloc(count * size);
@@ -264,6 +264,7 @@ void kfree(void* ptr) {
     LockGuardP g{theLock};
     // assert(ptr != nullptr);                        // check for null pointer
     memory_block_t* freeBlock = get_block(ptr);  // block we want to add back to free list
+    K::memset(ptr, 0, freeBlock->block_size_alloc & ~0x1);
     deallocate(freeBlock);
     if (free_head == nullptr)  // list is empty, make block the head
     {
@@ -299,10 +300,12 @@ void* operator new(size_t size) {
 }
 
 void operator delete(void* p) noexcept {
+    if (!p) return;
     return kfree(p);
 }
 
 void operator delete(void* p, size_t sz) {
+    if (!p) return;
     return kfree(p);
 }
 
@@ -313,9 +316,11 @@ void* operator new[](size_t size) {
 }
 
 void operator delete[](void* p) noexcept {
+    if (!p) return;
     return kfree(p);
 }
 
 void operator delete[](void* p, size_t sz) {
+    if (!p) return;
     return kfree(p);
 }

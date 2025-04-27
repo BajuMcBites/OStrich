@@ -16,12 +16,15 @@ void create_frame_table(uintptr_t start, int size) {
     num_frames = size / PAGE_SIZE;
     for (int i = 0; i < num_frames; i++) {
         frame_table[i].flags = 0;
+        frame_table[i].contents = nullptr;
+        frame_table[i].pin_count = 0;
     }
 
     for (int i = 0; i < (int)((start / PAGE_SIZE) + num_frames * sizeof(Frame) / PAGE_SIZE + 1);
          i++) {
         frame_table[i].flags |= USED_PAGE_FLAG;
         frame_table[i].flags |= PINNED_PAGE_FLAG;
+        frame_table[i].pin_count = 1;
     }
     // Pin device memory, assume MMIO is the last 16 MB, 0x1000000 (Raspberry Pi
     // 3b)
@@ -29,6 +32,7 @@ void create_frame_table(uintptr_t start, int size) {
     for (int i = mmio_start_addr / PAGE_SIZE; i < num_frames; i++) {
         frame_table[i].flags |= USED_PAGE_FLAG;
         frame_table[i].flags |= PINNED_PAGE_FLAG;
+        frame_table[i].pin_count = 1;
     }
 }
 int get_free_index_unlocked() {
@@ -54,6 +58,9 @@ void alloc_frame(int flags, Function<void(uint64_t)> w) {
     int index = get_free_index_unlocked();
     if (index != -1) {
         frame_table[index].flags = flags;
+
+        if (frame_table[index].flags & PINNED_PAGE_FLAG) frame_table[index].pin_count = 1;
+
         frame_table[index].flags |= USED_PAGE_FLAG;
         create_event<uint64_t>(w, index * PAGE_SIZE, 1);
     } else {
@@ -92,6 +99,7 @@ void pin_frame(uintptr_t frame_addr) {
     int index = frame_addr / PAGE_SIZE;
     if (index >= 0 && index < num_frames) {
         frame_table[index].flags |= PINNED_PAGE_FLAG;
+        frame_table[index].pin_count += 1;
     }
 }
 
@@ -99,6 +107,8 @@ void unpin_frame(uintptr_t frame_addr) {
     LockGuard<SpinLock>{lock};
     int index = frame_addr / PAGE_SIZE;
     if (index >= 0 && index < num_frames) {
-        frame_table[index].flags &= ~PINNED_PAGE_FLAG;
+        if (frame_table[index].pin_count >= 1) frame_table[index].pin_count -= 1;
+
+        if (frame_table[index].pin_count == 0) frame_table[index].flags &= ~PINNED_PAGE_FLAG;
     }
 }

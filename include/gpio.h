@@ -25,7 +25,10 @@
 
 #ifndef GPIO_H
 #define GPIO_H
-#define MMIO_BASE 0x3F000000
+
+#include "vm.h"
+
+#define MMIO_BASE 0x3F000000 | VA_START
 
 #define MAX_GPIO_PINS 192  // https://www.pi4j.com/1.2/pins/model-3b-rev1.html
 

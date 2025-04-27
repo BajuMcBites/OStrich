@@ -69,9 +69,14 @@ master:
 
 el1_entry:
     // Clear BSS section
-    adr    x0, __bss_start
-    adr    x1, __bss_end
-    sub    x1, x1, x0
+    // Changed from adr to adrp since adr only works with a bss_size of at most 1MB
+    adrp   x0, __bss_start     // Load page address of __bss_start
+    add    x0, x0, :lo12:__bss_start  // Add low 12 bits offset
+    
+    adrp   x1, __bss_end       // Load page address of __bss_end
+    add    x1, x1, :lo12:__bss_end    // Add low 12 bits offset
+    
+    sub    x1, x1, x0          // Calculate size
     bl     memzero
 
     bl    primary_kernel_init
@@ -268,6 +273,13 @@ mrs     x4, far_el1
 b       exc_handler
 .endm
 
+
+handle_page_fault:
+    mrs     x2, elr_el1
+    mrs     x3, spsr_el1
+    mrs     x4, far_el1
+    b       page_fault_handler
+
 synchronous_el0:
     kernel_entry
     mov x0, sp
@@ -282,14 +294,15 @@ synchronous_el0:
     kernel_exit                 // returns to user via eret
 
 not_syscall:
-    lsr     x2, x1, #26         // x2 = EC = ESR_EL1[31:26]
-    cmp x2, #0x24               // 0x24 = Data Abort
-    b.ne not_data_abort
-    bl page_fault_handler
+    lsr x2, x1, #26         // x2 = EC = ESR_EL1[31:26]
+    cmp x2, #0x24               // 0x24 = Data Abort //0b100000
+    b.eq handle_page_fault
+    cmp x2, #0x20
+    b.eq handle_page_fault
    
 not_data_abort:
     mov     x0, #0              // you could pass reason info here if needed
-    handle_exception            // handle exception (which jumps to exc_handler)
+    handle_exception            // handle exception (which jumps to exc_handler) 
 
 irq_el0: 
 	kernel_entry 
@@ -386,9 +399,3 @@ fiq_el0_32:
 serror_el0_32:
     mov     x0, #3
     handle_exception
-
-.globl ret_from_fork
-ret_from_fork:
-	bl	schedule_tail
-	mov	x0, x20
-	blr	x19 		//should never return

@@ -296,6 +296,7 @@ class ISL {
 
 struct SemaphoreNode {
     SemaphoreNode(Function<void()> w) : work(w) {
+        next = nullptr;
     }
 
     Function<void()> work;
@@ -334,6 +335,13 @@ class Lock {
 
     void lock(Function<void()> w) {
         sema.down(w);
+    }
+
+    void lockAndRelease(Function<void()> w) {
+        this->lock([=]() mutable {
+            w();
+            this->unlock();
+        });
     }
 
     void unlock() {

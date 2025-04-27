@@ -47,9 +47,10 @@ RAMFS_IMG = $(BUILD_DIR)/ramfs.img
 
 # Compiler and linker flags
 CFLAGS = -Wall -Wextra -nostdlib -ffreestanding -I$(INCLUDE_DIR) -I$(FS_INCLUDE_DIR) -g -mcpu=cortex-a53 -march=armv8-a+crc -latomic -mstrict-align -mno-outline-atomics -fno-rtti -fno-exceptions -fno-rtti
+CXXFLAGS = -std=c++17
 LDFLAGS = -T linker.ld  # Use the custom linker script
 
-QEMU_ARGS = -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd -drive file=sdcard.dd,if=sd,format=raw
+QEMU_ARGS = -M raspi3b -kernel $(KERNEL_IMG) -smp 4 -serial stdio -usb -device usb-net,netdev=net0 -netdev user,id=net0 -device usb-mouse -device usb-kbd -drive file=sdcard_8MB.dd,if=sd,format=raw
 
 # Build rules
 all: $(KERNEL_IMG)
@@ -69,11 +70,11 @@ $(C_OBJ): $(BUILD_DIR)/%_c.o : $(SRC_DIR)/%.c | $(BUILD_DIR)
 
 # Compile the C++ source files
 $(CPP_OBJ): $(BUILD_DIR)/%_cpp.o : $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -c $< -o $@
 
 # Compile the filesystem C++ source files
 $(FS_FILESYS_OBJ): $(BUILD_DIR)/fs_filesys_%_cpp.o : $(FS_DIR)/filesys/%.cpp | $(BUILD_DIR)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CFLAGS) -c $< -o $@
 
 $(RAMFS_IMG) : $(BUILD_DIR)
 	cd $(RAMFS_DIR) && g++ build_ramfs.cpp -o ../$(BUILD_DIR)/build_ramfs
