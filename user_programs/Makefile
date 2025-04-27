@@ -16,7 +16,7 @@ OBJCOPY=$(TOOLCHAIN_PREFIX)objcopy
 
 CFLAGS=-Wall -Wextra -I$(INCLUDE_DIR) -g \
        -mcpu=cortex-a53 -march=armv8-a+crc -mstrict-align -mno-outline-atomics \
-       -fno-exceptions 
+       -fno-exceptions -O0
 
 # Used when a stdlib is not present (it is now 😎)
 # -no-stdlib
@@ -52,6 +52,8 @@ exit: $(LIB_DIR)/crt0.o exit.o newlib_stubs.o
 fs_syscall_test: $(LIB_DIR)/crt0.o fs_syscall_test.o newlib_stubs.o libc_patching.o
 	$(LD) $(LDFLAGS) -o fs_syscall_test $(LIB_DIR)/crt0.o fs_syscall_test.o newlib_stubs.o libc_patching.o -lc -entry=main
 	cp fs_syscall_test ../ramfs/files/
+	aarch64-elf-objdump -d fs_syscall_test > fs_syscall.dump
+
 
 clean:
-	rm -f user_prog.o user_prog 
+	rm -f *.o user_prog fs_syscall_test fs_syscall.dump

@@ -1,26 +1,16 @@
 #include <fcntl.h>
 #include <stdio.h>
 
+extern int _open(const char* pathname, int flags, mode_t mode);
+extern int _close(int fd);
+extern int _write(int fd, const void* buf, size_t count);
+extern void _exit(int status);
+extern int _read(int fd, void* buf, size_t count);
+
 int main() {
-    FILE* fd = fopen("test.txt", "w");
-    if (fd == NULL) {
-        printf("Failed to open file\n");
-        return 1;
-    }
-
-    // fwrite("Hello, world!\n", 1, 14, fd);
-    // fclose(fd);
-
-    // FILE* fd2 = fopen("test.txt", "r");
-    // if (fd2 == NULL) {
-    //     printf("Failed to open file\n");
-    //     return 1;
-    // }
-
-    // char buffer[14];
-    // fread(buffer, 1, 14, fd2);
-    // printf("Read: %s\n", buffer);
-    // fclose(fd2);
-
+    int fd = _open("test.txt", O_WRONLY | O_CREAT, 0);
+    _write(fd, "Hello, world!\n", 14);
+    _close(fd);
+    _exit(1);
     return 0;
 }
