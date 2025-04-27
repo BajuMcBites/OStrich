@@ -1,8 +1,6 @@
 #ifndef _shared_h_
 #define _shared_h_
 
-#include "debug.h"
-
 template <typename T>
 class Shared {
     T* ptr;
