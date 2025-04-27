@@ -39,6 +39,7 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 void set_return_value_and_state(UserTCB* tcb, int value, int state) {
     set_return_value(tcb, value);
     tcb->state = state;
+    printf("queuing %d pid\n", tcb->pcb->pid);
     queue_user_tcb(tcb);
 }
 
@@ -70,12 +71,15 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             break;
         case NEWLIB_CLOSE:
             newlib_handle_close(frame);
+            K::assert(false, "RACE DETECTED IN CLOSE");
             break;
         case NEWLIB_EXEC:
             frame->X[0] = newlib_handle_exec(frame);
+            K::assert(false, "RACE DETECTED IN EXEC");
             break;
         case NEWLIB_FORK:
             frame->X[0] = newlib_handle_fork(frame);
+            K::assert(false, "RACE DETECTED IN FORK");
             break;
         case NEWLIB_FSTAT:
             frame->X[0] = newlib_handle_fstat(frame);
@@ -97,9 +101,11 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             break;
         case NEWLIB_OPEN:
             newlib_handle_open(frame);
+            K::assert(false, "RACE DETECTED IN OPEN");
             break;
         case NEWLIB_READ:
             newlib_handle_read(frame);
+            K::assert(false, "RACE DETECTED IN READ");
             break;
         case NEWLIB_STAT:
             frame->X[0] = newlib_handle_stat(frame);
@@ -112,6 +118,7 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             break;
         case NEWLIB_WRITE:
             newlib_handle_write(frame);
+            K::assert(false, "RACE DETECTED IN WRITE");
             break;
         case NEWLIB_TIME:
             frame->X[0] = newlib_handle_time(frame);
@@ -166,6 +173,7 @@ void newlib_handle_close(KernelEntryFrame* frame) {
     file_table->remove_file(fd, [tcb](int fd) {
         return fd < 0 ? handle_error(tcb, nullptr) : handle_success(tcb, 0 /* success */);
     });
+    event_loop();
 }
 
 int newlib_handle_exec(KernelEntryFrame* frame) {
@@ -300,34 +308,43 @@ void newlib_handle_open(KernelEntryFrame* frame) {
     uint16_t permissions = mode;
 
     // Handle the create case first.
-    int fd = -1;
     Semaphore* sema = new Semaphore(1);
-    sema->down([=]() {
-        if (flags & OpenFlags::O_CREAT) {
+    if (is_create) {
+        sema->down([=]() {
             fs::issue_fs_create_file(
                 cwd, is_dir, path_name, permissions, [tcb, sema](fs::fs_response_t resp) {
                     if (resp.data.create_file.status != fs::fs_resp_status_t::FS_RESP_SUCCESS) {
+                        printf("Failed to create file\n");
                         handle_error(tcb, sema);
+                        return;
                     }
+                    event_loop();
                 });
-        }
-    });
+            sema->up();
+        });
+    }
 
     // Once it's created, open it in the kernel and return an fd.
-    kopen(path_name, [=](KFile* file) {
-        if (file == nullptr) {
-            handle_error(tcb, sema);
-            return;
-        }
+    sema->down([=]() {
+        kopen(path_name, [=](KFile* file) {
+            if (file == nullptr) {
+                handle_error(tcb, sema);
+                return;
+            }
 
-        UFile ufile(file, 0, flags);
-        file_table->add_file(ufile, [=](int fd) {
-            return fd <= 0 ? handle_error(tcb, sema) : handle_success(tcb, fd);
+            UFile ufile(file, 0, flags);
+            file_table->add_file(ufile, [=](int fd) {
+                return fd <= 0 ? handle_error(tcb, sema) : handle_success(tcb, fd);
+            });
+            sema->up();
+            event_loop();
         });
     });
+    event_loop();
 }
 
 void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
+    printf("newlib_handle_read_or_write: starting\n");
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     PCB* pcb = tcb->pcb;
     FileTable* file_table = pcb->file_table;
@@ -338,37 +355,54 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
     int count = frame->X[2];
 
     // Per-process file pointer (1:1 with file descriptors).
+    printf("newlib_handle_read_or_write: fd = %d, core = %d, is_read = %d\n", fd, getCoreID(),
+           is_read);
     UFile& ufile = file_table->get_file(fd);
     KFile* file = ufile.backing_file();
+
     if (file == nullptr) {
         handle_error(tcb, nullptr);
+        event_loop();
         return;
     }
+    printf("newlib_handle_read_or_write: file = %x\n", file);
+    printf("newlib_handle_read_or_write: file->get_inode_number() = %d\n",
+           file->get_inode_number());
 
     // Don't write to read-only file..
     if (!is_read && ufile.mode_flags() & OpenFlags::O_RDONLY) {
+        printf("newlib_handle_read_or_write: file is read-only\n");
         handle_error(tcb, nullptr);
+        event_loop();
         return;
     }
 
     // Don't read from write-only file.
     if (is_read && ufile.mode_flags() & OpenFlags::O_WRONLY) {
-        handle_error(tcb, nullptr);
+        printf("newlib_handle_read_or_write: file is write-only\n");
+        handle_error(tcb, nullptr);  // calls event_loop()
+        event_loop();
         return;
     }
 
+    // Capture the current offset to avoid race conditions
+    uint64_t current_offset = ufile.offset();
+
     // Perform the read or write.
-    auto handle_return = [tcb, frame, ufile](int bytes_read_or_write) mutable {
-        ufile.increment_offset(bytes_read_or_write);
+    auto handle_return = [tcb, fd, file_table, current_offset](int bytes_read_or_write) mutable {
+        UFile& ufile = file_table->get_file(fd);
+        // Set the new offset based on the original offset plus bytes processed
+        ufile.set_offset(current_offset + bytes_read_or_write);
         return bytes_read_or_write < 0 ? handle_error(tcb, nullptr)
                                        : handle_success(tcb, bytes_read_or_write);
     };
 
     if (is_read) {
-        kread(file, ufile.offset(), buf, count, handle_return);
+        kread(file, current_offset, buf, count, handle_return);
     } else {
-        kwrite(file, ufile.offset(), buf, count, handle_return);
+        kwrite(file, current_offset, buf, count, handle_return);
     }
+    event_loop();
 }
 
 void newlib_handle_read(KernelEntryFrame* frame) {
@@ -377,6 +411,7 @@ void newlib_handle_read(KernelEntryFrame* frame) {
 
 void newlib_handle_write(KernelEntryFrame* frame) {
     newlib_handle_read_or_write(frame, false);
+    event_loop();
 }
 
 int newlib_handle_stat(KernelEntryFrame* frame) {

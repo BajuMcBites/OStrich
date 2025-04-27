@@ -219,16 +219,17 @@ class SpinLock {
         taken.set(false);
     }
 };
-/*
-// Is this correct?
-class InterruptSafeLock  {
+
+class InterruptSafeLock {
     Atomic<bool> taken;
     volatile bool was;
-public:
-    Atomic<uint32_t> ref_count;
-    InterruptSafeLock() : taken(false), was(false), ref_count(0) {}
 
-    InterruptSafeLock(const InterruptSafeLock&) = delete;
+   public:
+    Atomic<uint32_t> ref_count;
+    InterruptSafeLock() : taken(false), was(false), ref_count(0) {
+    }
+
+    InterruptSafeLock(const InterruptSafeLock &) = delete;
 
     // for debugging, etc. Allows false positives
     bool isMine() {
@@ -244,7 +245,6 @@ public:
                 return;
             }
             Interrupts::restore(wasDisabled);
-            iAmStuckInALoop(true);
         }
     }
 
@@ -256,15 +256,16 @@ public:
 };
 
 // A more flexible InterruptSafeLock
-class ISL  {
+class ISL {
     Atomic<bool> taken;
-public:
+
+   public:
     Atomic<uint32_t> ref_count;
-    ISL() : taken(false), ref_count(0) {}
+    ISL() : taken(false), ref_count(0) {
+    }
 
-    ISL(const ISL&) = delete;
-    ISL& operator=(const ISL&) const = delete;
-
+    ISL(const ISL &) = delete;
+    ISL &operator=(const ISL &) const = delete;
 
     // for debugging, etc. Allows false positives
     bool isMine() {
@@ -279,21 +280,19 @@ public:
                 return wasDisabled;
             }
             Interrupts::restore(wasDisabled);
-            iAmStuckInALoop(true);
         }
     }
 
+    // can control if interrupts are disabled or enabled when unlocking
     void unlock(bool disable) {
         taken.set(false);
         if (disable) {
-            cli();
+            disable_irq();
         } else {
-            sti();
+            enable_irq();
         }
     }
 };
-
-*/
 
 struct SemaphoreNode {
     SemaphoreNode(Function<void()> w) : work(w) {

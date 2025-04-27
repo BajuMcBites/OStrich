@@ -41,6 +41,9 @@ class UFile {
             kclose(backing_file_);
         }
     }
+    void set_offset(int offset) {
+        offset_ = offset;
+    }
     int offset() {
         return offset_;
     }
