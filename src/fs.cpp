@@ -1,207 +1,229 @@
 #include "fs.h"
 
+#include <cstdint>
+
+#include "../filesystem/filesys/fs_requests.h"
+#include "atomic.h"
 #include "event.h"
+#include "filesys_compat/vector"
+#include "hash.h"
 #include "libk.h"
+#include "locked_queue.h"
 #include "ramfs.h"
 #include "utils.h"
 
-static inodeListNode* inode_list;
-Lock* inode_list_lock = nullptr;
+static Queue<FileListNode> open_files;
+Lock* file_list_lock = nullptr;
 
 volatile uint64_t inode_numbers = 0;
 SpinLock inode_number_lock;
 
-/**
- * opens a file specified by file name and returns a file* to it
- *
- * This as of right now does not verify the file exists, only checks if
- *
- *
- */
-void kfopen(char* file_name, Function<void(file*)> w) {
-    if (inode_list_lock == nullptr) { /* hacky way to use one lock but only on first go */
+constexpr char* RAMFS_PREFIX = "/dev/ramfs/";
+constexpr int RAMFS_PREFIX_LEN = K::strlen(RAMFS_PREFIX);
+
+void init_file_list_lock() {
+    if (file_list_lock == nullptr) {
         inode_number_lock.lock();
-        if (inode_list_lock == nullptr) {
-            inode_list_lock = new Lock;
+        if (file_list_lock == nullptr) {
+            file_list_lock = new Lock;
         }
         inode_number_lock.unlock();
     }
+}
+
+string clean_path_string(string& file_path) {
+    string file_name_copy = file_path;
+    std::vector<string> path_parts;
+
+    // Split the path into parts.
+    string cur_part = "";
+    for (size_t i = 0; i < file_name_copy.length(); i++) {
+        if (file_name_copy[i] == '/' && cur_part.length() > 0) {
+            if (cur_part == ".") {
+                // Do nothing.
+            } else if (cur_part == "..") {
+                path_parts.pop_back();
+            } else {
+                path_parts.push_back(cur_part);
+            }
+            cur_part = "";
+        } else if (file_name_copy[i] != '/') {
+            cur_part += file_name_copy[i];
+        }
+    }
+    path_parts.push_back(cur_part);
+
+    // Join the parts back together.
+    // slow but correct lmao.
+    string cleaned_path = "/";
+    for (size_t i = 0; i < path_parts.size(); i++) {
+        cleaned_path += path_parts[i];
+        if (i < path_parts.size() - 1) {
+            cleaned_path += "/";
+        }
+    }
+
+    return cleaned_path;
+}
+
+/**
+ * opens a file specified by file name and returns a KFile* to it
+ *
+ * This as of right now does not verify the file exists, only checks if
+ */
+void kopen(string file_name, Function<void(KFile*)> w) {
+    init_file_list_lock();
+
+    // Minify the path.
+    string cleaned_file_name = clean_path_string(file_name);
+
+    // Get file hash.
+    auto name_hash = cleaned_file_name.hash();
 
     /* TODO: verify file exists and get characteristics */
-
-    inode_list_lock->lock([=]() {
-        inodeListNode* n = inode_list;
-        inodeListNode* prev = nullptr;
-
-        while (n != nullptr && K::strncmp(n->file_name, file_name, PATH_MAX) != 0) {
-            if (n->inode->refs == 0) { /* clean up 0 ref inodes */
-                delete n->file_name;
-                if (prev == nullptr) {
-                    inode_list = n->next;
-                    delete n;
-                    n = inode_list;
-                } else {
-                    prev->next = n->next;
-                    delete n;
-                    n = prev->next;
-                }
+    file_list_lock->lockAndRelease([=]() {
+        KFile* file = nullptr;
+        open_files.remove_if_and_free_node([&](FileListNode* n) {
+            // Don't remove the inode if we are about to use it.
+            if (n->name_hash == name_hash) {
+                file = n->file;
+                return false;
             }
+            return n->file->get_ref_count() == 0;
+        });
 
-            prev = n;
-            n = n->next;
-        }
-
-        file* f = new file;
-
-        if (n != nullptr) {
-            f->inode = n->inode;
-            n->inode->lock.lock();
-            n->inode->refs++;
-            n->inode->lock.unlock();
-            inode_list_lock->unlock();
-            create_event(w, f);
+        // We found the inode in the list.
+        if (file != nullptr) {
+            file->increment_ref_count_atomic();
+            create_event<KFile*>(w, file);
             return;
         }
 
-        inode* node = new inode;
+        // Get inode number from file system or device.
+        if (!cleaned_file_name.starts_with("/dev/")) {
+            // Callback issued once we get a response from the filesystem.
+            auto callback = [=](fs::fs_response_t resp) mutable {
+                // want better error handling here.
+                if (resp.data.open.status == fs::FS_RESP_ERROR_NOT_FOUND) {
+                    printf("fs says file %s not found\n", cleaned_file_name.c_str());
+                    create_event<KFile*>(w, nullptr);
+                    return;
+                }
 
-        inode_number_lock.lock();
-        node->inode_number = inode_numbers++;
-        inode_number_lock.unlock();
-        node->refs = 1;
+                // Create file and add to file list node.
+                // Ref count is 1 by default.
+                file = new FSFile(resp.data.open.inode_index, resp.data.open.permissions);
+                open_files.add(new FileListNode(file, cleaned_file_name.hash()));
 
-        f->inode = node;
+                // Create event.
+                create_event<KFile*>(w, file);
+            };
 
-        inodeListNode* list_node = new inodeListNode;
-
-        int path_length = K::strnlen(file_name, PATH_MAX - 1);
-        char* file_name_cpy = (char*)kmalloc(path_length + 1);
-        K::strncpy(file_name_cpy, file_name, PATH_MAX);
-
-        list_node->file_name = file_name_cpy;
-        list_node->inode = node;
-
-        if (inode_list == nullptr) {
-            inode_list = list_node;
+            fs::issue_fs_open(cleaned_file_name, callback);
+        } else if (cleaned_file_name.starts_with("/dev/ramfs/")) {
+            DeviceFile* f = new DeviceFile(cleaned_file_name);
+            create_event<KFile*>(w, f);
         } else {
-            prev->next = list_node;
+            K::assert(false, "other device files not supported!");
         }
-
-        inode_list_lock->unlock();
-        create_event(w, f);
     });
 }
 
-void kfclose(file* file) {
-    file->inode->lock.lock();
-    file->inode->refs--;
-    file->inode->lock.unlock();
-    delete file;
+void kclose(KFile* file) {
+    file->decrement_ref_count_atomic();  // cleaned up automatically.
 }
 
-void get_file_name(file* file, Function<void(char*)> w) {
-    if (inode_list_lock == nullptr) { /* hacky way to use one lock but only on first go */
-        inode_number_lock.lock();
-        if (inode_list_lock == nullptr) {
-            inode_list_lock = new Lock;
-        }
-        inode_number_lock.unlock();
+void read_fs(FSFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+    K::assert(file->file_type == FileType::FILESYSTEM, "read_fs(): KFile type is incorrect");
+
+    if (file->get_inode_number() == -1) {
+        create_event<int>(w, INVALID_FILE);
+        return;
     }
 
-    inode_list_lock->lock([=]() {
-        inodeListNode* n = inode_list;
-        while (n != nullptr && n->inode->inode_number != file->inode->inode_number) {
-            n = n->next;
-        }
-
-        K::assert(n != nullptr, "called get file name on a non opened file");
-
-        create_event(w, n->file_name);
-        inode_list_lock->unlock();
+    fs::issue_fs_read(file->get_inode_number(), buf, offset, n, [=](fs::fs_response_t resp) {
+        K::assert(resp.data.read.status == fs::FS_RESP_SUCCESS,
+                  "read_fs(): Failed to read from file");
+        create_event<int>(w, resp.data.read.bytes_read);
     });
+}
+
+void read_ramfs(DeviceFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+    K::assert(file->file_type == FileType::DEV_RAMFS, "read_ramfs(): KFile type is incorrect");
+    const char* name_without_prefix =
+        &file->get_name()[RAMFS_PREFIX_LEN];  // file->name would look like "/dev/ramfs/file.txt"
+    int ramfs_index = get_ramfs_index(name_without_prefix);
+    if (ramfs_index == -1) {
+        create_event<int>(w, INVALID_FILE);
+        return;
+    }
+
+    uint64_t file_size = ramfs_size(ramfs_index);
+    if (offset >= file_size) {
+        create_event<int>(w, INVALID_OFFSET);
+        return;
+    }
+
+    int64_t read_n = K::min(n, file_size - offset);
+
+    int err = ramfs_read(buf, offset, read_n, ramfs_index);
+    if (err != 0) {
+        create_event<int>(w, OTHER_FAIL);
+        return;
+    }
+
+    create_event<int>(w, SUCCESSFUL_READ);
+    return; /* done reading from ramfs */
 }
 
 /**
  * kread should read a file into the specified buffer by routing a read call to the
  * correct filesystem handler, ie userspace main fs, device read
  */
-void read(file* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-    get_file_name(file, [=](char* file_name) {
-        int path_length = K::strnlen(file_name, PATH_MAX - 1);
-        char* file_name_cpy = (char*)kmalloc(path_length + 1);
-        K::strncpy(file_name_cpy, file_name, PATH_MAX);
+void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
+    // characteristics are in file struct.
+    switch (file->file_type) {
+        case FileType::DEV_RAMFS:
+            read_ramfs(static_cast<DeviceFile*>(file), offset, buf, n, w);
+            break;
+        case FileType::FILESYSTEM:
+            read_fs(static_cast<FSFile*>(file), offset, buf, n, w);
+            break;
+        default:
+            K::assert(false, "non device file not supported");
+    }
+}
 
-        file_name = file_name_cpy;
+void write_fs(FSFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w) {
+    K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): KFile type is incorrect");
 
-        char* next;
+    if (file->get_inode_number() == -1) {
+        create_event<int>(w, INVALID_FILE);
+        return;
+    }
 
-        auto work = [=](int ret) {
-            kfree(file_name_cpy);
-            create_event<int>(w, ret);
-        };
-
-        if (file_name == nullptr) {
-            create_event<int>(work, INVALID_FILE);
-            return;
+    fs::issue_fs_write(file->get_inode_number(), buf, offset, n, [=](fs::fs_response_t resp) {
+        if (resp.data.write.status == fs::FS_RESP_SUCCESS) {
+            // printf("write_fs(): Successfully wrote %d bytes\n", resp.data.write.bytes_written);
         }
-
-        if (*file_name == '/') { /* starting from root */
-            file_name++;
-            next = K::strntok(file_name, '/', ENTRY_MAX + 1);
-
-            if (next == nullptr) {
-                create_event<int>(work, INVALID_FILE);
-                return;
-            }
-
-            if (K::strncmp(file_name, "dev", ENTRY_MAX) == 0) {
-                read_dev(next, offset, buf, n, work);
-                return;
-            } else {
-                create_event<int>(work, NOT_IMPLEMENTED_FS);
-                return;
-            }
-        } else { /* starting from somewhere else */
-            /* TODO */
-            K::assert(false, "non root fs not implemented");
-        }
+        create_event<int>(w, resp.data.write.bytes_written);
     });
 }
 
 /**
- * should take in the name of the file without /dev/, so "/dev/ramfs/temp.txt" would be
- * passed in as "ramfs/temp.txt"
+ * kwrite should write a file from the specified buffer by routing a write call to the
+ * correct filesystem handler, ie userspace main fs, device write
  */
-void read_dev(char* file_name, uint64_t offset, char* buf, uint64_t n, Function<void(int)> w) {
-    int err;
-    char* next = K::strntok(file_name, '/', ENTRY_MAX);
-
-    if (K::strncmp(file_name, "ramfs", ENTRY_MAX) == 0) { /* ramfs file */
-        int ramfs_index = get_ramfs_index(next);
-        if (ramfs_index == -1) {
-            create_event<int>(w, INVALID_FILE);
-            return;
-        }
-
-        uint64_t file_size = ramfs_size(ramfs_index);
-        if (offset >= file_size) {
-            create_event<int>(w, INVALID_OFFSET);
-            return;
-        }
-
-        int64_t read_n = K::min(n, file_size - offset);
-
-        err = ramfs_read(buf, offset, read_n, ramfs_index);
-        if (err != 0) {
-            create_event<int>(w, OTHER_FAIL);
-            return;
-        }
-
-        create_event<int>(w, SUCCESSFUL_READ);
-        return; /* done reading from ramfs */
-
-    } else {
-        create_event<int>(w, NOT_IMPLEMENTED_FS);
-        return;
+void kwrite(KFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w) {
+    // characteristics are in file struct.
+    switch (file->file_type) {
+        case FileType::DEV_RAMFS:
+            K::assert(false, "kwrite(): ramfs files are read only.");
+            break;
+        case FileType::FILESYSTEM:
+            write_fs(static_cast<FSFile*>(file), offset, buf, n, w);
+            break;
+        default:
+            K::assert(false, "non device file not supported");
     }
 }

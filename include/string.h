@@ -29,7 +29,7 @@ class string {
 
     // Steal buffers from temporary values via move semantics.
     friend string operator+(const string& lhs, const string& rhs);
-    friend string operator+(const string&& lhs, const string& rhs);
+    friend string operator+(string&& lhs, const string& rhs);
 
     // Capacity
     bool is_empty() const;

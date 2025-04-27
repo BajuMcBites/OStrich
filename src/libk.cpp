@@ -5,12 +5,6 @@
 #include "stdint.h"
 #include "utils.h"
 
-long K::strlen(const char* str) {
-    long n = 0;
-    while (*str++ != 0) n++;
-    return n;
-}
-
 int K::isdigit(int c) {
     return (c >= '0') && (c <= '9');
 }

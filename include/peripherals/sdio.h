@@ -6,7 +6,7 @@
 
 #define SDIO_BASE 0x3F300000 | VA_START
 
-#define SD_BLKSIZECNT ((volatile unsigned int *)(MMIO_BASE + 0x00300004))
+#define SD_BLKSIZECNT ((volatile unsigned int *)(SDIO_BASE + 0x00300004))
 #define SD_ARG_REG (volatile int *)(SDIO_BASE + 0x008)
 #define SD_CMD_REG (volatile int *)(SDIO_BASE + 0x00C)
 #define SD_RESP_REG_0 (volatile int *)(SDIO_BASE + 0x010)

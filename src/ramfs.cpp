@@ -21,7 +21,7 @@ void init_ramfs() {
     ramfs_files_start = ptr + (sizeof(ramfs_file) * ramfs_num_files);
 }
 
-int get_ramfs_index(char* file_name) {
+int get_ramfs_index(const char* file_name) {
     for (uint64_t i = 0; i < ramfs_num_files; i++) {
         if (K::strncmp(file_name, ramfs_dir_start[i].file_name, 16) == 0) {
             return i;
