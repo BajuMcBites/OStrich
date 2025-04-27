@@ -26,6 +26,8 @@ load_user_context:
 	ldr	x30, [x0, #16 * 15]
 
 	ldp	x0, x1, [x0, #16 * 0]
+
+	msr    daifclr, #2 
 	eret
 
 .globl get_sp_el0
