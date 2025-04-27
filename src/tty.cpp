@@ -12,6 +12,8 @@
 
 static Listener<struct key_event *> tty_key_listener;
 
+static unsigned int *dummy_buffers[6] = {nullptr};
+
 int active = -1;  // index of window in foreground
 Framebuffer *tty[MAX_TTY] = {nullptr};
 bool taken[MAX_TTY] = {false};
@@ -22,15 +24,17 @@ bool taken[MAX_TTY] = {false};
 void init_tty() {
     tty[0] = get_kernel_fb();  // kernel gets position 0 to print should be the shell later?
     taken[0] = true;
-    // auto temp = get_real_fb();
-    // for (int i = 1; i < MAX_TTY; i++) {
-    //     tty[i] = new Framebuffer;
-    //     tty[i]->height = temp->height;
-    //     tty[i]->isrgb = temp->height;
-    //     tty[i]->pitch = temp->height;
-    //     tty[i]->size = temp->height;
-    //     tty[i]->width - temp->width;
-    // }
+    dummy_buffers[0] = new unsigned int[tty[0]->size / sizeof(unsigned int)];
+    auto temp = get_real_fb();
+    for (int i = 1; i < MAX_TTY; i++) {
+        tty[i] = new Framebuffer;
+        tty[i]->height = temp->height;
+        tty[i]->isrgb = temp->isrgb;
+        tty[i]->pitch = temp->pitch;
+        tty[i]->size = temp->size;
+        tty[i]->width = temp->width;
+        dummy_buffers[i] = dummy_buffers[0];
+    }
     active = 0;
 }
 
@@ -56,54 +60,81 @@ void close_tty() {
 /**
  * @brief make the tty is use available
  * @param none
+ *
+ * this is code is really ugly ik but it is 3am and I cannot
  */
 void change_tty(struct key_event *event) {
     // printf("IN CHANGE TTY\n");
     if (event->flags.released) return;
-    // for (int i = 0; i < MAX_TTY; i++) {
-    //     // if I have a dummy buffer, delete
-    //     if (tty[i]->buffer != nullptr && tty[i]->buffer != get_real_fb()->buffer) {
-    //         delete tty[i]->buffer;
-    //     }
-    //     tty[i]->buffer = new uint32_t;
-    // }
 
-    if (event->keycode == KEY_0) {
+    if (event->keycode == KEY_F1) {
         printf("TERM 0\n");
         tty[0]->buffer = get_real_fb()->buffer;
         active = 0;
-    } else if (event->keycode == KEY_1) {
+
+        for (int i = 0; i < MAX_TTY; i++) {
+            if (i == active) continue;
+            tty[i]->buffer = dummy_buffers[i];
+        }
+        fb_blank(WHITE);
+    } else if (event->keycode == KEY_F2) {
         printf("TERM 1\n");
         tty[1]->buffer = get_real_fb()->buffer;
         active = 1;
+        for (int i = 0; i < MAX_TTY; i++) {
+            if (i == active) continue;
+            tty[i]->buffer = dummy_buffers[i];
+        }
+        fb_blank(BLUE);
     } else if (event->keycode == KEY_F3) {
         printf("TERM 2\n");
         tty[2]->buffer = get_real_fb()->buffer;
         active = 2;
+        for (int i = 0; i < MAX_TTY; i++) {
+            if (i == active) continue;
+            tty[i]->buffer = dummy_buffers[i];
+        }
+        fb_blank(RED);
     } else if (event->keycode == KEY_F4) {
         printf("TERM 3\n");
         tty[3]->buffer = get_real_fb()->buffer;
         active = 3;
+        for (int i = 0; i < MAX_TTY; i++) {
+            if (i == active) continue;
+            tty[i]->buffer = dummy_buffers[i];
+        }
+        fb_blank(YELLOW);
     } else if (event->keycode == KEY_F5) {
         printf("TERM 4\n");
         tty[4]->buffer = get_real_fb()->buffer;
         active = 4;
+        for (int i = 0; i < MAX_TTY; i++) {
+            if (i == active) continue;
+            tty[i]->buffer = dummy_buffers[i];
+        }
+        fb_blank(GREEN);
     } else if (event->keycode == KEY_F6) {
         printf("TERM 5\n");
         tty[5]->buffer = get_real_fb()->buffer;
         active = 5;
+        for (int i = 0; i < MAX_TTY; i++) {
+            if (i == active) continue;
+            tty[i]->buffer = dummy_buffers[i];
+        }
+        fb_blank(BLACK);
     }
+    // event_handler->unregister_listener(KEYBOARD_EVENT, tty_key_listener._id);
 }
 
+/**
+ * @brief Setup and run TTY system, register keyboard event handler.
+ */
 void run_tty() {
-    int i = 0;
-    while (1) {
-        // printf("i: %d\n", i++);
-        tty_key_listener = {.handler = (void (*)(key_event *))&change_tty, .next = nullptr};
-        event_handler->register_listener(KEYBOARD_EVENT, &tty_key_listener);
-        // event_handler->unregister_listener(KEYBOARD_EVENT, tty_key_listener._id);
-        wait_msec(10000);
-        // printf("post wait\n");
-    }
-    // create_event(run_tty);
+    // Initialize key listener
+    tty_key_listener = {.handler = (void (*)(key_event *))&change_tty, .next = nullptr};
+
+    // Register listener for KEYBOARD_EVENT
+    event_handler->register_listener(KEYBOARD_EVENT, &tty_key_listener);
+
+    // event_handler->unregister_listener(KEYBOARD_EVENT, tty_key_listener._id);
 }

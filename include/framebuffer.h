@@ -134,6 +134,7 @@ Framebuffer* get_kernel_fb(void);
 Framebuffer* get_real_fb(void);
 
 void fb_clear(unsigned int color);
+void fb_blank(unsigned int color);
 void fb_print(const char* str, unsigned int color);
 
 void fb_draw_image(int x, int y, const unsigned int* image_data, int width, int height);

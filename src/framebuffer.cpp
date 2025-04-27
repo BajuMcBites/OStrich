@@ -223,6 +223,17 @@ void fb_clear(unsigned int color) {
     }
 }
 
+void fb_blank(unsigned int color) {
+    Framebuffer* fb = get_real_fb();
+    unsigned int* fb_ptr = (unsigned int*)fb->buffer;
+
+    for (unsigned int y = 0; y < fb->height; y++) {
+        for (unsigned int x = 0; x < fb->width; x++) {
+            fb_ptr[y * (fb->pitch / 4) + x] = color;
+        }
+    }
+}
+
 void fb_draw_image(int x, int y, const unsigned int* image_data, int width, int height) {
     Framebuffer* fb = fb_get();
     unsigned int* fb_ptr = (unsigned int*)fb->buffer;

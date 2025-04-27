@@ -213,8 +213,9 @@ void mergeCores() {
     // Uncomment to run snake
     if (getCoreID() == 0) {
         printf("init_snake() + keyboard_loop();\n");
-        // create_event(init_snake);
         create_event(run_tty);
+        create_event(init_snake);
+
         create_event(keyboard_loop);
         // create_event(run_tty);
     }
