@@ -23,6 +23,7 @@ SECTIONS
         __bss_start = .;
         *(.bss .bss.*)
         *(COMMON)
+        . = . + 2M;
         __bss_end = .;
     }
     
