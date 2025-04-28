@@ -35,7 +35,7 @@ SECTIONS
     PROVIDE(__heap_start = .);
 
     /* Allocate heap size */
-    . = . + 4M; /* 2MB heap, adjustable */
+    . = . + 8M; /* 2MB heap, adjustable */
     
     PROVIDE(__heap_end = .);
     

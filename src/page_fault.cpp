@@ -33,11 +33,11 @@ extern "C" void page_fault_handler(KernelEntryFrame* trap_frame, uint64_t esr, u
             K::assert(false, "Not handled yet\n");
             break;
         case 1:
-            printf_err("Translation fault: %x\n", esr);
+            // printf_err("Translation fault: %x\n", esr);
             handle_translation_fault(trap_frame, esr, elr, spsr, far);
             break;
         case 3:
-            printf_err("Permission fault: %x\n", esr);
+            // printf_err("Permission fault: %x\n", esr);
             handle_permissions_fault(trap_frame, esr, elr, spsr, far);
             break;
         default:

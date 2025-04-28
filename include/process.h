@@ -72,6 +72,8 @@ struct PCB {
     PCB* next;
     PCB* before;
 
+    uint64_t data_end;
+
     // Files and stuff.
     FileTable* file_table;
     int cwd;  // 0 is root.
@@ -91,6 +93,7 @@ struct PCB {
         parent = nullptr;
         child_start = child_end = next = before = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
+        data_end = ~VA_START - (8192 * PAGE_SIZE); /* preferrable set this after bss segment */
     }
     PCB(int id) {
         if (task[pid]) delete task[pid];
@@ -105,6 +108,8 @@ struct PCB {
         parent = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
         before = nullptr;
+        data_end = ~VA_START - (8192 * PAGE_SIZE);
+
     }
 
     void raise_signal(Signal* s) {

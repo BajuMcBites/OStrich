@@ -92,16 +92,16 @@ extern "C" void kernel_main() {
     // stringTest();
 
     // printf("All tests passed\n");
-    // heapTests();
-    // event_loop_tests();
-    // hash_test();
-    // frame_alloc_tests();
-    // // user_paging_tests();
+    heapTests();
+    event_loop_tests();
+    hash_test();
+    frame_alloc_tests();
+    // user_paging_tests();
     // blocking_atomic_tests();
-    // // ramfs_tests();
+    // ramfs_tests();
     // sdioTests();
     // ring_buffer_tests();
-    // elf_load_test();
+    elf_load_test();
     // partitionTests();
     // stringTest();
 
@@ -110,12 +110,11 @@ extern "C" void kernel_main() {
     // // testSnapshot();
     // // test_fs_requests();
 
-    // // kernel file interface
+    // kernel file interface
     // kfs_simple_test();
     // kfs_kopen_uses_cache_test();
     // kfs_stress_test(10);
     // sd_stress_test();
-    fs_syscalls_tests();
 }
 
 extern char __heap_start[];

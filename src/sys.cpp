@@ -34,6 +34,9 @@ int newlib_handle_unlink(KernelEntryFrame* frame);
 int newlib_handle_wait(KernelEntryFrame* frame);
 void newlib_handle_write(KernelEntryFrame* frame);
 int newlib_handle_time(KernelEntryFrame* frame);
+int newlib_handle_sbrk(KernelEntryFrame* frame);
+int newlib_handle_mmap(KernelEntryFrame* frame);
+
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 
 void set_return_value_and_state(UserTCB* tcb, int value, int state) {
@@ -125,6 +128,12 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             break;
         case NEWLIB_TIME:
             frame->X[0] = newlib_handle_time(frame);
+            break;
+        case NEWLIB_SBRK:
+            newlib_handle_sbrk(frame);
+            break;
+        case NEWLIB_MMAP:
+            newlib_handle_mmap(frame);
             break;
         default:
             break;
@@ -221,6 +230,7 @@ int newlib_handle_exec(KernelEntryFrame* frame) {
         sp -= 8;
         *(uint64_t*)sp = addrs[i];
     }
+    sp -= sp % 16;
     // save &argv
     tcb->context.x1 = sp;
     // save argc
@@ -503,3 +513,47 @@ int newlib_handle_time(KernelEntryFrame* frame) {
     // TODO: Implement time.
     return 0;
 }
+
+int newlib_handle_sbrk(KernelEntryFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    printf("called sbrk with %d\n",  frame->X[0]);
+    uint64_t ret_address = tcb->pcb->data_end;
+    tcb->pcb->data_end += frame->X[0];
+    frame->X[0] = ret_address;
+    printf("ret address is 0x%X%X\n", frame->X[0] >> 32, frame->X[0]);
+    return 0;
+}
+
+int newlib_handle_mmap(KernelEntryFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    PCB* pcb = tcb->pcb;
+    save_user_context(tcb, frame);
+
+    uint64_t length = frame->X[1];
+    uint64_t prot = frame->X[2];
+    uint64_t flags = frame->X[3];
+    int fd = frame->X[4];
+    uint64_t offset = frame->X[5];
+
+    uint64_t data_end = pcb->data_end;
+    
+    uint64_t first_user_addr = data_end + (PAGE_SIZE - (data_end % PAGE_SIZE));
+    
+    data_end = first_user_addr + ((length / PAGE_SIZE) * PAGE_SIZE);
+    if (length % PAGE_SIZE != 0) {
+        data_end += PAGE_SIZE;
+    }
+
+    uint64_t ret_address = first_user_addr;
+
+    KFile* file = nullptr;
+    if (fd != 0) {
+        file = pcb->file_table->get_file(fd).backing_file();
+    }
+    mmap(pcb, first_user_addr, prot, flags, file, offset, length, [=]() {
+        tcb->context.x0 = first_user_addr;
+        queue_user_tcb(tcb);
+    });
+    event_loop();
+}
+

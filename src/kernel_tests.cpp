@@ -643,6 +643,8 @@ void elf_load_test() {
 
         // save argc
         sp -= 8;
+
+        sp -= sp % 16;
         *(uint64_t*)sp = argc;
         tcb->context.sp = sp;
         sema->up();

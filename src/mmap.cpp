@@ -25,9 +25,9 @@ void load_location(PageLocation* location, Function<void(uint64_t)> w) {
 
     alloc_frame(PINNED_PAGE_FLAG, location, [=](uint64_t paddr) {
         void* page_vaddr = (void*)paddr_to_vaddr(paddr);
-        K::memset(page_vaddr, 0, PAGE_SIZE);  // dont give none zero memory
 
         if (location->location_type == UNBACKED) { /* not backed page */
+            K::memset(page_vaddr, 0, PAGE_SIZE);  // dont give non zero memory
             location->present = true;
             location->paddr = paddr;
             create_event(w, paddr);
