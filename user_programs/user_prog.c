@@ -143,7 +143,21 @@ void execute(char** argv, int redir_in, int redir_out) {
         _read(fd, buf, count);
         puts_concat(1, buf);
         return;
-    } 
+    } else if (strcmp(prog_name, "checkpoint") == 0) {
+        checkpoint();
+        return;
+    } else if (strcmp(prog_name, "mount") == 0) {
+        int ckptid = atoi(argv[1]);
+        mount(ckptid);
+        return;
+    } else if (strcmp(prog_name, "ls") == 0) {
+        ls();
+        return;
+    } else if (strcmp(prog_name, "delete") == 0) {
+        char* path = argv[1];
+        del(path);
+        return;
+    }
     pid = fork();
     if (pid == 0) {
         puts_concat(1, prog_name);

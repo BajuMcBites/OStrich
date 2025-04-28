@@ -137,3 +137,26 @@ time_elapsed:
      mov x8, #DRAW_FRAME
      svc #0
      ret
+
+ .global checkpoint
+ checkpoint:
+     mov x8, #CHECKPOINT
+     svc #0
+     ret
+
+ .global mount
+ mount:
+     mov x8, #MOUNT
+     svc #0
+     ret
+
+ .global ls
+ ls:
+     mov x8, #LS
+     svc #0
+     ret
+ .global del
+ del:
+     mov x8, #DEL
+     svc #0
+     ret

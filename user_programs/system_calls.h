@@ -26,6 +26,10 @@
 // custom sys calls
 
 #define DRAW_FRAME 64
+#define CHECKPOINT 65
+#define MOUNT 66
+#define LS 67
+#define DEL 68
 #define NEWLIB_TIME_ELAPSED 21 
 
 

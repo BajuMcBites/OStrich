@@ -68,12 +68,32 @@ void handle_error(UserTCB* tcb, Semaphore* sema) {
 }
 
 int sys_draw_frame(KernelEntryFrame* frame);
+void snapshot_wrap(KernelEntryFrame* frame);
+void mount_wrap(KernelEntryFrame* frame);
+void ls_wrap(KernelEntryFrame* frame);
+void del_wrap(KernelEntryFrame* frame);
 
 void syscall_handler(KernelEntryFrame* frame) {
     // printf("hello\n");
     int opcode = frame->X[8];
     if (opcode == DRAW_FRAME) {
         frame->X[0] = sys_draw_frame(frame);
+        return;
+    }
+    if (opcode == CHECKPOINT) {
+        snapshot_wrap(frame);
+        return;
+    }
+    if (opcode == MOUNT) {
+        mount_wrap(frame);
+        return;
+    }
+    if (opcode == LS) {
+        ls_wrap(frame);
+        return;
+    }
+    if (opcode == DEL) {
+        del_wrap(frame);
         return;
     }
     // Right now, calling any variant of "printf" breaks the kernel causing an infinite exception
@@ -464,7 +484,7 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
     };
 
     if (is_read) {
-        kread(file, current_offset, buf, count, handle_return);
+        kread(file, 0, buf, count, handle_return);
     } else {
         kwrite(file, current_offset, buf, count, handle_return);
     }
@@ -637,4 +657,23 @@ int sys_draw_frame(KernelEntryFrame* frame) {
 }int newlib_handle_time_elapsed(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     return get_systime() - tcb->pcb->start_time;
+}
+
+void snapshot_wrap(KernelEntryFrame* frame) {
+    fs::FileSystem::getInstance() -> createCheckpoint();
+}
+
+void mount_wrap(KernelEntryFrame* frame) {
+    uint32_t ckptid = (uint32_t)(frame->X[0]);
+    fs::fs_req_mount_snapshot(ckptid);
+}
+
+void ls_wrap(KernelEntryFrame* frame) {
+    fs::fs_resp_read_dir_t output = fs::fs_req_read_dir(0);
+    int cnt = output.entry_count;
+}
+void del_wrap(KernelEntryFrame* frame) {
+    char* path = (char*)(frame->X[0]);
+    printf("deletinng %s\n", path);
+    fs::fs_resp_remove_file_t output = fs::fs_req_remove_file(0, path);
 }
