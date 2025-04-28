@@ -30,7 +30,7 @@
 #if defined MISSING_SYSCALL_NAMES || !defined HAVE_OPENDIR
 /* If the system call interface is missing opendir, readdir, and
    closedir, there is an implementation of these functions in
-   libc/posix that is implemented using open, getdents, and close.
+   libc/posix that is implemented using open, getdents, and close. 
    Note, these functions are currently not in the libc/syscalls
    directory.  */
 #define _opendir opendir

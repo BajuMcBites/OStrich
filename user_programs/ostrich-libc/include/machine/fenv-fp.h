@@ -26,105 +26,131 @@
  * $FreeBSD$
  */
 
-__fenv_static __inline int feclearexcept(int __excepts) {
-    fexcept_t __r;
 
-    __mrs_fpsr(__r);
-    __r &= ~__excepts;
-    __msr_fpsr(__r);
-    return (0);
+__fenv_static __inline int
+feclearexcept(int __excepts)
+{
+	fexcept_t __r;
+
+	__mrs_fpsr(__r);
+	__r &= ~__excepts;
+	__msr_fpsr(__r);
+	return (0);
 }
 
-__fenv_static inline int fegetexceptflag(fexcept_t *__flagp, int __excepts) {
-    fexcept_t __r;
+__fenv_static inline int
+fegetexceptflag(fexcept_t *__flagp, int __excepts)
+{
+	fexcept_t __r;
 
-    __mrs_fpsr(__r);
-    *__flagp = __r & __excepts;
-    return (0);
+	__mrs_fpsr(__r);
+	*__flagp = __r & __excepts;
+	return (0);
 }
 
-__fenv_static inline int fesetexceptflag(const fexcept_t *__flagp, int __excepts) {
-    fexcept_t __r;
+__fenv_static inline int
+fesetexceptflag(const fexcept_t *__flagp, int __excepts)
+{
+	fexcept_t __r;
 
-    __mrs_fpsr(__r);
-    __r &= ~__excepts;
-    __r |= *__flagp & __excepts;
-    __msr_fpsr(__r);
-    return (0);
+	__mrs_fpsr(__r);
+	__r &= ~__excepts;
+	__r |= *__flagp & __excepts;
+	__msr_fpsr(__r);
+	return (0);
 }
 
-__fenv_static inline int feraiseexcept(int __excepts) {
-    fexcept_t __r;
+__fenv_static inline int
+feraiseexcept(int __excepts)
+{
+	fexcept_t __r;
 
-    __mrs_fpsr(__r);
-    __r |= __excepts;
-    __msr_fpsr(__r);
-    return (0);
+	__mrs_fpsr(__r);
+	__r |= __excepts;
+	__msr_fpsr(__r);
+	return (0);
 }
 
-__fenv_static inline int fetestexcept(int __excepts) {
-    fexcept_t __r;
+__fenv_static inline int
+fetestexcept(int __excepts)
+{
+	fexcept_t __r;
 
-    __mrs_fpsr(__r);
-    return (__r & __excepts);
+	__mrs_fpsr(__r);
+	return (__r & __excepts);
 }
 
-__fenv_static inline int fegetround(void) {
-    fenv_t __r;
+__fenv_static inline int
+fegetround(void)
+{
+	fenv_t __r;
 
-    __mrs_fpcr(__r);
-    return ((__r >> _ROUND_SHIFT) & _ROUND_MASK);
+	__mrs_fpcr(__r);
+	return ((__r >> _ROUND_SHIFT) & _ROUND_MASK);
 }
 
-__fenv_static inline int fesetround(int __round) {
-    fenv_t __r;
+__fenv_static inline int
+fesetround(int __round)
+{
+	fenv_t __r;
 
-    if (__round & ~_ROUND_MASK) return (-1);
-    __mrs_fpcr(__r);
-    __r &= ~(_ROUND_MASK << _ROUND_SHIFT);
-    __r |= __round << _ROUND_SHIFT;
-    __msr_fpcr(__r);
-    return (0);
+	if (__round & ~_ROUND_MASK)
+		return (-1);
+	__mrs_fpcr(__r);
+	__r &= ~(_ROUND_MASK << _ROUND_SHIFT);
+	__r |= __round << _ROUND_SHIFT;
+	__msr_fpcr(__r);
+	return (0);
 }
 
-__fenv_static inline int fegetenv(fenv_t *__envp) {
-    fenv_t __r;
+__fenv_static inline int
+fegetenv(fenv_t *__envp)
+{
+	fenv_t __r;
 
-    __mrs_fpcr(__r);
-    *__envp = __r & _ENABLE_MASK;
+	__mrs_fpcr(__r);
+	*__envp = __r & _ENABLE_MASK;
 
-    __mrs_fpsr(__r);
-    *__envp |= __r & (FE_ALL_EXCEPT | (_ROUND_MASK << _ROUND_SHIFT));
+	__mrs_fpsr(__r);
+	*__envp |= __r & (FE_ALL_EXCEPT | (_ROUND_MASK << _ROUND_SHIFT));
 
-    return (0);
+	return (0);
 }
 
-__fenv_static inline int feholdexcept(fenv_t *__envp) {
-    fenv_t __r;
+__fenv_static inline int
+feholdexcept(fenv_t *__envp)
+{
+	fenv_t __r;
 
-    __mrs_fpcr(__r);
-    *__envp = __r & _ENABLE_MASK;
-    __r &= ~(_ENABLE_MASK);
-    __msr_fpcr(__r);
+	__mrs_fpcr(__r);
+	*__envp = __r & _ENABLE_MASK;
+	__r &= ~(_ENABLE_MASK);
+	__msr_fpcr(__r);
 
-    __mrs_fpsr(__r);
-    *__envp |= __r & (FE_ALL_EXCEPT | (_ROUND_MASK << _ROUND_SHIFT));
-    __r &= ~(_ENABLE_MASK);
-    __msr_fpsr(__r);
-    return (0);
+	__mrs_fpsr(__r);
+	*__envp |= __r & (FE_ALL_EXCEPT | (_ROUND_MASK << _ROUND_SHIFT));
+	__r &= ~(_ENABLE_MASK);
+	__msr_fpsr(__r);
+	return (0);
 }
 
-__fenv_static inline int fesetenv(const fenv_t *__envp) {
-    __msr_fpcr((*__envp) & _ENABLE_MASK);
-    __msr_fpsr((*__envp) & (FE_ALL_EXCEPT | (_ROUND_MASK << _ROUND_SHIFT)));
-    return (0);
+__fenv_static inline int
+fesetenv(const fenv_t *__envp)
+{
+
+	__msr_fpcr((*__envp) & _ENABLE_MASK);
+	__msr_fpsr((*__envp) & (FE_ALL_EXCEPT | (_ROUND_MASK << _ROUND_SHIFT)));
+	return (0);
 }
 
-__fenv_static inline int feupdateenv(const fenv_t *__envp) {
-    fexcept_t __r;
+__fenv_static inline int
+feupdateenv(const fenv_t *__envp)
+{
+	fexcept_t __r;
 
-    __mrs_fpsr(__r);
-    fesetenv(__envp);
-    feraiseexcept(__r & FE_ALL_EXCEPT);
-    return (0);
+	__mrs_fpsr(__r);
+	fesetenv(__envp);
+	feraiseexcept(__r & FE_ALL_EXCEPT);
+	return (0);
 }
+

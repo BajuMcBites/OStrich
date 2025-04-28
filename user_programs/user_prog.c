@@ -1,8 +1,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
-
-static int k = 200;
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char* argv[]) {
-    _exit(k);
+    puts("ASDSD");
+    char c = getchar();
+    exit(c);
 }

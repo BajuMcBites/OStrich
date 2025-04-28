@@ -13,6 +13,7 @@
 #include "ramfs.h"
 #include "stdint.h"
 #include "utils.h"
+#include "uart.h"
 #include "vm.h"
 // #include "trap_frame.h"
 
@@ -363,22 +364,26 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
         K::assert(is_read, "trying to write to stdin!\n");
         for (int i = 0; i < count; i++) {
             buf[i] = uart_getc();
+            uart_putc(buf[i]);
         }
-        return;
+        handle_success(tcb, 0);
+        event_loop();
     } else if (fd == 1) {
         // stdout
         K::assert(!is_read, "trying to read from stdout!\n");
         for (int i = 0; i < count; i++) {
             printf("%c", buf[i]);
         }
-        return;
+        handle_success(tcb, 0);
+        event_loop();
     } else {
         // stderr
         K::assert(!is_read, "trying to read from stderr!\n");
         for (int i = 0; i < count; i++) {
             printf_err("%c", buf[i]);
         }
-        return;
+        handle_success(tcb, 0);
+        event_loop();
     }
 
     // Per-process file pointer (1:1 with file descriptors).

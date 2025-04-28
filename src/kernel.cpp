@@ -101,7 +101,7 @@ extern "C" void kernel_main() {
     // // ramfs_tests();
     // sdioTests();
     // ring_buffer_tests();
-    // elf_load_test();
+    elf_load_test();
     // partitionTests();
     // stringTest();
 
@@ -115,7 +115,7 @@ extern "C" void kernel_main() {
     // kfs_kopen_uses_cache_test();
     // kfs_stress_test(10);
     // sd_stress_test();
-    fs_syscalls_tests();
+    // fs_syscalls_tests();
 }
 
 extern char __heap_start[];
