@@ -937,3 +937,66 @@ void sd_stress_test() {
         });
     }
 }
+
+void fs_syscalls_tests() {
+    printf("Start FS syscalls tests!\n");
+    int elf_index = get_ramfs_index("fs_syscall_test");
+    K::assert(elf_index >= 0, "fs_syscalls_tests(): failed to find fs_syscall_test in ramfs");
+    PCB* pcb = new PCB;
+    const int sz = ramfs_size(elf_index);
+    char* buffer = (char*)kmalloc(sz);
+    ramfs_read(buffer, 0, sz, elf_index);
+    Semaphore* sema = new Semaphore(1);
+    void* new_pc = elf_load((void*)buffer, pcb, sema);
+    UserTCB* tcb = new UserTCB();
+    uint64_t sp = 0x0000fffffffff000;
+    // only doing this because no eviction
+    sema->down([=]() {
+        mmap(pcb, sp - PAGE_SIZE, PF_R | PF_W, MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, nullptr,
+             0, PAGE_SIZE, [=]() {
+                 load_mmapped_page(pcb, sp - PAGE_SIZE, [=](uint64_t kvaddr) {
+                     pcb->page_table->use_page_table();
+                     K::memset((void*)(sp - PAGE_SIZE), 0, PAGE_SIZE);
+                     sema->up();
+                 });
+             });
+    });
+    sema->down([=]() {
+        pcb->page_table->use_page_table();
+        uint64_t sp = 0x0000fffffffff000;
+        int argc = 0;
+        const char* argv[0];
+        uint64_t addrs[argc];
+        for (int i = argc - 1; i >= 0; --i) {
+            int len = K::strlen(argv[i]) + 1;
+            sp -= len;
+            addrs[i] = sp;
+            K::memcpy((void*)sp, argv[i], len);
+        }
+        sp -= 8;
+        *(uint64_t*)sp = 0;
+        for (int i = argc - 1; i >= 0; --i) {
+            sp -= 8;
+            *(uint64_t*)sp = addrs[i];
+        }
+        // save &argv
+        sp -= 8;
+        *(uint64_t*)sp = sp + 8;
+
+        // save argc
+        sp -= 8;
+        *(uint64_t*)sp = argc;
+        tcb->context.sp = sp;
+        sema->up();
+    });
+    tcb->pcb = pcb;
+    // tcb->pcb->pid = 1;
+    tcb->context.pc = (uint64_t)new_pc;
+    tcb->context.x30 = (uint64_t)new_pc; /* this just to repeat the user prog again and again*/
+    printf("%x this is pc\n", tcb->context.pc);
+    sema->down([=]() {
+        tcb->state = TASK_RUNNING;
+        queue_user_tcb(tcb);
+        kfree(buffer);
+    });
+}

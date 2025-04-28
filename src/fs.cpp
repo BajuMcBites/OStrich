@@ -84,12 +84,19 @@ void kopen(string file_name, Function<void(KFile*)> w) {
     file_list_lock->lockAndRelease([=]() {
         KFile* file = nullptr;
         open_files.remove_if_and_free_node([&](FileListNode* n) {
-            // Don't remove the inode if we are about to use it.
-            if (n->name_hash == name_hash) {
-                file = n->file;
-                return false;
+            // KFile has been deleted, remove it / no refs.
+            if (!n->file || n->file->get_ref_count() == 0) {
+                return true;
             }
-            return n->file->get_ref_count() == 0;
+
+            // Hash mismatch, remove it.
+            if (n->name_hash != name_hash) {
+                return true;
+            }
+
+            // If open and has refs, save the reference.
+            file = n->file;
+            return false;
         });
 
         // We found the inode in the list.
@@ -113,6 +120,9 @@ void kopen(string file_name, Function<void(KFile*)> w) {
                 // Create file and add to file list node.
                 // Ref count is 1 by default.
                 file = new FSFile(resp.data.open.inode_index, resp.data.open.permissions);
+                printf("kopen: getting inode number\n");
+                printf("kopen: core %d: File Inode Index = %d\n", getCoreID(),
+                       file->get_inode_number());
                 open_files.add(new FileListNode(file, cleaned_file_name.hash()));
 
                 // Create event.
@@ -130,6 +140,7 @@ void kopen(string file_name, Function<void(KFile*)> w) {
 }
 
 void kclose(KFile* file) {
+    printf("kclose: file = %x\n", file);
     file->decrement_ref_count_atomic();  // cleaned up automatically.
 }
 
@@ -196,7 +207,6 @@ void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(in
 
 void write_fs(FSFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w) {
     K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): KFile type is incorrect");
-
     if (file->get_inode_number() == -1) {
         create_event<int>(w, INVALID_FILE);
         return;
@@ -204,7 +214,7 @@ void write_fs(FSFile* file, uint64_t offset, const char* buf, uint64_t n, Functi
 
     fs::issue_fs_write(file->get_inode_number(), buf, offset, n, [=](fs::fs_response_t resp) {
         if (resp.data.write.status == fs::FS_RESP_SUCCESS) {
-            // printf("write_fs(): Successfully wrote %d bytes\n", resp.data.write.bytes_written);
+            printf("write_fs(): Successfully wrote %d bytes\n", resp.data.write.bytes_written);
         }
         create_event<int>(w, resp.data.write.bytes_written);
     });
@@ -216,6 +226,7 @@ void write_fs(FSFile* file, uint64_t offset, const char* buf, uint64_t n, Functi
  */
 void kwrite(KFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w) {
     // characteristics are in file struct.
+    printf("kwrite: file type = %d\n", file->file_type);
     switch (file->file_type) {
         case FileType::DEV_RAMFS:
             K::assert(false, "kwrite(): ramfs files are read only.");

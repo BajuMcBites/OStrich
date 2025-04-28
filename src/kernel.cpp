@@ -105,10 +105,10 @@ extern "C" void kernel_main() {
     // partitionTests();
     // stringTest();
 
-    // filesystem
-    // test_fs();
-    // testSnapshot();
-    // test_fs_requests();
+    // // filesystem
+    // // test_fs();
+    // // testSnapshot();
+    // // test_fs_requests();
 
     // kernel file interface
     // kfs_simple_test();
