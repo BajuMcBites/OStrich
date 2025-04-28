@@ -14,6 +14,8 @@
 static FrameBufferLinkedList tty;
 static Listener<struct key_event *> tty_key_listener;
 
+static SpinLock lock;
+
 static unsigned int *dummy_buffers[6] = {nullptr};
 static unsigned int *dummy_buffer = nullptr;
 
@@ -25,6 +27,7 @@ bool taken[MAX_TTY] = {false};
  * @param none
  */
 void init_tty() {
+    lock.lock();
     tty.insert(get_kernel_fb());
 
     taken[0] = true;
@@ -41,6 +44,7 @@ void init_tty() {
     //     dummy_buffers[i] = dummy_buffers[0];
     // }
     active = 0;
+    lock.unlock();
 }
 
 /**
@@ -48,6 +52,7 @@ void init_tty() {
  * @param none
  */
 Framebuffer *request_tty() {
+    lock.lock();
     Framebuffer *buff = new Framebuffer;
     auto real_fb = get_real_fb();
     buff->height = real_fb->height;
@@ -58,9 +63,9 @@ Framebuffer *request_tty() {
 
     tty.getHead()->buffer = dummy_buffer;
     buff->buffer = real_fb->buffer;
-    fb_blank(BLUE);
     tty.insert(buff);
-    // fb_blank(BLUE);
+    fb_blank(BLUE);
+    lock.unlock();
     return buff;
 }
 
@@ -79,17 +84,22 @@ void close_tty() {
  */
 void change_tty(struct key_event *event) {
     // printf("IN CHANGE TTY\n");
-    if (event->flags.released) return;
+    lock.lock();
+    if (event->flags.released) {
+        lock.unlock();
+        return;
+    }
 
     if (event->keycode == KEY_F1) {
         // move forward
         tty.getHead()->buffer = dummy_buffer;
         tty.moveHead();
         tty.getHead()->buffer = get_real_fb()->buffer;
-        fb_blank(BLUE);
+        fb_blank(WHITE);
     } else if (false) {
         // move back
     }
+    lock.unlock();
 }
 
 /**
