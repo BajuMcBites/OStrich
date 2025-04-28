@@ -74,9 +74,9 @@ void keyboard_loop() {
             }
         }
 
-            for (int i = 0; i < event_cnt; i++) {
-                get_event_handler()->handle_event(KEYBOARD_EVENT, &events[i]);
-            }
+        for (int i = 0; i < event_cnt; i++) {
+            get_event_handler()->handle_event(KEYBOARD_EVENT, &events[i]);
+        }
 
         prior = input;
         prior_modifiers = modifiers;

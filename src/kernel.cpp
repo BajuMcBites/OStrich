@@ -30,12 +30,12 @@
 #include "sdio.h"
 #include "sdio_tests.h"
 #include "snake.h"
+#include "snake_generic.h"
 #include "stdint.h"
 #include "timer.h"
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
-
 void mergeCores();
 
 struct __attribute__((__packed__, aligned(4))) SystemTimerRegisters {
@@ -209,30 +209,32 @@ void mergeCores() {
         // wait_msec(1000000);
         // printf("initializing network loop!\n");
         create_event([=]() { network_loop(); });
+        create_event([=]() { keyboard_loop(); });
 
     } else if (getCoreID() == 1) {
-        create_event([=]() {
-            ServerSocket socket(100);
-            uint8_t __attribute__((aligned(8))) buffer[1516];
+        // create_event([=]() {
+        //     ServerSocket socket(100);
+        //     uint8_t __attribute__((aligned(8))) buffer[1516];
 
-            size_t received = 0;
-            uint32_t pckt_cnt = 0;
+        //     size_t received = 0;
+        //     uint32_t pckt_cnt = 0;
 
-            // while (socket.is_alive()) {
-            //     size_t length = socket.recv(buffer);
-            //     pckt_cnt++;
-            //     received += length;
+        //     // while (socket.is_alive()) {
+        //     //     size_t length = socket.recv(buffer);
+        //     //     pckt_cnt++;
+        //     //     received += length;
 
-            //     socket.send(nullptr, 0, TCP_FLAG_ACK);
-            // }
-            while (socket.is_alive()) {
-                size_t length = socket.recv(buffer);
-                received += length;
-                socket.send(nullptr, 0, TCP_FLAG_ACK);
-            }
+        //     //     socket.send(nullptr, 0, TCP_FLAG_ACK);
+        //     // }
+        //     while (socket.is_alive()) {
+        //         size_t length = socket.recv(buffer);
+        //         received += length;
+        //         socket.send(nullptr, 0, TCP_FLAG_ACK);
+        //     }
 
-            printf("socket no longer active, received %d bytes total!\n", received);
-        });
+        //     printf("socket no longer active, received %d bytes total!\n", received);
+        // });
+        create_event([=]() { snake_generic_main(); });
     }
     event_loop();
     printf("PANIC I should not go here\n");
