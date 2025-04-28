@@ -370,23 +370,31 @@ int sys_draw_frame(KernelEntryFrame* frame) {
     printf("draw!\n");
     // Retrieve the pointer to the frame buffer data from the first argument
     void* frame_data = (void*)frame->X[0];
+    printf("drame data: 0x%x\n", frame_data);
 
     // Access the current task's PCB to get the framebuffer buffer
     Framebuffer* fb = fb_get();
 
     if (fb == nullptr) {
+        printf("is null\n");
         UserTCB* tcb = get_running_user_tcb(getCoreID());
         PCB* pcb = tcb->pcb;
+        printf("pcb: 0x%x\n", pcb);
         if (pcb->frameBuffer == nullptr) {
+            printf("getting tty\n");
             pcb->frameBuffer = request_tty();
+            printf("got tty\n");
         }
+        printf("try to give pcb to tcb buffer\n");
         tcb->frameBuffer = pcb->frameBuffer;
+        printf("tcb has frame buffer\n");
     }
 
     fb = fb_get();
+    K::assert(fb != nullptr, "fb null\n");
 
     // Perform the memory copy operation
-    K::memcpy(fb->buffer, frame_data, 4096);  // Frame buffer size
+    K::memcpy(fb->buffer, frame_data, 400);  // Frame buffer size
 
     return 0;  // Return success
 }

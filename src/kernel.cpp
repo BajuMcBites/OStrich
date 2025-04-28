@@ -211,7 +211,7 @@ void mergeCores() {
         printf("creating kernel_main\n");
         create_event(keyboard_loop);
         // create_event([] { kernel_main(); });
-        elf_load_test();
+        // elf_load_test();
     }
     // Uncomment to run snake
     if (getCoreID() == 0) {
@@ -223,17 +223,16 @@ void mergeCores() {
             tcb->frameBuffer = request_tty();
             printf("request made\n");
             init_snake();
-            create_event([] { elf_load_test(); });
         });
 
         create_event([] {
             init_animation();
             update_animation();
             create_event(update_animation);
+            create_event(update_animation);
+            create_event(update_animation);
+            create_event(update_animation);
         });
-        create_event(update_animation);
-        create_event(update_animation);
-        create_event(update_animation);
 
         // create_event(run_tty);
     }
