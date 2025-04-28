@@ -1,38 +1,19 @@
-// #include <sys/wait.h>
-#include <malloc.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-static int hello = 10;
-
 int main(int argc, char* argv[]) {
-    int* a = malloc(1000);
-    if (a == NULL) {
-        _exit(-1);
+    for (int i = 0; i < 20; i++) {
+        int c = fork();
+        if (c == 0) {
+            char* str = "0\0";
+            str[0] += getpid();
+            char* nargv[2] = {str, "\0"};
+            execve("exit", nargv, 0);
+        }
     }
-    int* b = malloc(1000);
-    if (a == NULL) {
-        _exit(-1);
+    for (int i = 0; i < 20; i++) {
+        int status = 0;
+        wait(&status);
     }
-    int* c = malloc(1000);
-    if (a == NULL) {
-        _exit(-1);
-    }
-    int* d = malloc(1000);
-    if (a == NULL) {
-        _exit(-1);
-    }
-    int* e = malloc(1000);
-    if (a == NULL) {
-        _exit(-1);
-    }
-    int* f = malloc(1000);
-    if (a == NULL) {
-        _exit(-1);
-    }
-    int* g = malloc(1000);
-    if (a == NULL) {
-        _exit(-1);
-    }
-    *a = 5;
-    _exit((uint32_t)g);
+    _exit(1);
 }
