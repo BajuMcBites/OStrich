@@ -36,6 +36,10 @@ void newlib_handle_write(KernelEntryFrame* frame);
 int newlib_handle_time(KernelEntryFrame* frame);
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 
+char* stdin_buf = nullptr;
+size_t stdin_buf_sz = 0;
+int stdin_buf_idx = 0;
+
 void set_return_value_and_state(UserTCB* tcb, int value, int state) {
     set_return_value(tcb, value);
     tcb->state = state;
@@ -353,6 +357,29 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
     int fd = frame->X[0];
     char* buf = (char*)frame->X[1];
     int count = frame->X[2];
+
+    if (fd == 0) {
+        // stdin
+        K::assert(is_read, "trying to write to stdin!\n");
+        for (int i = 0; i < count; i++) {
+            buf[i] = uart_getc();
+        }
+        return;
+    } else if (fd == 1) {
+        // stdout
+        K::assert(!is_read, "trying to read from stdout!\n");
+        for (int i = 0; i < count; i++) {
+            printf("%c", buf[i]);
+        }
+        return;
+    } else {
+        // stderr
+        K::assert(!is_read, "trying to read from stderr!\n");
+        for (int i = 0; i < count; i++) {
+            printf_err("%c", buf[i]);
+        }
+        return;
+    }
 
     // Per-process file pointer (1:1 with file descriptors).
     printf("newlib_handle_read_or_write: fd = %d, core = %d, is_read = %d\n", fd, getCoreID(),
