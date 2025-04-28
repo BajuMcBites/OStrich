@@ -11,6 +11,7 @@
 #include "stdint.h"
 #include "utils.h"
 #include "vm.h"
+#include "user_permissions.h"
 // #include "trap_frame.h"
 
 // Function prototypes
@@ -43,6 +44,10 @@ void syscall_handler(KernelEntryFrame* frame) {
 }
 
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
+    if (!check_newlib_syscall_perm(get_running_user_tcb(getCoreID())->pcb->user_id, (uint32_t) opcode)) {
+        K::assert(false, "Process does not have permission for this syscall, kill\n");
+    }
+
     switch (opcode) {
         case NEWLIB_EXIT:
             newlib_handle_exit(frame);

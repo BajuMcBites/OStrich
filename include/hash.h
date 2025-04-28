@@ -8,6 +8,7 @@
 
 #include "heap.h"
 #include "libk.h"
+#include "function.h"
 
 static uint64_t uint64_t_hash(uint64_t elem) {
     elem = ((elem >> 16) ^ elem) * 0x45d9f3b;

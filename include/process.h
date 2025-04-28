@@ -5,6 +5,7 @@
 #include "event.h"
 #include "printf.h"
 #include "vm.h"
+#include "user_permissions.h"
 
 #define NR_TASKS (1 << 8)
 
@@ -60,6 +61,7 @@ struct Signal {
 
 struct PCB {
     int pid;
+    uint32_t user_id;
     PageTable* page_table;
     SupplementalPageTable* supp_page_table;
     LockedQueue<Signal, SpinLock>* sigs;
@@ -85,6 +87,7 @@ struct PCB {
         parent = nullptr;
         child_start = child_end = next = before = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
+        user_id = get_cur_user();
     }
     PCB(int id) {
         if (task[pid]) delete task[pid];
@@ -98,6 +101,7 @@ struct PCB {
         parent = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
         before = nullptr;
+        user_id = get_cur_user();
     }
 
     void raise_signal(Signal* s) {
