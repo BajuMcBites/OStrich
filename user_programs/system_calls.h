@@ -20,9 +20,15 @@
 #define NEWLIB_WAIT 15
 #define NEWLIB_WRITE 16
 #define NEWLIB_TIME 17
-#define NEWLIB_TIME_ELAPSED 21 
 #define NEWLIB_MMAP 42
 #define NEWLIB_SBRK 999
+
+// custom sys calls
+
+#define DRAW_FRAME 64
+#define NEWLIB_TIME_ELAPSED 21 
+
+
 // TODO: Later, add Linux system call #'s here.
 
 #endif

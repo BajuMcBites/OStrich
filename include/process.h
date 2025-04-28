@@ -5,6 +5,7 @@
 #include "event.h"
 #include "file_table.h"
 #include "printf.h"
+#include "shared.h"
 #include "vm.h"
 #include "timer.h"
 
@@ -74,6 +75,7 @@ struct PCB {
     PCB* before;
     
     uint64_t start_time;
+    Shared<Framebuffer> frameBuffer;
 
     uint64_t data_end;
 
@@ -96,6 +98,7 @@ struct PCB {
         parent = nullptr;
         child_start = child_end = next = before = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
+        frameBuffer = nullptr;
         data_end = ~VA_START - (8192 * PAGE_SIZE); /* preferrable set this after bss segment */
         start_time = get_systime();
     }

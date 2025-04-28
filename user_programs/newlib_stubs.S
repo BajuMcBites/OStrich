@@ -131,3 +131,9 @@ time_elapsed:
     mov x8, #NEWLIB_TIME_ELAPSED
     svc #0
     ret
+
+ .global sys_draw_frame
+ sys_draw_frame:
+     mov x8, #DRAW_FRAME
+     svc #0
+     ret

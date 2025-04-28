@@ -4,6 +4,6 @@
 #include "stdint.h"
 
 long time_elapsed();
-long temp(uint64_t val);
+int  sys_draw_frame(void * rendered_frame);
 
 #endif

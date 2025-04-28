@@ -6,12 +6,14 @@
 #include "elf_loader.h"
 #include "event.h"
 #include "file_table.h"
+#include "framebuffer.h"
 #include "fs.h"
 #include "mmap.h"
 #include "printf.h"
 #include "process.h"
 #include "ramfs.h"
 #include "stdint.h"
+#include "tty.h"
 #include "utils.h"
 #include "vm.h"
 // #include "trap_frame.h"
@@ -59,9 +61,15 @@ void handle_error(UserTCB* tcb, Semaphore* sema) {
     }
 }
 
-void syscall_handler(KernelEntryFrame* frame) {
-    int opcode = frame->X[8];
+int sys_draw_frame(KernelEntryFrame* frame);
 
+void syscall_handler(KernelEntryFrame* frame) {
+    // printf("hello\n");
+    int opcode = frame->X[8];
+    if (opcode == DRAW_FRAME) {
+        frame->X[0] = sys_draw_frame(frame);
+        return;
+    }
     // Right now, calling any variant of "printf" breaks the kernel causing an infinite exception
     // loop.
     handle_newlib_syscall(opcode, frame);
@@ -197,6 +205,7 @@ int newlib_handle_exec(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     tcb->state = TASK_STOPPED;
     PCB* pcb = tcb->pcb;
+
     pcb->supp_page_table = new SupplementalPageTable();
     pcb->page_table = new PageTable();
     int pid = pcb->pid;
@@ -521,7 +530,7 @@ int newlib_handle_time(KernelEntryFrame* frame) {
 
 int newlib_handle_sbrk(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
-    printf("called sbrk with %d\n",  frame->X[0]);
+    printf("called sbrk with %d\n", frame->X[0]);
     uint64_t ret_address = tcb->pcb->data_end;
     tcb->pcb->data_end += frame->X[0];
     frame->X[0] = ret_address;
@@ -541,9 +550,9 @@ int newlib_handle_mmap(KernelEntryFrame* frame) {
     uint64_t offset = frame->X[5];
 
     uint64_t data_end = pcb->data_end;
-    
+
     uint64_t first_user_addr = data_end + (PAGE_SIZE - (data_end % PAGE_SIZE));
-    
+
     data_end = first_user_addr + ((length / PAGE_SIZE) * PAGE_SIZE);
     if (length % PAGE_SIZE != 0) {
         data_end += PAGE_SIZE;
@@ -562,7 +571,29 @@ int newlib_handle_mmap(KernelEntryFrame* frame) {
     event_loop();
 }
 
-int newlib_handle_time_elapsed(KernelEntryFrame* frame) {
+int sys_draw_frame(KernelEntryFrame* frame) {
+    // Retrieve the pointer to the frame buffer data from the first argument
+    void* frame_data = (void*)frame->X[0];
+
+    // Access the current task's PCB to get the framebuffer buffer
+    Framebuffer* fb = fb_get();
+    if (fb == nullptr) {
+        UserTCB* tcb = get_running_user_tcb(getCoreID());
+        PCB* pcb = tcb->pcb;
+        if (pcb->frameBuffer == nullptr) {
+            pcb->frameBuffer = request_tty();
+        }
+        tcb->frameBuffer = pcb->frameBuffer;
+    }
+
+    fb = fb_get();
+    K::assert(fb != nullptr, "fb null\n");
+
+    // Perform the memory copy operation
+    K::memcpy(fb->buffer, frame_data, 1228800);  // Frame buffer size
+
+    return 0;  // Return success
+}int newlib_handle_time_elapsed(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     return get_systime() - tcb->pcb->start_time;
 }
