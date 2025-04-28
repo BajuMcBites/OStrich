@@ -135,7 +135,10 @@ static uint64_t elf_get_symval(Elf64_Ehdr *hdr, int table, uint64_t idx) {
     }
 }
 
-static int elf_load_stage1(Elf64_Ehdr *hdr) {
+/**
+ * added - setting the pcb's data_end to the end of the bss segment
+ */
+static int elf_load_stage1(Elf64_Ehdr *hdr, PCB* pcb) {
     Elf64_Shdr *shdr = elf_sheader(hdr);
 
     unsigned int i;
@@ -160,6 +163,7 @@ static int elf_load_stage1(Elf64_Ehdr *hdr) {
             case SHT_NOTE:
                 break;
             case SHT_NOBITS:
+                pcb->data_end = (section->sh_addr + section->sh_size) + (PAGE_SIZE - ((section->sh_addr + section->sh_size) % PAGE_SIZE));
                 break;
             case SHT_REL:
                 break;
@@ -529,7 +533,7 @@ static int elf_load_stage3(Elf64_Ehdr *hdr, PCB *pcb, Semaphore *sema) {
 // load
 static inline void *elf_load_rel(Elf64_Ehdr *hdr, PCB *pcb, Semaphore *sema) {
     int result;
-    result = elf_load_stage1(hdr);
+    result = elf_load_stage1(hdr, pcb);
     if (result == ELF_RELOC_ERR) {
         ERROR("Unable to load ELF file.\n");
         return nullptr;
@@ -588,7 +592,7 @@ void *load_library(char *name, PCB *pcb, Semaphore *sema) {
     g_loaded_libs = new_lib;
 
     // relocate by stage
-    elf_load_stage1(lib_hdr);
+    elf_load_stage1(lib_hdr, pcb);
     elf_load_stage2(lib_hdr);
     elf_load_stage3(lib_hdr, pcb, sema);
 
@@ -598,7 +602,7 @@ void *load_library(char *name, PCB *pcb, Semaphore *sema) {
 // load
 static inline void *elf_load_exec(Elf64_Ehdr *hdr, PCB *pcb, Semaphore *sema) {
     int result;
-    result = elf_load_stage1(hdr);
+    result = elf_load_stage1(hdr, pcb);
     if (result == ELF_RELOC_ERR) {
         ERROR("Unable to load ELF file.\n");
         return nullptr;

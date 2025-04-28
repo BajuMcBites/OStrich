@@ -1,13 +1,17 @@
 #include "process.h"
 
 #include "printf.h"
+#include "tty.h"
 
 void fork(struct UserTCB* tcb) {
     PCB* child_pcb = new PCB();
+    child_pcb->frameBuffer = request_tty();
+    child_pcb->data_end = tcb->pcb->data_end;
     tcb->pcb->add_child(child_pcb);
     child_pcb->supp_page_table->copy_mappings(tcb->pcb->supp_page_table, child_pcb, [=]() {
         UserTCB* child_tcb = new UserTCB();
         child_tcb->pcb = child_pcb;
+        child_tcb->frameBuffer = child_pcb->frameBuffer;
         memcpy(&child_tcb->context, &tcb->context, sizeof(cpu_context));
         child_tcb->context.x0 = 0;
         tcb->context.x0 = child_pcb->pid;

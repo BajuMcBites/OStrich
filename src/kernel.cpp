@@ -25,6 +25,7 @@
 #include "stdint.h"
 #include "string.h"
 #include "timer.h"
+#include "tty.h"
 #include "uart.h"
 #include "utils.h"
 #include "vm.h"
@@ -91,14 +92,14 @@ extern char _frame_table_start[];
 extern "C" void kernel_main() {
     // stringTest();
 
-    // printf("All tests passed\n");
+    printf("All tests passed\n");
     // heapTests();
     // event_loop_tests();
     // hash_test();
     // frame_alloc_tests();
-    // // user_paging_tests();
+    // user_paging_tests();
     // blocking_atomic_tests();
-    // // ramfs_tests();
+    // ramfs_tests();
     // sdioTests();
     // ring_buffer_tests();
     elf_load_test();
@@ -110,7 +111,7 @@ extern "C" void kernel_main() {
     // // testSnapshot();
     // // test_fs_requests();
 
-    // // kernel file interface
+    // kernel file interface
     // kfs_simple_test();
     // kfs_kopen_uses_cache_test();
     // kfs_stress_test(10);
@@ -185,6 +186,8 @@ extern "C" void primary_kernel_init() {
     init_dummy_tcb();  // MUST COME BEFORE LOCAL TIMER INIT
     local_timer_init();
     init_swap();
+    init_tty();
+
     wake_up_cores();
     enable_irq();
     mergeCores();
@@ -198,18 +201,31 @@ void mergeCores() {
 
     if (number_awake == CORE_COUNT) {
         printf("creating kernel_main\n");
+        create_event(keyboard_loop);
         create_event([] { kernel_main(); });
-        // used to have multiple user tcbs running
-        // for (int i = 0; i < 10; i++) {
-        //     elf_load_test();
-        // }
+        // elf_load_test();
     }
     // Uncomment to run snake
-    // if(getCoreID() == 0){
-    //     printf("init_snake() + keyboard_loop();\n");
-    //     create_event(init_snake);
-    //     create_event(keyboard_loop);
-    // }
+    if (getCoreID() == 0) {
+        printf("init_snake() + keyboard_loop();\n");
+        create_event(run_tty);
+        create_event([] {
+            auto tcb = get_running_task(getCoreID());
+            tcb->frameBuffer = request_tty();  // give the snake tcb its own frame buffer
+            init_snake();
+        });
+
+        create_event([] {
+            init_animation();
+            update_animation();
+            create_event(update_animation);
+            create_event(update_animation);
+            create_event(update_animation);
+            create_event(update_animation);
+        });
+
+        create_event(run_tty);
+    }
     event_loop();
     printf("PANIC I should not go here\n");
 }

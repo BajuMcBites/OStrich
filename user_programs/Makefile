@@ -22,7 +22,7 @@ CFLAGS=-Wall -Wextra -I$(INCLUDE_DIR) -g \
 # -no-stdlib
 # -ffreestanding
     
-LDFLAGS=-z max-page-size=0x1000 -L $(LIB_DIR) 
+LDFLAGS=-z max-page-size=0x1000 -L $(LIB_DIR) -T $(LINKER_SCRIPT)
 # -T $(LINKER_SCRIPT), when we want to use our own linker script
 # -latomic, for a library (.a / .so) called "atomics
 

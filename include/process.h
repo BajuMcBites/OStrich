@@ -5,7 +5,9 @@
 #include "event.h"
 #include "file_table.h"
 #include "printf.h"
+#include "shared.h"
 #include "vm.h"
+#include "timer.h"
 
 #define NR_TASKS (1 << 8)
 
@@ -71,6 +73,11 @@ struct PCB {
     PCB* child_end;
     PCB* next;
     PCB* before;
+    
+    uint64_t start_time;
+    Shared<Framebuffer> frameBuffer;
+
+    uint64_t data_end;
 
     // Files and stuff.
     FileTable* file_table;
@@ -91,6 +98,9 @@ struct PCB {
         parent = nullptr;
         child_start = child_end = next = before = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
+        frameBuffer = nullptr;
+        data_end = ~VA_START - (8192 * PAGE_SIZE); /* preferrable set this after bss segment */
+        start_time = get_systime();
     }
     PCB(int id) {
         if (task[pid]) delete task[pid];
@@ -105,6 +115,8 @@ struct PCB {
         parent = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
         before = nullptr;
+        data_end = ~VA_START - (8192 * PAGE_SIZE);
+        start_time = get_systime();
     }
 
     void raise_signal(Signal* s) {

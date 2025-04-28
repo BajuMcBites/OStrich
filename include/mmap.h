@@ -19,11 +19,12 @@
  * bits [31:2] other flags ored in
  */
 
-#define MAP_SHARED 0x0
-#define MAP_SHARED_VALIDATE 0x1  // dont use right now
+#define MAP_SHARED_VALIDATE 0x0  // dont use right now
+#define MAP_SHARED 0x1
 #define MAP_PRIVATE 0x2
 
-#define MAP_ANONYMOUS 0x4
+#define MAP_FILE      0x0000  /* map from file (default) */
+#define MAP_ANONYMOUS 0x1000
 #define MAP_NORESERVE 0x8
 
 void load_mmapped_page(PCB* pcb, uint64_t uvaddr, Function<void(uint64_t)> w);

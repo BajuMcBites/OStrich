@@ -60,7 +60,7 @@ void draw_rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uin
 
     for (size_t y = 0; y < height; y++, ptr += fb_pitch - width) {
         for (size_t x = 0; x < width; x++, ptr++) {
-            *(fb_buffer + ptr) = color;
+            *((uint32_t *)fb_get()->buffer + ptr) = color;
         }
     }
 }

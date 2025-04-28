@@ -1,16 +1,28 @@
 #include "framebuffer.h"
 
 #include "dcache.h"
+#include "event.h"
 #include "printf.h"
 #include "utils.h"
 // #include "core.h"
 
-static Framebuffer fb __attribute__((aligned(16)));
+static Framebuffer real_fb __attribute__((aligned(16)));
+
+static Framebuffer kernel_fb __attribute__((aligned(16)));
 
 static SpinLock fb_lock;
 
 Framebuffer* fb_get(void) {
-    return &fb;
+    auto buffer = get_running_task(getCoreID())->frameBuffer;
+    return buffer.operator->();
+}
+
+Framebuffer* get_kernel_fb(void) {
+    return &kernel_fb;
+}
+
+Framebuffer* get_real_fb(void) {
+    return &real_fb;
 }
 
 static constexpr int x_start = 0;
@@ -74,18 +86,26 @@ int fb_init(void) {
         if (mbox[23]) {
             printf("Got framebuffer address: %x\n", mbox[23]);
             mbox[23] &= 0x3FFFFFFF;
-            fb.width = mbox[10];
-            fb.height = mbox[11];
-            fb.pitch = mbox[28];
-            fb.isrgb = mbox[19];
-            fb.buffer = (void*)((unsigned long)mbox[23]);
-            fb.size = mbox[24];
+            real_fb.width = mbox[10];
+            real_fb.height = mbox[11];
+            real_fb.pitch = mbox[28];
+            real_fb.isrgb = mbox[19];
+            real_fb.buffer = (void*)((unsigned long)mbox[23] | VA_START);
+            real_fb.size = mbox[24];
+
+            kernel_fb.width = mbox[10];
+            kernel_fb.height = mbox[11];
+            kernel_fb.pitch = mbox[28];
+            kernel_fb.isrgb = mbox[19];
+            kernel_fb.buffer = (void*)((unsigned long)mbox[23] | VA_START);
+            kernel_fb.size = mbox[24];
+
             fb_init_done = true;
             clean_dcache_line(&fb_init_done);
             printf("Framebuffer initialized:\n");
-            printf("Width: %d, Height: %d\n", fb.width, fb.height);
-            printf("Pitch: %d, Buffer size: %d\n", fb.pitch, fb.size);
-            printf("Buffer address: %x\n", (unsigned long)fb.buffer);
+            printf("Width: %d, Height: %d\n", real_fb.width, real_fb.height);
+            printf("Pitch: %d, Buffer size: %d\n", real_fb.pitch, real_fb.size);
+            printf("Buffer address: %x\n", (unsigned long)real_fb.buffer);
 
             printf("Powering on HDMI...\n");
             mbox[0] = 35 * 4;
@@ -203,6 +223,17 @@ void fb_clear(unsigned int color) {
     }
 }
 
+void fb_blank(unsigned int color) {
+    Framebuffer* fb = get_real_fb();
+    unsigned int* fb_ptr = (unsigned int*)fb->buffer;
+
+    for (unsigned int y = 0; y < fb->height; y++) {
+        for (unsigned int x = 0; x < fb->width; x++) {
+            fb_ptr[y * (fb->pitch / 4) + x] = color;
+        }
+    }
+}
+
 void fb_draw_image(int x, int y, const unsigned int* image_data, int width, int height) {
     Framebuffer* fb = fb_get();
     unsigned int* fb_ptr = (unsigned int*)fb->buffer;
@@ -291,10 +322,10 @@ unsigned int tint_color(unsigned int original, unsigned int tint) {
 
 void init_animation(void) {
     printf("Setting white background...\n");
-    unsigned int* ptr = (unsigned int*)fb.buffer;
-    for (unsigned int y = 0; y < fb.height; y++) {
-        for (unsigned int x = 0; x < fb.width; x++) {
-            ptr[y * (fb.pitch / 4) + x] = 0xFFFFFFFF;
+    unsigned int* ptr = (unsigned int*)real_fb.buffer;
+    for (unsigned int y = 0; y < real_fb.height; y++) {
+        for (unsigned int x = 0; x < real_fb.width; x++) {
+            ptr[y * (real_fb.pitch / 4) + x] = 0xFFFFFFFF;
         }
     }
     int core_id = getCoreID();
@@ -364,6 +395,7 @@ void update_animation(void) {
     for (volatile int i = 0; i < 1000000; i++) {
         asm volatile("nop");
     }
+    create_event(update_animation);
 }
 
 void clear_screen(void) {
