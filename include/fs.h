@@ -21,7 +21,6 @@ enum class FileType {
     SWAP,
     UNKNOWN,
 };
-
 // Represents a file that is opened by any process (user or kernel).
 class KFile {
    public:
@@ -101,8 +100,8 @@ class FileListNode {
    public:
     FileListNode(KFile* file, uint64_t hash) : file(file), name_hash(hash), next(nullptr) {
     }
-    uint64_t name_hash;
     KFile* file;
+    uint64_t name_hash;
     FileListNode* next;
 };
 

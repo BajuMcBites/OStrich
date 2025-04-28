@@ -3,6 +3,7 @@
 
 #include "atomic.h"
 #include "event.h"
+#include "file_table.h"
 #include "printf.h"
 #include "vm.h"
 
@@ -71,7 +72,11 @@ struct PCB {
     PCB* next;
     PCB* before;
 
-    PCB() {
+    // Files and stuff.
+    FileTable* file_table;
+    int cwd;  // 0 is root.
+
+    PCB() : cwd(0 /* root */) {
         K::assert(task_cnt < NR_TASKS, "we are out of task space!\n");
         while (task[curr_task] != nullptr) {
             curr_task = (curr_task + 1) % NR_TASKS;
@@ -81,6 +86,7 @@ struct PCB {
         pid = curr_task;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
+        file_table = new FileTable;
         waiting_parent = nullptr;
         parent = nullptr;
         child_start = child_end = next = before = nullptr;
@@ -93,6 +99,7 @@ struct PCB {
         task[pid] = this;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
+        file_table = new FileTable;
         waiting_parent = nullptr;
         child_start = child_end = next = nullptr;
         parent = nullptr;
@@ -143,6 +150,7 @@ struct PCB {
         delete page_table;
         delete supp_page_table;
         delete sigs;
+        delete file_table;
         if (waiting_parent) delete waiting_parent;
     }
 };
