@@ -60,7 +60,6 @@ class ISocket {
     Function<void(size_t)> recv_callback;
     bool configured = false;
 
-    size_t lock_if_present(uint8_t* buffer);
     size_t handle_tcp(uint8_t* slot, uint8_t* buffer);
     size_t handle_udp(uint8_t* slot, uint8_t* buffer);
 

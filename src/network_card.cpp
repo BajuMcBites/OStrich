@@ -26,7 +26,6 @@ void process_packet(usb_session *session, uint8_t *buffer, size_t len) {
     PacketBufferParser parser(buffer, len);
 
     auto frame = parser.pop<EthernetFrame>();
-
     switch (frame->ethertype.get()) {
         case 0x0806:  // ARP
             handle_arp_packet(session, &parser);

@@ -9,6 +9,7 @@
 #include "net_stack.h"
 #include "network_card.h"
 #include "printf.h"
+
 void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
     PacketParser<EthernetFrame, IPv4Packet, TCPPacket> parser(buffer_parser->get_packet_base(),
                                                               buffer_parser->get_length());
@@ -33,7 +34,6 @@ void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
     }
 
     uint16_t port = udp_datagram->dst_port.get();
-
     switch (port) {
         case 68: {  // DHCP
             PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, DHCPPacket> parser(
@@ -47,9 +47,6 @@ void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
 
             handle_dns_response(session, &parser);
 
-            // printf("type = 0x%x, _class = 0x%x, ttl = 0x%x, rdlength = 0x%x, rdata = 0x%x\n",
-            //        ptr->type.get(), ptr->_class.get(), ptr->ttl.get(),
-            //        ptr->rdlength.get(), ptr->rdata);
             break;
         }
         // Probably UDP.

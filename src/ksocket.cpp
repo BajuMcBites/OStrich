@@ -81,19 +81,15 @@ size_t ISocket::dequeue(uint8_t* buffer) {
     num_empty.up();
 
     // printf("num_empty::");
-
-    printf("Payload length: %d\n", payload_length);
-
     return payload_length;
 }
 
 size_t ISocket::recv(uint8_t* buffer) {
     size_t length;
     while ((status.tcp.flags.alive || protocol == IP_UDP) && (length = dequeue(buffer)) == 0) {
-        printf("recv: waiting for packet\n");
+        // printf("recv: waiting for packet\n");
         // wait_msec(1);
     }
-    printf("recv: got packet\n");
     return length;
 }
 
@@ -171,7 +167,7 @@ size_t ISocket::handle_udp(uint8_t* slot, uint8_t* buffer) {
     auto udp_packet = other.get<UDPDatagram>();
     auto payload = other.get<Payload>();
 
-    int payload_length = 512;  // hard coding rn bc im a chad.
+    int payload_length = udp_packet->total_length.get() - sizeof(udp_header);  // hard coding rn bc im a chad.
     memcpy(buffer, payload, payload_length);
     return payload_length;
 }
@@ -214,14 +210,42 @@ void ISocket::send(uint8_t* buffer, size_t length, uint16_t response_flags) {
 
 void UDPSocket::send_udp(const uint8_t* buffer, size_t length) {
     PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, Payload> parser(send_buffer, 1514);
+    auto eth = parser.get<EthernetFrame>();
     auto ipv4 = parser.get<IPv4Packet>();
     auto udp = parser.get<UDPDatagram>();
     auto payload = parser.get<Payload>();
 
-    udp->total_length = length;
+    udp->total_length = sizeof(udp_header) + length;
     udp->src_port = src_port;
     udp->dst_port = dst_port;
     memcpy(payload, buffer, length);
+
+    pseduo_header header;
+    header.src_ip = dhcp_state.my_ip;
+    header.dst_ip = dst_ip;
+    header.protocol = IP_UDP;
+    header.length = udp->total_length.get();
+    header.zero = 0x00;
+
+    udp->checksum = 0;
+    udp->checksum = calc_checksum(&header, udp, sizeof(header), udp->total_length.get());
+
+    ipv4->total_length = (ipv4->ihl * 4) + udp->total_length.get();
+    ipv4->dst_address = this->dst_ip;
+
+    ipv4->header_check_sum = 0;
+    ipv4->header_check_sum = calc_checksum(nullptr, ipv4, 0, ipv4->ihl * 4);
+
+    // uint8_t my_mac[6] = {0xb6, 0x98, 0x92, 0x6f, 0xe9, 0x66};
+    memcpy(eth->dst_mac, get_arp_cache().get(dhcp_state.dhcp_server_ip), 6);
+    // memcpy(eth->dst_mac, my_mac, 6);
+
+    // printf("send_buffer = \n");
+    // for (int i = 0; i < sizeof(ethernet_header) + sizeof(ipv4_header) + udp->total_length.get();
+    //      i++) {
+    //     printf("%x ", ((uint8_t*)send_buffer)[i]);
+    // }
+    // printf("\n");
 
     send_packet(send_buffer, ipv4->total_length.get() + sizeof(ethernet_header));
 }

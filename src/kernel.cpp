@@ -193,6 +193,49 @@ extern "C" void primary_kernel_init() {
     mergeCores();
 }
 
+void other_demo() {
+    usb_session *session = network_usb_send_session(nullptr);
+
+    arp_resolve_mac(session, 0x6456150B, [&](uint8_t *mac) { printf("received something!\n"); });
+    dns_query(network_usb_send_session(nullptr), "google.com", [=](server_group *group) {
+        printf("received %d ips for \'google.com\' \n", group->count);
+    });
+    // dns_query(network_usb_send_session(nullptr), "wireless-10-146-83-156.public.utexas.edu",
+    // [=](server_group *group){
+    //     printf("received %d\n", group->count);
+    // });
+}
+
+void network_game() {
+    create_event([=]() { network_loop(); });
+    wait_msec(1000);
+    create_event([=]() { keyboard_loop(); });
+    wait_msec(1000000);
+    create_event([=]() { init_snake(); });
+}
+
+void download_demo() {
+    create_event([=]() { network_loop(); });
+     wait_msec(1000);
+    create_event([=]() {
+        // ServerSocket server(100);
+        UDPSocket socket(/*localhost uint32_t not even used tho lmao */ 0x7F000001, 25565);
+        uint8_t __attribute__((aligned(8))) buffer[1516];
+
+        size_t received = 0;
+        uint32_t pckt_cnt = 0;
+
+        while (1) {
+            size_t length = socket.recv(buffer);
+            printf("received %d bytes\n", length);
+            received += length;
+            socket.send_udp((const uint8_t *)"Hello from core 1!", K::strlen("Hello from core 1!"));
+        }
+
+        printf("socket no longer active, received %d bytes total!\n", received);
+    });
+}
+
 void mergeCores() {
     printf("Hi, I'm core %d\n", getCoreID());
     auto number_awake = coresAwake.add_fetch(1);
@@ -204,31 +247,33 @@ void mergeCores() {
     }
 
     if (getCoreID() == 0) {
-        wait_msec(1000000);
-        printf("initializing network loop!\n");
-        create_event([=]() { network_loop(); });
+        network_game();
+        // create_event([=]() { network_loop(); });
+        // wait_msec(1000);
         // create_event([=]() { keyboard_loop(); });
+        // wait_msec(1000000);
+        // create_event([=]() { other_demo(); });
 
     } else if (getCoreID() == 1) {
-        create_event([=]() {
-            // ServerSocket server(100);
-            UDPSocket socket(/*localhost uint32_t not even used tho lmao */ 0x7F000001, 25565);
-            uint8_t __attribute__((aligned(8))) buffer[1516];
+        // create_event([=]() {
+        //     // ServerSocket server(100);
+        //     UDPSocket socket(/*localhost uint32_t not even used tho lmao */ 0x7F000001, 25565);
+        //     uint8_t __attribute__((aligned(8))) buffer[1516];
 
-            size_t received = 0;
-            uint32_t pckt_cnt = 0;
+        //     size_t received = 0;
+        //     uint32_t pckt_cnt = 0;
 
-            while (1) {
-                size_t length = socket.recv(buffer);
-                printf("received %d bytes\n", length);
-                received += length;
-                socket.send_udp((const uint8_t *)"Hello from core 1!",
-                                K::strlen("Hello from core 1!"));
-            }
+        //     while (1) {
+        //         size_t length = socket.recv(buffer);
+        //         printf("received %d bytes\n", length);
+        //         received += length;
+        //         socket.send_udp((const uint8_t *)"Hello from core 1!",
+        //                         K::strlen("Hello from core 1!"));
+        //     }
 
-            printf("socket no longer active, received %d bytes total!\n", received);
-        });
-        // create_event([=]() { snake_generic_main(); });
+        //     printf("socket no longer active, received %d bytes total!\n", received);
+        // });
+    } else if (getCoreID() == 2) {
     }
     event_loop();
     printf("PANIC I should not go here\n");

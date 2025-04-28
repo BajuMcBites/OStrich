@@ -82,13 +82,13 @@ void dns_query(usb_session* session, const char* domain, Function<void(server_gr
     }
 
     K::assert(dhcp_state.dns_servers.count > 0, "DHCP found no available DNS servers");
-
-    dhcp_state.dns_servers.for_each([&session, &domain, &consumer](uint32_t dns_server_ip) {
+    dhcp_state.dns_servers.for_each([&domain, &consumer](uint32_t dns_server_ip) {
         if (!arp_has_resolved(dns_server_ip)) {
             uint8_t* ip = (uint8_t*)&dns_server_ip;
             return;
         }
 
+        printf("sending dns query using some server\n");
         uint8_t packet[512];
 
         dns_query_header* header = (dns_query_header*)packet;
@@ -107,15 +107,21 @@ void dns_query(usb_session* session, const char* domain, Function<void(server_gr
 
         size_t len;
         ethernet_header* frame;
-        frame = ETHFrameBuilder{get_mac_address(), get_arp_cache().get(dns_server_ip), 0x0800}
-                    .encapsulate(IPv4Builder{}
-                                     .with_src_address(dhcp_state.my_ip)
-                                     .with_dst_address(dns_server_ip)
-                                     .with_protocol(IP_UDP)
-                                     .encapsulate(UDPBuilder{22, 53}.encapsulate(
-                                         PayloadBuilder{packet, end - packet})))
-                    .build(nullptr, &len);
+        frame =
+            ETHFrameBuilder{get_mac_address(), get_arp_cache().get(dns_server_ip), 0x0800}
+                .encapsulate(IPv4Builder{}
+                                 .with_src_address(dhcp_state.my_ip)
+                                 .with_dst_address(dns_server_ip)
+                                 .with_protocol(IP_UDP)
+                                 .encapsulate(UDPBuilder{22, 53}.with_pseduo_header(dhcp_state.my_ip, dns_server_ip).encapsulate(
+                                     PayloadBuilder{packet, end - packet})))
+                .build(nullptr, &len);
 
+        printf("frame length = %d\n");
+        for (int i = 0; i < len; i++) {
+            printf("%x ", ((uint8_t*)frame)[i]);
+        }
+        printf("\n");
         send_packet((uint8_t*)frame, len);
 
         delete frame;
@@ -132,7 +138,6 @@ void handle_dns_response(usb_session* session,
                                       Packet<dns_query_header>, Payload>* parser) {
     ipv4_header* ipv4_header = parser->get<IPv4Packet>();
     dns_query_header* header = parser->get<Packet<dns_query_header>>();
-
     auto payload = parser->get<Payload>();
 
     uint16_t flags = header->flags.get();
@@ -176,7 +181,6 @@ void handle_dns_response(usb_session* session,
         const char* key = (const char*)malloced_key;
 
         get_dns_cache().put(key, group);
-
         get_event_handler()->handle_event(
             DNS_RESOLVED_EVENT | (string_hash(domain_name) & 0xFFFFFFFF), group);
     }

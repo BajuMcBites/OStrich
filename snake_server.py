@@ -5,12 +5,14 @@ import json
 import threading
 import uuid
 import struct
+import os
 from typing import Dict, List, Tuple, Set
+import binascii
 
 # Game constants
 GRID_WIDTH = 680
 GRID_HEIGHT = 480
-TICK_RATE = 5  # Game updates per second
+TICK_RATE = 20  # Game updates per second
 FOOD_COUNT = 5
 MAX_SNAKE_LENGTH = 100  # Maximum snake length for binary format
 USE_BINARY_PROTOCOL = True  # Set to False to use JSON protocol
@@ -95,27 +97,8 @@ class SnakeGame:
     def register_player(self, player_id, client_addr):
         """Register a new player"""
         with self.lock:
-            # Create snake in a random position
-            while True:
-                head_x = random.randint(5, GRID_WIDTH-5)
-                head_y = random.randint(5, GRID_HEIGHT-5)
-                head = (head_x, head_y)
-                
-                # Check if position is valid
-                valid = True
-                for pid, snake in self.players.items():
-                    if head in snake.body:
-                        valid = False
-                        break
-                
-                if valid and head not in self.food:
-                    break
-            
-            # Random direction
-            direction = random.choice(list(DIRECTIONS.keys()))
-            
             # Create snake with 3 segments
-            snake = Snake(head, direction)
+            snake = Snake(0, 0)
             
             # Add player to game
             self.players[player_id] = snake
@@ -144,56 +127,6 @@ class SnakeGame:
                 
                 snake.direction = direction
     
-    def update_game_state(self):
-        """Update the game state for one tick"""
-        with self.lock:
-            self.timestamp += 1
-            
-            # Move each snake
-            dead_players = []
-            for player_id, snake in self.players.items():
-                # Move the snake
-                direction_vector = DIRECTIONS[snake.direction]
-                head_x, head_y = snake.body[0]
-                new_head = ((head_x + direction_vector[0]) % GRID_WIDTH, 
-                            (head_y + direction_vector[1]) % GRID_HEIGHT)
-                
-                # Check if new head position hits its own body
-                if new_head in snake.body[:-1]:
-                    dead_players.append(player_id)
-                    continue
-                
-                # Check if new head position hits another snake
-                collision = False
-                for pid, other_snake in self.players.items():
-                    if pid == player_id:
-                        continue
-                    if new_head in other_snake.body:
-                        collision = True
-                        break
-                
-                if collision:
-                    dead_players.append(player_id)
-                    continue
-                
-                # Move the snake
-                snake.body.insert(0, new_head)
-                
-                # Check if snake ate food
-                if new_head in self.food:
-                    self.food.remove(new_head)
-                    # snake grows, don't remove tail
-                else:
-                    # remove tail
-                    snake.body.pop()
-            
-            # Remove dead players
-            for player_id in dead_players:
-                del self.players[player_id]
-            
-            # Regenerate food if needed
-            self.regenerate_food()
-    
     def get_game_state(self):
         """Get the current game state as a serializable object"""
         with self.lock:
@@ -219,65 +152,36 @@ class SnakeGame:
             # [For each player: [16 bytes: player UUID] [1 byte: direction] [1 byte: snake length] [snake_length * 2 shorts: snake body]]
             
             # Calculate binary size
-            food_bytes = len(self.food) * 4  # 2 shorts (2 bytes each) per food
-            player_bytes = sum(min(len(snake.body), MAX_SNAKE_LENGTH) * 4 + 18 for snake in self.players.values())
-            
             # Pack header
             data = struct.pack(
-                '!BIBB',  # !: network byte order, B: unsigned char, I: unsigned int
+                '!BIB',  # !: network byte order, B: unsigned char, I: unsigned int
                 MSG_STATE_UPDATE,
                 self.timestamp,
-                len(self.players),
-                len(self.food)
+                len(self.players)
             )
             
-            # Pack food
-            for x, y in self.food:
-                data += struct.pack('!HH', x, y)  # H: unsigned short
-            
-            # Pack players
             for player_id, snake in self.players.items():
-                # Convert UUID string to bytes (16 bytes)
-                uuid_bytes = uuid.UUID(player_id).bytes
-                
-                # Get direction code
-                dir_code = DIR_MAP.get(snake.direction, DIR_UP)
-                
-                # Limit snake length to MAX_SNAKE_LENGTH
-                snake_body = snake.body[:MAX_SNAKE_LENGTH]
-                
                 # Pack player header
                 data += struct.pack(
-                    '!16sBB',
-                    uuid_bytes,
-                    dir_code,
-                    len(snake_body)
+                    '8shh',
+                    binascii.a2b_hex(player_id.encode('ascii')),
+                    snake.x,
+                    snake.y
                 )
                 
-                # Pack snake body
-                for x, y in snake_body:
-                    data += struct.pack('!HH', x, y)
-            
             return data
 
 
 class Snake:
-    def __init__(self, head, direction):
+    def __init__(self, x, y):
         # Create a snake with 3 segments
-        self.direction = direction
-        dir_vec = DIRECTIONS[direction]
-        
-        # Calculate body positions (going backwards from head)
-        self.body = [
-            head,
-            ((head[0] - dir_vec[0]) % GRID_WIDTH, (head[1] - dir_vec[1]) % GRID_HEIGHT),
-            ((head[0] - 2*dir_vec[0]) % GRID_WIDTH, (head[1] - 2*dir_vec[1]) % GRID_HEIGHT)
-        ]
+        self.x = x
+        self.y = y
 
 
 class SnakeServer:
-    def __init__(self, host='0.0.0.0', port=25566, use_binary=USE_BINARY_PROTOCOL):
-        self.host = host
+    def __init__(self, port=25566, use_binary=USE_BINARY_PROTOCOL):
+        self.host = '192.168.208.75'
         self.port = port
         self.game = SnakeGame()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -287,7 +191,8 @@ class SnakeServer:
         
     def start(self):
         """Start the server"""
-        self.socket.bind((self.host, self.port))
+        self.socket.bind(('192.168.208.75', self.port))
+        print(socket.gethostbyaddr(socket.gethostname()))
         self.running = True
         self.game.running = True
         
@@ -302,7 +207,7 @@ class SnakeServer:
         timeout_thread.start()
         
         print(f"Snake server running on {self.host}:{self.port}")
-        
+
         try:
             self.listen_for_clients()
         except KeyboardInterrupt:
@@ -325,128 +230,55 @@ class SnakeServer:
         """Process a message from a client"""
         if self.use_binary:
             self.handle_binary_message(data, addr)
-        else:
-            self.handle_json_message(data, addr)
-    
-    def handle_json_message(self, data, addr):
-        """Process a JSON message from a client"""
-        try:
-            # Decode message
-            message = json.loads(data.decode('utf-8'))
-            message_type = message.get('type')
-            
-            if message_type == 'join':
-                # New player joining
-                player_id = str(uuid.uuid4())
-                self.game.register_player(player_id, addr)
-                self.clients[player_id] = (addr, time.time())
-                
-                # Send player ID back to client
-                response = {
-                    'type': 'join_ack',
-                    'player_id': player_id,
-                    'grid_size': (GRID_WIDTH, GRID_HEIGHT)
-                }
-                self.socket.sendto(json.dumps(response).encode('utf-8'), addr)
-                
-                print(f"New player joined: {player_id} from {addr}")
-            
-            elif message_type == 'input':
-                # Player sending input (direction change)
-                player_id = message.get('player_id')
-                direction = message.get('direction')
-                
-                if player_id in self.clients:
-                    # Update last seen time
-                    self.clients[player_id] = (addr, time.time())
-                    
-                    # Update player direction
-                    self.game.update_player_direction(player_id, direction)
-            
-            elif message_type == 'heartbeat':
-                # Client heartbeat to keep connection alive
-                player_id = message.get('player_id')
-                if player_id in self.clients:
-                    # Update last seen time
-                    self.clients[player_id] = (addr, time.time())
-                    
-                    # Send current game state
-                    self.send_game_state_to_client(player_id)
-        
-        except json.JSONDecodeError:
-            print(f"Invalid JSON from {addr}")
-        except Exception as e:
-            print(f"Error processing message from {addr}: {e}")
     
     def handle_binary_message(self, data, addr):
         """Process a binary message from a client"""
         try:
             if len(data) < 1:
                 return
-                
+            
             # First byte is message type
             msg_type = data[0]
             
             if msg_type == MSG_JOIN:
                 # New player joining
-                player_id = str(uuid.uuid4())
+                uuid = os.urandom(8)
+                player_id = binascii.hexlify(uuid).decode('ascii')
+
                 self.game.register_player(player_id, addr)
                 self.clients[player_id] = (addr, time.time())
-                
-                # Send acknowledgment (MSG_JOIN_ACK + 16-byte uuid + 2-byte width + 2-byte height)
-                uuid_bytes = uuid.UUID(player_id).bytes
-                response = struct.pack('!B16sHH', MSG_JOIN_ACK, uuid_bytes, GRID_WIDTH, GRID_HEIGHT)
+                # Send acknowledgment (MSG_JOIN_ACK + 8-byte uuid + 2-byte width + 2-byte height)
+
+                response = struct.pack('!B8s', MSG_JOIN_ACK, uuid)
                 self.socket.sendto(response, addr)
                 
                 print(f"New player joined: {player_id} from {addr}")
                 
             elif msg_type == MSG_INPUT:
-                # Format: [1 byte: message type] [16 bytes: player UUID] [1 byte: direction]
-                if len(data) < 18:
+                # Format: [1 byte: message type] [8 bytes: player UUID] [2 byte: x position] [2 byte: y position]
+                if len(data) < 13:
                     return
-                    
                 # Extract UUID
-                uuid_bytes = data[1:17]
-                player_id = str(uuid.UUID(bytes=uuid_bytes))
-                
-                # Extract direction
-                dir_code = data[17]
-                if dir_code in DIR_MAP_REVERSE:
-                    direction = DIR_MAP_REVERSE[dir_code]
-                    
-                    if player_id in self.clients:
-                        # Update last seen time
-                        self.clients[player_id] = (addr, time.time())
-                        
-                        # Update player direction
-                        self.game.update_player_direction(player_id, direction)
-                        
-            elif msg_type == MSG_HEARTBEAT:
-                # Format: [1 byte: message type] [16 bytes: player UUID]
-                if len(data) < 17:
-                    return
-                    
-                # Extract UUID
-                uuid_bytes = data[1:17]
-                player_id = str(uuid.UUID(bytes=uuid_bytes))
-                
+                uuid_bytes = data[1:9]
+                player_id = binascii.hexlify(uuid_bytes).decode('ascii')
+
                 if player_id in self.clients:
-                    # Update last seen time
+                        # Extract direction
+                # dir_code = data[17]
+                    x = int.from_bytes(data[9:11], byteorder='little')
+                    y = int.from_bytes(data[11:13], byteorder='little')
                     self.clients[player_id] = (addr, time.time())
-                    
-                    # Send current game state
-                    self.send_game_state_to_client(player_id)
+
+                    self.game.players[player_id].x = x
+                    self.game.players[player_id].y = y
                 
         except Exception as e:
             print(f"Error processing binary message from {addr}: {e}")
     
     def game_loop(self):
         """Game update loop"""
-        while self.game.running:
+        while self.running:
             try:
-                # Update game state
-                self.game.update_game_state()
-                
                 # Send updated state to all clients
                 self.broadcast_game_state()
                 
@@ -468,47 +300,7 @@ class SnakeServer:
                     self.socket.sendto(binary_state, addr)
                 except:
                     print(f"Failed to send to client {player_id}")
-        else:
-            # JSON format
-            game_state = self.game.get_game_state()
-            state_message = {
-                'type': 'state_update',
-                'state': game_state
-            }
-            
-            encoded_message = json.dumps(state_message).encode('utf-8')
-            
-            # Send to all clients
-            for player_id, (addr, _) in list(self.clients.items()):
-                try:
-                    self.socket.sendto(encoded_message, addr)
-                except:
-                    print(f"Failed to send to client {player_id}")
     
-    def send_game_state_to_client(self, player_id):
-        """Send current game state to a specific client"""
-        if player_id in self.clients:
-            addr = self.clients[player_id][0]
-            
-            if self.use_binary:
-                # Binary format
-                binary_state = self.game.get_binary_game_state()
-                try:
-                    self.socket.sendto(binary_state, addr)
-                except:
-                    print(f"Failed to send state to client {player_id}")
-            else:
-                # JSON format
-                game_state = self.game.get_game_state()
-                state_message = {
-                    'type': 'state_update',
-                    'state': game_state
-                }
-                
-                try:
-                    self.socket.sendto(json.dumps(state_message).encode('utf-8'), addr)
-                except:
-                    print(f"Failed to send state to client {player_id}")
     
     def check_client_timeouts(self):
         """Remove clients that haven't sent messages in a while"""
@@ -534,5 +326,5 @@ class SnakeServer:
 
 
 if __name__ == '__main__':
-    server = SnakeServer(host='0.0.0.0', port=25566, use_binary=USE_BINARY_PROTOCOL)
+    server = SnakeServer(port=25566, use_binary=USE_BINARY_PROTOCOL)
     server.start()

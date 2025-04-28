@@ -23,7 +23,6 @@ uint16_t dequeue_ptr = 0;
 undo undo_queue[QUEUE_SIZE];
 
 game_state state;
-uint8_t uuid[16] = {0};
 
 int get_queue_size() {
     int adj = 0;
@@ -32,30 +31,6 @@ int get_queue_size() {
     }
     return (enqueue_ptr + adj) - (dequeue_ptr) + 1;
 }
-
-// Unused.
-// int tick(game_state *state) {
-//     game_state::snake_t *snake = &state->snake[0];
-//     game_state::food_t *food = &state->food[0];
-//     snake->prior_direction = snake->direction;
-
-//     snake->x += ((snake->direction >> 4) & 0xF) - 1;
-//     snake->y += (snake->direction & 0xF) - 1;
-
-//     if (snake->x == food->x && snake->y == food->y) {
-//         snake->max_length += 1;
-//         food->flags.generate = true;
-//     }
-//     if (food->flags.generate) {
-//         uint8_t x = ((WIDTH / SCALE) * (rand.random() + 1000)) / 2000;
-//         uint8_t y = ((HEIGHT / SCALE) * (rand.random() + 1000)) / 2000;
-//         food->x = x;
-//         food->y = y;
-//         food->flags.generate = false;
-//         food->flags.draw = true;
-//     }
-//     return 0;
-// }
 
 void draw_rectangle(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint32_t color) {
     uint32_t ptr = y * fb_pitch + x;
@@ -77,59 +52,53 @@ void clear_undo(int n) {
 }
 
 int render(game_state *state) {
+    // draw_rectangle(0, 0, WIDTH, HEIGHT, 0x11FFFFFF);
     for (size_t i = 0; i < state->num_players; i++) {
-        game_state::snake_t *snake = &state->snake[i];
+        game_state::snake_t *snake = &state->snakes[i];
 
-        if (x < 0 || y < 0 || x >= WIDTH / SCALE || y >= HEIGHT / SCALE) return 1;
-
-        // Naively render the snake.
-        for (int j = 0; j < MAX_BODY_LENGTH; j++) {
-            draw_rectangle(state.full_snake[i].x[j] * SCALE, state.full_snake[i].y[j] * SCALE,
-                           SCALE, SCALE, colors[i]);
+        if (snake->x < 0 || snake->y < 0 || snake->x >= WIDTH / SCALE ||
+            snake->y >= HEIGHT / SCALE) {
+            continue;
         }
+        // Naively render the snake.
+        draw_rectangle(state->snakes[i].x * SCALE, state->snakes[i].y * SCALE, SCALE, SCALE,
+                       colors[i]);
     }
 
-    for (size_t i = 0; i < state->num_food; i++) {
-        game_state::food_t *food = &state->food[i];
-        draw_rectangle(food->x * SCALE, food->y * SCALE, SCALE, SCALE, 0xFFF0000);
-        // if (food->flags.draw) {
-        //     food->flags.draw = false;
-        // }
-    }
+    // for (size_t i = 0; i < state->num_food; i++) {
+    //     game_state::food_t *food = &state->food[i];
+    //     draw_rectangle(food->x * SCALE, food->y * SCALE, SCALE, SCALE, 0xFFF0000);
+    // }
 
     return 0;
 }
 
 void snake_on_key_press(struct key_event *event) {
     if (event->flags.released) return;
-
-    if (event->keycode == KEY_W && state.snake.prior_direction != DIRECTION_DOWN) {
-        state.snake.direction = DIRECTION_UP;
-    } else if (event->keycode == KEY_D && state.snake.prior_direction != DIRECTION_LEFT) {
-        state.snake.direction = DIRECTION_RIGHT;
-    } else if (event->keycode == KEY_S && state.snake.prior_direction != DIRECTION_UP) {
-        state.snake.direction = DIRECTION_DOWN;
-    } else if (event->keycode == KEY_A && state.snake.prior_direction != DIRECTION_RIGHT) {
-        state.snake.direction = DIRECTION_LEFT;
+    if (event->keycode == KEY_W) {
+        state.snakes[0].direction = event->flags.pressed ? DIRECTION_UP : DIRECTION_NONE;
+    } else if (event->keycode == KEY_D) {
+        state.snakes[0].direction = event->flags.pressed ? DIRECTION_RIGHT : DIRECTION_NONE;
+    } else if (event->keycode == KEY_S) {
+        state.snakes[0].direction = event->flags.pressed ? DIRECTION_DOWN : DIRECTION_NONE;
+    } else if (event->keycode == KEY_A) {
+        state.snakes[0].direction = event->flags.pressed ? DIRECTION_LEFT : DIRECTION_NONE;
     }
 }
 
 void init() {
-    state.snake = {.cur_length = 0,
-                   .max_length = 3,
-                   .x = (WIDTH / (2 * SCALE)),
-                   .y = (HEIGHT / (2 * SCALE)),
-                   .direction = DIRECTION_RIGHT,
-                   .prior_direction = 0};
-    state.food = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}};
+    state.snakes[0] = {.x = (WIDTH / (2 * SCALE)),
+                       .y = (HEIGHT / (2 * SCALE)),
+                       .cur_length = 1,
+                       .direction = DIRECTION_NONE};
+    state.food[0] = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}};
 
-    state.key_listener = {.handler = (void (*)(key_event *))&snake_on_key_press, .next = nullptr};
-    get_event_handler().register_listener(KEYBOARD_EVENT, &state.key_listener);
+    state.key_listener = new Listener<key_event *>(&snake_on_key_press);
+    get_event_handler()->register_listener(KEYBOARD_EVENT, state.key_listener);
     fb_clear(0xFFFFFFFF);
 }
 
 void reset() {
-    // get_event_handler().unregister_listener(KEYBOARD_EVENT, state.key_listener._id);
     fb_clear(0xFFFFFFFF);
     init_snake();
 }
@@ -138,98 +107,98 @@ void handle_join_ack(UDPSocket *socket) {
     uint8_t buffer[17];
     volatile int i = 1000000;
     int nbytes = socket->recv(buffer);
-    if (nbytes == 17 && buffer[0] == MSG_JOIN_ACK) {
-        K::memcpy(uuid, buffer[1], 16);
+    printf("nbytes == %d\n", nbytes);
+    if (nbytes == 9 && buffer[0] == MSG_JOIN_ACK) {
+        K::memcpy(&state.snakes[0].uuid, buffer + 1, 8);
+        printf("Obtain Snake's UUID from Server: %x\n", state.snakes[0].uuid);
     }
 }
 
 void request_join(UDPSocket *socket) {
     char join_msg[17] = {0};
     join_msg[0] = MSG_JOIN;
-    join_msg[1] = 0x00;
-    join_msg[2] = 0x00;
-    join_msg[3] = 0x00;
-    join_msg[4] = 0x00;
-    join_msg[5] = 0x00;
-    join_msg[6] = 0x00;
-    socket->send_udp((const uint8_t *)join_msg, 17);
+    socket->send_udp((const uint8_t *)join_msg, sizeof(join_msg));
     handle_join_ack(socket);
 }
 
-void update_game_state(UDPSocket *socket) {
-    // Ask for game state.
-    char game_state_msg[17] = {0};
-    game_state_msg[0] = MSG_HEARTBEAT;
-    K::memcpy(game_state_msg[1], uuid, 16);
-    socket->send_udp((const uint8_t *)game_state_msg, 17);
+void send_update(UDPSocket *socket) {
+    char input_msg[13] = {0};
+    input_msg[0] = MSG_INPUT;
+    K::memcpy(input_msg + 1, &state.snakes[0].uuid, 8);
+    K::memcpy(input_msg + 9, &state.snakes[0].x, 2);
+    K::memcpy(input_msg + 11, &state.snakes[0].y, 2);
 
-    // Wait for game state.
-    uint8_t timestamp;
+    uint64_t sent_uuid = *((uint64_t *)(input_msg + 1));
 
-    char buffer[1024];
-    int nbytes = socket->recv(buffer);
-    if (buffer[0] == MSG_STATE_UPDATE) {  // Only type of message we can receive.
-        timestamp = buffer[1];
-        state.num_food = buffer[2];
-        state.num_players = buffer[3];
-    }
-
-    // State update:
-    // [1 byte: message type] [4 bytes: timestamp] [1 byte: players count] [1 byte: food count]
-    // [food_count * 2 shorts: food coordinates]
-    // [For each player: [16 bytes: player UUID] [1 byte: direction] [1 byte: snake length]
-    // [snake_length * 2 shorts: snake body]]
-
-    game_state::snake_t *snake = &state.snake[0];
-    game_state::food_t *food = &state.food[0];
-
-    char *food_buffer = buffer + 7;
-    char *snake_buffer = food_buffer + (food_count * 2);
-
-    for (size_t i = 0; i < MAX_FOOD; i++) {
-        if (i < state.num_food) {
-            food[i].x = food_buffer[i * 2];
-            food[i].y = food_buffer[i * 2 + 1];
-        } else {
-            food[i].x = 0;
-            food[i].y = 0;
-        }
-    }
-
-    // possible bug if someone disconnects but whatever.
-    for (size_t i = 0; i < MAX_PLAYERS; i++) {
-        game_state::full_snake_t *snake = &state.full_snake[i];
-        snake->cur_length = snake_buffer[i * 2];
-        snake->direction = snake_buffer[i * 2 + 1];
-        for (int j = 0; j < MAX_BODY_LENGTH; j++) {
-            if (i < state.num_players) {
-                snake->x[j] = snake_buffer[i * 2];
-                snake->y[j] = snake_buffer[i * 2 + 1];
-            } else {
-                snake->x[j] = 0;
-                snake->y[j] = 0;
-            }
-        }
-    }
+    socket->send_udp((const uint8_t *)input_msg, sizeof(input_msg));
 }
 
-// Whatever the latest input is, send it to the server.
-// Seems buggy but hopefully things run fast enough to not notice lag.
-void send_input(UDPSocket *socket) {
-    char input_msg[17] = {0};
-    input_msg[0] = MSG_INPUT;
-    K::memcpy((void *)input_msg[1], uuid, 16);
-    input_msg[17] = state.snake[0].direction;
-    socket->send_udp((const uint8_t *)input_msg, 17);
+void update_game_state(UDPSocket *socket) {
+    static char buffer[1024];
+
+    state.snakes[0].x += (state.snakes[0].direction >> 4) - 1;
+    state.snakes[0].y += (state.snakes[0].direction & 0x0F) - 1;
+
+    send_update(socket);
+
+    // Wait for game state.
+    uint32_t timestamp;
+
+    int nbytes = socket->recv((uint8_t *)buffer);
+
+    if (buffer[0] == MSG_STATE_UPDATE) {  // Only type of message we can receive.
+        memcpy(&timestamp, buffer + 1, 4);
+        state.num_players = buffer[5];
+        uint32_t offset = 6;
+        for (int i = 0; i < state.num_players; i++) {
+            uint64_t player_uuid;
+            memcpy(&player_uuid, buffer + offset, 8);
+            offset += 8;
+            uint16_t x;
+            uint16_t y;
+            memcpy(&x, buffer + offset, 2);
+            offset += 2;
+            memcpy(&y, buffer + offset, 2);
+            offset += 2;
+            printf("player_uuid = %x, x = %d, y = %d\n", player_uuid, x, y);
+            if (player_uuid == state.snakes[0].uuid) continue;
+        }
+        // printf("state.num_players = %d\n", state.num_players);
+    }
+
+    game_state::snake_t *snake = &state.snakes[0];
+
+    char *food_buffer = buffer + 7;
+    char *snake_buffer = food_buffer + (state.num_food * 2);
+
+    // for (size_t i = 0; i < MAX_FOOD; i++) {
+    //     if (i < state.num_food) {
+    //         state.food[i].x = food_buffer[i * 2];
+    //         state.food[i].y = food_buffer[i * 2 + 1];
+    //     } else {
+    //         state.food[i].x = 0;
+    //         state.food[i].y = 0;
+    //     }
+    // }
+
+    // possible bug if someone disconnects but whatever.
+    // for (size_t i = 1; i < MAX_PLAYERS; i++) {
+    //     game_state::snake_t *snake = &state.snakes[i];
+    //     snake->cur_length = snake_buffer[i * 2];
+    //     snake->direction = snake_buffer[i * 2 + 1];
+    //     snake->x = snake_buffer[i + 2 + 2];
+    //     snake->y = snake_buffer[i + 2 + 2];
+    // }
 }
 
 void init_snake() {
-    UDPSocket socket(/* localhost but its unused internally */ 0x7F000001,
-                     /* port (also unused?)*/ 25565);
+    UDPSocket socket(/* localhost but its unused internally */ 0xc0a8d04b,
+                     /* port (also unused?)*/ 25566);
+
+    init();
 
     request_join(&socket);
 
-    init();
     fb_pitch = fb_get()->pitch >> 2;
     fb_size = fb_get()->size;
     fb_buffer = (uint32_t *)fb_get()->buffer;
@@ -240,9 +209,10 @@ void init_snake() {
         if (render(&state)) {
             break;
         }
-        send_input(&socket);
+        // send_input(&socket);
         wait_msec(1000000 / FPS);
     }
+    socket.close();
     reset();
 }
 

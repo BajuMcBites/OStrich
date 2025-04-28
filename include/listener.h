@@ -25,6 +25,8 @@ struct Listener : public IListener {
     Function<void(Args...)> handler;
     Function<void()> cleanup;
 
+    Listener() {
+    }
     Listener(Function<void(Args...)> &&handler) : handler(std::move(handler)) {
         this->cleanup = [&]() { delete this; };
     }

@@ -38,6 +38,8 @@ void arp_resolve_mac(usb_session *session, uint32_t dst_ip, Function<void(uint8_
         return;
     }
 
+    printf("...\n");
+
     arp_packet packet;
     packet.hardware_type = ARP_ETHERNET_TYPE;
     packet.protocol_type = 0x0800;
@@ -89,11 +91,15 @@ void send_arp_response(usb_session *session, arp_packet *request) {
 int handle_arp_packet(usb_session *session, PacketBufferParser *parser) {
     auto arp_packet = parser->pop<ARPPacket>();
 
+    printf("in here %d!\n", arp_packet->opcode.get());
+
     if (arp_packet->opcode.get() == ARP_REQUEST_OPCODE) {
         send_arp_response(session, arp_packet);
     } else if (arp_packet->opcode.get() == ARP_REPLY_OPCODE) {
         uint32_t sender_ip = arp_packet->sender_ip.get();
         uint8_t *sender_mac = arp_packet->sender_mac;
+
+        printf("sender mac\n");
 
         uint8_t *mac_malloced = (uint8_t *)kmalloc(6);
         memcpy(mac_malloced, sender_mac, 6);
