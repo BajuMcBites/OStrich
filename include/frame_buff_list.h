@@ -50,8 +50,12 @@ class FrameBufferLinkedList {
         return head;
     }
 
-    void moveHead() {
+    void moveHeadForward() {
         if (head) head = head->next;
+    }
+
+    void moveHeadBack() {
+        if (head) head = head->prev;
     }
 
     bool isEmpty() const {
