@@ -33,9 +33,9 @@ extern "C" void page_fault_handler(KernelEntryFrame* trap_frame, uint64_t esr, u
             K::assert(false, "Not handled yet\n");
             break;
         case 1:
-            printf_err("Translation fault: %x\n", esr);
-            printf_err(":\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n",
-                       esr >> 32, esr, elr >> 32, elr, spsr >> 32, spsr, far >> 32, far);
+            // printf_err("Translation fault: %x\n", esr);
+            // printf_err(":\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n",
+            //            esr >> 32, esr, elr >> 32, elr, spsr >> 32, spsr, far >> 32, far);
             handle_translation_fault(trap_frame, esr, elr, spsr, far);
             break;
         case 3:

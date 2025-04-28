@@ -51,6 +51,7 @@ int stdin_buf_idx = 0;
 void set_return_value_and_state(UserTCB* tcb, int value, int state) {
     set_return_value(tcb, value);
     tcb->state = state;
+    // printf("queueing pid %d\n", tcb->pcb->pid);
     queue_user_tcb(tcb);
 }
 
@@ -118,12 +119,12 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             newlib_handle_lseek(frame);
             break;
         case NEWLIB_OPEN:
-            printf("SYS_OPEN\n");
+            // printf("SYS_OPEN\n");
             newlib_handle_open(frame);
             K::assert(false, "RACE DETECTED IN OPEN");
             break;
         case NEWLIB_READ:
-            printf("SYS_READ\n");
+            // printf("SYS_READ\n");
             newlib_handle_read(frame);
             K::assert(false, "RACE DETECTED IN READ");
             break;
@@ -137,7 +138,7 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             frame->X[0] = newlib_handle_wait(frame);
             break;
         case NEWLIB_WRITE:
-            printf("SYS_WRITE\n");
+            // printf("SYS_WRITE\n");
             newlib_handle_write(frame);
             K::assert(false, "RACE DETECTED IN WRITE");
             break;
@@ -214,8 +215,8 @@ int newlib_handle_exec(KernelEntryFrame* frame) {
     pcb->supp_page_table = new SupplementalPageTable();
     pcb->page_table = new PageTable();
     int pid = pcb->pid;
-    // printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0],
-    // pid);
+    printf("calling exec with pathname at %x%x, with pid %d\n", frame->X[0] >> 32, frame->X[0],pid);
+    printf("name is %s\n",(char*) frame->X[0]);
     char* pathname = (char*)frame->X[0];
     char** argv = (char**)frame->X[1];
     int elf_index = get_ramfs_index(pathname);
@@ -225,7 +226,10 @@ int newlib_handle_exec(KernelEntryFrame* frame) {
     }
     // calculate argc
     int argc = 0;
-    for (; *argv[argc] != 0; argc++);
+    printf("argv[0] = %s\n", argv[0]);
+    printf("K::strlen(argv[argc])  = %d\n",K::strlen(argv[1]) );
+    for (; K::strlen(argv[argc]) > 0; argc++);
+    printf("got here\n");
     // // load elf file
     const int sz = ramfs_size(elf_index);
     char* buffer = (char*)kmalloc(sz);
@@ -373,7 +377,7 @@ void newlib_handle_open(KernelEntryFrame* frame) {
 }
 
 void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
-    printf("newlib_handle_read_or_write: starting\n");
+    // printf("newlib_handle_read_or_write: starting\n");
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     PCB* pcb = tcb->pcb;
     FileTable* file_table = pcb->file_table;
@@ -385,23 +389,28 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
 
     if (fd == 0) {
         // stdin
+        
+        pcb->page_table->use_page_table();
         K::assert(is_read, "trying to write to stdin!\n");
         for (int i = 0; i < count; i++) {
             buf[i] = uart_getc();
             uart_putc(buf[i]);
+            if (buf[i] == '\n' || buf[i] == '\r') break;
         }
         handle_success(tcb, 0);
         event_loop();
     } else if (fd == 1) {
         // stdout
         K::assert(!is_read, "trying to read from stdout!\n");
+        pcb->page_table->use_page_table();
         for (int i = 0; i < count; i++) {
             printf("%c", buf[i]);
         }
         handle_success(tcb, 0);
         event_loop();
-    } else {
+    } else if (fd == 2){
         // stderr
+        pcb->page_table->use_page_table();
         K::assert(!is_read, "trying to read from stderr!\n");
         for (int i = 0; i < count; i++) {
             printf_err("%c", buf[i]);
@@ -411,8 +420,8 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
     }
 
     // Per-process file pointer (1:1 with file descriptors).
-    printf("newlib_handle_read_or_write: fd = %d, core = %d, is_read = %d\n", fd, getCoreID(),
-           is_read);
+    // printf("newlib_handle_read_or_write: fd = %d, core = %d, is_read = %d\n", fd, getCoreID(),
+    //        is_read);
     UFile& ufile = file_table->get_file(fd);
     KFile* file = ufile.backing_file();
 

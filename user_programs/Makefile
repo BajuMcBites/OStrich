@@ -14,7 +14,7 @@ CC=$(TOOLCHAIN_PREFIX)gcc
 LD=$(TOOLCHAIN_PREFIX)ld
 OBJCOPY=$(TOOLCHAIN_PREFIX)objcopy
 
-CFLAGS=-Wall -Wextra -I$(INCLUDE_DIR) -g \
+CFLAGS=-Wall -Wextra -I$(INCLUDE_DIR) -g -static -fno-PIC \
        -mcpu=cortex-a53 -march=armv8-a+crc -mstrict-align -mno-outline-atomics \
        -fno-exceptions -O0
 
@@ -40,12 +40,15 @@ fs_syscall_test.o: fs_syscall_test.c
 exit.o: exit.c
 	$(CC) $(CFLAGS) -c exit.c -o exit.o 
 
+malloc.o: malloc.c
+	$(CC) $(CFLAGS) -c malloc.c -o malloc.o	
+
 newlib_stubs.o: newlib_stubs.S
 	$(CC) $(CFLAGS) -c newlib_stubs.S -o newlib_stubs.o	
 
-user_prog: $(LIB_DIR)/crt0.o user_prog.o newlib_stubs.o libc_patching.o 
-	$(LD) $(LDFLAGS) -o user_prog $(LIB_DIR)/crt0.o user_prog.o newlib_stubs.o libc_patching.o -lc -entry=main
-	cp user_prog ../ramfs/files/
+user_prog: user_prog.o newlib_stubs.o malloc.o
+	$(LD) $(LDFLAGS) -o user_prog user_prog.o newlib_stubs.o malloc.o -lc -entry=main
+	cp user_prog ../ramfs/files
 
 exit: $(LIB_DIR)/crt0.o exit.o newlib_stubs.o
 	$(LD) $(LDFLAGS) -o exit $(LIB_DIR)/crt0.o exit.o newlib_stubs.o -lc -entry=main

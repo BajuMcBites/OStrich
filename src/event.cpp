@@ -92,17 +92,18 @@ void run_events() {
         nextThread = getNextEvent(me);
 
         if (nextThread == nullptr) {
-            int nextCore = (me + 1) % CORE_COUNT;
-            while (nextCore != me && nextThread == nullptr) {
-                nextThread = getNextEvent(nextCore);
-                nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
-            }
+        //     int nextCore = (me + 1) % CORE_COUNT;
+        //     while (nextCore != me && nextThread == nullptr) {
+        //         nextThread = getNextEvent(nextCore);
+        //         nextCore = (nextCore + 1) % CORE_COUNT;  // Move to the next core
+        //     }
 
-            if (nextThread == nullptr)  // no other threads. I can keep working/spinning
-            {
-                continue;
-                enable_irq();
-            }
+        //     if (nextThread == nullptr)  // no other threads. I can keep working/spinning
+        //     {
+        //         continue;
+        //         enable_irq();
+        //     }
+        continue;
         }
         runningEvent[getCoreID()] = nextThread;
         nextThread->run();
@@ -132,6 +133,7 @@ void enter_user_space(UserTCB* tcb) {
     flush_tlb();
     runningUserTCB[getCoreID()] = tcb;
     runningEvent[getCoreID()] = tcb;
+    // printf("entering tcb->pid %d\n", tcb->pcb->pid);
     // it is now safe to preempt
     load_user_context(&tcb->context);
 }

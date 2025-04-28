@@ -442,6 +442,9 @@ void *load_segment_mem(void *mem, Elf64_Phdr *phdr, PCB *pcb, Semaphore *sema) {
                              if (file_end - (uint64_t)page_from < cpy_size) {
                                  cpy_size = (size_t)(file_end - (uint64_t)page_from);
                              }
+                             if (file_end < (uint64_t)page_from) {
+                                 cpy_size = 0;
+                             }
                              printf("this is next vaddr %x%x and size %d\n", next_vaddr >> 32, next_vaddr, cpy_size);
                              K::memcpy(k_page_to, page_from, cpy_size);
                              if (mem_size > file_size &&

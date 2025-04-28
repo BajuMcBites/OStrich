@@ -623,7 +623,7 @@ void elf_load_test() {
         pcb->page_table->use_page_table();
         uint64_t sp = 0x0000fffffffff000;
         int argc = 0;
-        const char* argv[0];
+        char* argv[1] = {"\0"};
         uint64_t addrs[argc];
         for (int i = argc - 1; i >= 0; --i) {
             int len = K::strlen(argv[i]) + 1;
@@ -631,21 +631,18 @@ void elf_load_test() {
             addrs[i] = sp;
             K::memcpy((void*)sp, argv[i], len);
         }
+        sp &= ~((uint64_t)7);
         sp -= 8;
         *(uint64_t*)sp = 0;
         for (int i = argc - 1; i >= 0; --i) {
             sp -= 8;
             *(uint64_t*)sp = addrs[i];
         }
-        // save &argv
-        sp -= 8;
-        *(uint64_t*)sp = sp + 8;
-
-        // save argc
-        sp -= 8;
-
         sp -= sp % 16;
-        *(uint64_t*)sp = argc;
+        // save &argv
+        tcb->context.x1 = sp;
+        // save argc
+        tcb->context.x0 = argc;
         tcb->context.sp = sp;
         sema->up();
     });
