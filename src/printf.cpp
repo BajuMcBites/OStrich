@@ -29,9 +29,9 @@ typedef void (*putcf)(void*, char);
 static putcf stdout_putf;
 static void* stdout_putp;
 
-SpinLock printf_err_lock;
-SpinLock printf_lock;
-SpinLock panic_lock;
+InterruptSafeLock printf_err_lock;
+InterruptSafeLock printf_lock;
+InterruptSafeLock panic_lock;
 
 #ifdef PRINTF_LONG_SUPPORT
 

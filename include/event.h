@@ -13,6 +13,10 @@
 #define PRIORITY_LEVELS 5
 #define CORE_STACK_SIZE 16384
 
+#define TASK_RUNNING 0
+#define TASK_STOPPED 1
+#define TASK_KILLED 2
+
 //-------------
 // --event.h--
 //-------------
@@ -58,6 +62,7 @@ struct TCB {
     TCB* next = nullptr;
     bool irq_was_disabled = false;  // always start with allowing interrupts
     bool kernel_event = true;
+    uint32_t state;
     virtual void run() = 0;  // Abstract/virtual function that must be overridden
     virtual ~TCB() {};       // Allows child classes to be deleted
 };
@@ -67,6 +72,7 @@ struct CPU_Queues {
 
 extern PerCPU<CPU_Queues> readyQueue;
 
+extern void init_dummy_tcb();
 extern void event_loop();
 extern void enter_user_space(struct UserTCB* tcb);
 extern void save_user_context(struct UserTCB* tcb, struct KernelEntryFrame* regs);
@@ -81,6 +87,7 @@ struct UserTCB : public TCB {
         context.sp = 0;
         context.pc = 0;
         kernel_event = false;
+        state = TASK_STOPPED;
     }
 
     void run() override {
@@ -93,9 +100,12 @@ struct Event : public TCB {
     template <typename lambda>
     Event(lambda w) : w(w) {
         kernel_event = true;
+        state = TASK_RUNNING;
     }
 
     void run() override {
+        Interrupts::restore(
+            irq_was_disabled);  // will always enable for first time user or kernel event
         w();
     }
 };
@@ -107,6 +117,7 @@ struct EventValue : public TCB {
     template <typename lambda>
     EventValue(lambda w, T value) : w(w), value(value) {
         kernel_event = true;
+        state = TASK_RUNNING;
     }
 
     void run() override {

@@ -17,6 +17,10 @@ extern "C" uint64_t get_sp_el0();
 extern "C" uint64_t get_elr_el1();
 extern "C" uint64_t get_spsr_el1();
 
+struct PCB* task[NR_TASKS] = {nullptr};
+int curr_task = 0;
+int task_cnt = 0;
+
 // queue of TCBs ready to run
 PerCPU<CPU_Queues> readyQueue;
 
@@ -26,12 +30,49 @@ UserTCB* runningUserTCB[CORE_COUNT] = {nullptr};
 // use an array for multiple cores, index with getCoreId
 TCB* runningEvent[CORE_COUNT] = {nullptr};
 
+void init_dummy_tcb() {
+    for (int i = 0; i < CORE_COUNT; ++i) {
+        runningEvent[i] = new Event([] { printf("SHOULD NOT PRINT\n"); });
+    }
+}
+
 TCB* getNextEvent(int core) {
     auto& ready = readyQueue.forCPU(core);
     for (int i = 0; i < PRIORITY_LEVELS; i++) {
-        auto next = ready.queues[i].remove();
-        if (next != nullptr) {
-            return next;
+        TCB* next = nullptr;
+        while (next = ready.queues[i].remove()) {
+            if (next->state == TASK_RUNNING)
+                return next;
+            else if (next->state == TASK_STOPPED) {
+                ready.queues[4].add(next);
+            } else if (next->state == TASK_KILLED) {
+                delete next;
+                continue;
+            }
+
+            bool terminated = false;
+            if (!next->kernel_event) {
+                // check if any signals came that killed the process
+                Signal* sig;
+                Queue<Signal> leftover;
+                while (sig = ((UserTCB*)next)->pcb->sigs->remove()) {
+                    if (sig->val == SIGKILL) {
+                        terminated = true;
+                        break;
+                    } else {
+                        leftover.add(sig);
+                    }
+                }
+                sig = leftover.remove();
+                while (sig != nullptr && !terminated) {
+                    ((UserTCB*)next)->pcb->sigs->add(sig);
+                    sig = leftover.remove();
+                }
+            }
+            if (terminated) {
+                delete next;
+                continue;
+            }
         }
     }
     return nullptr;
@@ -47,6 +88,7 @@ void run_events() {
     int me = getCoreID();
 
     while (true) {
+        bool was = Interrupts::disable();
         nextThread = getNextEvent(me);
 
         if (nextThread == nullptr) {
@@ -59,10 +101,10 @@ void run_events() {
             if (nextThread == nullptr)  // no other threads. I can keep working/spinning
             {
                 continue;
+                enable_irq();
             }
         }
         runningEvent[getCoreID()] = nextThread;
-        Interrupts::restore(nextThread->irq_was_disabled);
         nextThread->run();
         if (!nextThread->kernel_event) {
             K::assert(false, "user event returned to event loop");
@@ -87,8 +129,10 @@ void event_loop() {
  */
 void enter_user_space(UserTCB* tcb) {
     tcb->pcb->page_table->use_page_table();
+    flush_tlb();
     runningUserTCB[getCoreID()] = tcb;
     runningEvent[getCoreID()] = tcb;
+    // it is now safe to preempt
     load_user_context(&tcb->context);
 }
 
@@ -139,6 +183,7 @@ void save_user_context(UserTCB* tcb, KernelEntryFrame* regs) {
 void yield(KernelEntryFrame* frame) {
     K::assert(Interrupts::isDisabled(), "preempt happening with interrupts on uh oh\n");
     TCB* running = runningEvent[getCoreID()];
+    K::assert(running != nullptr, "preempt a nullptr\n");
     // printf("yield in core: %d\n", getCoreID());
     if (running->kernel_event) {
         // check stack
@@ -148,13 +193,10 @@ void yield(KernelEntryFrame* frame) {
     UserTCB* old = get_running_user_tcb(getCoreID());
     // force thread to change
     K::assert((running == old), "mismatched running event and user thread\n");
-
+    //  printf("preempt!\n");
     save_user_context(old, frame);
+    readyQueue.forCPU(getCoreID()).queues[1].add(old);
     QA7->TimerClearReload.IntClear = 1;  // Clear interrupt
-    QA7->TimerClearReload.Reload = 1;    // Reload nows
-
-    // core_int_source_reg_t irq = (core_int_source_reg_t) irq_source;
-
     // route to next core
     auto me = getCoreID();
     if (me == 0) {
@@ -166,6 +208,7 @@ void yield(KernelEntryFrame* frame) {
     } else {
         QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;
     }
+    QA7->TimerClearReload.Reload = 1;  // Reload
     enable_irq();
     event_loop();
 }

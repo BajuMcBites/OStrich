@@ -1,108 +1,153 @@
-// #include "event.h"
-// #include "vm.h"
-// #include "utils.h"
-// #include "frame.h"
-// #include "fs.h"
-// #include "libk.h"
-
-// #define ADDRESS_FAULT 0
-// #define TRANSLATION_FAULT 1
-// #define ACCESS_FLAG_FAULT 2
-// #define PERMISSION_FAULT 3
-
 #include "event.h"
+#include "frame.h"
+#include "mmap.h"
 #include "printf.h"
+#include "swap.h"
+#include "sys.h"
 #include "trap_frame.h"
 
-// void handle_page_fault(int fault_el, int type, int table_level,  unsigned long far, UserTCB* tcb)
-// {
+extern "C" uint64_t get_sp_el0();
+extern "C" uint64_t get_elr_el1();
+extern "C" uint64_t get_spsr_el1();
+extern "C" uint64_t get_far_el1();
+extern "C" uint64_t get_esr_el1();
 
-//     if (fault_el != 0) {
-//         return;
-//     }
+extern PageCache* page_cache;
+extern Swap* swap;
 
-//     // UserTCB* tcb = (UserTCB*) currentTCB(getCoreID());
+void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far);
+void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far);
 
-//     if (type == ADDRESS_FAULT) {
-
-//     } else if (type == TRANSLATION_FAULT) {
-
-//         handle_translation_fault(fault_el, table_level, far, tcb);
-//         return;
-
-//     } else if (type == ACCESS_FLAG_FAULT) {
-
-//     } else if (type == PERMISSION_FAULT) {
-
-//     } else {
-//         /* undefined fault */
-//     }
-
-// }
-
-// void handle_translation_fault(int fault_el, int table_level,  unsigned long far, UserTCB* tcb) {
-//     tcb->supp_page_table.vaddr_mapping(far, [=](LocalPageLocation* local_page_location) {
-//         if (local_page_location == nullptr) { /* unmapped memory - potential stack growth */
-//             /* check stack growth*/
-//         } else { /* we already have a location for this page (resident, in swap, in filesystem)
-//         */
-//             local_page_location->lock.lock([=]() {
-//                 PageLocation* physical_location = local_page_location->location; /* actual
-//                 physical location */ local_page_location->lock.unlock();
-//                 physical_location->lock.lock([=]() { /* lock ensures page cannot be evicted while
-//                 we are doing anything with it */
-//                     if (physical_location->present) { /* in memory, we dont need to load it in*/
-//                         tcb->page_table.map_vaddr(far, physical_location->paddr, 0x1, [=]() { /*
-//                         map it in to user's page table - TODO: insert lower attributes*/
-//                             /* TODO: requeue user tcb */
-//                             physical_location->lock.unlock();
-//                         });
-//                         return;
-//                     } else { /* need to load it in from swap of fs */
-//                         physical_location->lock.unlock();
-//                     }
-//                 });
-//                 return;
-//             });
-//             return;
-//         }
-//     });
-//     return;
-// }
-
-// void load_frame_from_location(PageLocation* physical_location, unsigned long far, UserTCB* tcb) {
-
-//     if (physical_location->location_type == FILESYSTEM) {
-
-//     } else if (physical_location->location_type == SWAP) {
-
-//     }
-// }
-
-// void load_frame_swap(PageLocation* physical_location, unsigned long far, UserTCB* tcb) {
-//     /* TODO */
-// }
-
-// void load_frame_fs(PageLocation* physical_location, unsigned long far, UserTCB* tcb) {
-//     alloc_frame(PINNED_PAGE_FLAG, [=](uint64_t paddr) {
-//         uint64_t vaddr = paddr_to_vaddr(paddr);
-//         int path_length = K::strnlen(physical_location->location.filesystem.file_name, PATH_MAX -
-//         1); char* file_name_cpy = (char*) kmalloc(path_length + 1); K::strncpy(file_name_cpy,
-//         physical_location->location.filesystem.file_name, PATH_MAX); read(file_name_cpy,
-//         physical_location->location.filesystem.offset, (char* ) vaddr, PAGE_SIZE, [=]() {
-//             kfree(file_name_cpy);
-//             unpin_frame(paddr);
-
-//             physical_location->lock.unlock();
-//         });
-
-//     });
-//     return;
-// }
-
-extern "C" void page_fault_handler(KernelEntryFrame* trap_frame) {
+extern "C" void page_fault_handler(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                                   uint64_t spsr, uint64_t far) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     save_user_context(tcb, trap_frame);
 
-    printf("in data abort handler\n");
+    switch ((esr >> 2) & 0x3) {
+        case 0:
+            printf_err("page_fault: Address size fault\n");
+            printf_err(":\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n",
+                       esr >> 32, esr, elr >> 32, elr, spsr >> 32, spsr, far >> 32, far);
+            K::assert(false, "Not handled yet\n");
+            break;
+        case 1:
+            // printf_err("Translation fault: %x\n", esr);
+            handle_translation_fault(trap_frame, esr, elr, spsr, far);
+            break;
+        case 3:
+            // printf_err("Permission fault: %x\n", esr);
+            handle_permissions_fault(trap_frame, esr, elr, spsr, far);
+            break;
+        default:
+            printf_err("Unkown fault");
+            K::assert(false, "Not handled yet\n");
+    }
+
+    switch (esr >> 26) {
+        case 0b100000:
+            printf_err("Instruction abort, lower EL\n");
+            handle_translation_fault(trap_frame, esr, elr, spsr, far);
+            break;
+        default:
+            K::assert(false, "Fault not handled Error\n");
+            break;
+    }
+
+    K::assert(false, "Shouldnt Get Here\n");
+}
+
+void handle_translation_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far) {
+    uint64_t user_sp = get_sp_el0();
+
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    save_user_context(tcb, trap_frame);
+
+    if (far == nullptr) {
+        kill_process(tcb->pcb);
+        event_loop();
+    }
+
+    /* try loading in the page*/
+    load_mmapped_page(tcb->pcb, far & (~0xFFF), [=](uint64_t kvaddr) {
+        if (kvaddr == 0) { /* page isnt mapped */
+            /* map it as a new swap page (stack growth) and load it in */
+            mmap_page(tcb->pcb, far & (~0xFFF), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE,
+                      nullptr, 0, 0, [=]() {
+                          load_mmapped_page(tcb->pcb, far & (~0xFFF), [=](uint64_t kvaddr) {
+                              unpin_frame(vaddr_to_paddr(kvaddr));
+                              queue_user_tcb(tcb);
+                          });
+                      });
+        } else { /* page is mapped and now loaded into memory, unpin and requeu*/
+            unpin_frame(kvaddr);
+            queue_user_tcb(tcb);
+        }
+    });
+
+    event_loop();
+}
+
+void handle_permissions_fault(KernelEntryFrame* trap_frame, uint64_t esr, uint64_t elr,
+                              uint64_t spsr, uint64_t far) {
+    uint64_t user_sp = get_sp_el0();
+
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    PCB* pcb = tcb->pcb;
+
+    save_user_context(tcb, trap_frame);
+
+    pcb->supp_page_table->lock.lock([=]() {
+        LocalPageLocation* local = pcb->supp_page_table->vaddr_mapping(far & ~0xFFF);
+        PageLocation* location = local->location;
+
+        /* check if we actually have write permisisons on the page */
+        if ((local->perm & WRITE_PERM == 0 && (esr >> 6) & 0x1) || (local->perm & READ_PERM == 0)) {
+            pcb->supp_page_table->lock.unlock();
+            kill_process(pcb);
+            event_loop();
+        }
+
+        pcb->supp_page_table->lock.unlock();
+        /* load the page we faulted on into memory */
+        load_mmapped_page(pcb, far & ~0xFFF, [=](uint64_t kvaddr_old) {
+            location->lock.lock([=]() {
+                /* if we are the only user and NOT a private filesys page we can just use it */
+                if (location->ref_count == 1 && location->location_type != FILESYSTEM) {
+                    unpin_frame(vaddr_to_paddr(kvaddr_old));
+                    queue_user_tcb(tcb);
+                    location->lock.unlock();
+                    return;
+                } else { /* copy on write */
+                    /* create a new local mapping to replace with */
+                    LocalPageLocation* new_local =
+                        new LocalPageLocation(pcb, local->perm, local->sharing_mode, local->uvaddr);
+
+                    swap->get_swap_id([=](uint64_t new_id) {
+                        page_cache->get_or_add(
+                            nullptr, 0, new_id, new_local, [=](PageLocation* new_location) {
+                                /* replace mapping with new local */
+                                pcb->supp_page_table->map_vaddr(new_local->uvaddr, new_local);
+                                load_mmapped_page(pcb, far & ~0xFFF, [=](uint64_t kvaddr_new) {
+                                    /* copy the old page to the new page */
+                                    memcpy((void*)kvaddr_new, (void*)kvaddr_old, PAGE_SIZE);
+
+                                    /* unpin both pages */
+                                    unpin_frame(vaddr_to_paddr(kvaddr_new));
+                                    unpin_frame(vaddr_to_paddr(kvaddr_old));
+
+                                    /* delete the old page mapping impliciptly releases lock*/
+                                    page_cache->remove(local, [=]() { delete local; });
+
+                                    queue_user_tcb(tcb);
+                                });
+                            });
+                    });
+                }
+            });
+        });
+    });
+    event_loop();
 }

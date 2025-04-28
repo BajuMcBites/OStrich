@@ -3,7 +3,7 @@
 
 #include "peripherals/base.h"
 
-#define VA_START 0xffff000000000000
+#define VA_START 0xFFFF000000000000
 
 #define PAGE_SHIFT 12
 #define TABLE_SHIFT 9
@@ -122,10 +122,9 @@ class PageTable {
     void map_vaddr(uint64_t vaddr, uint64_t paddr, uint64_t page_attributes, Function<void()> w);
     void use_page_table();
     bool unmap_vaddr(uint64_t vaddr);
-
-   private:
     void alloc_pgd(Function<void()> w);
 
+   private:
     void map_vaddr_pgd(uint64_t vaddr, uint64_t paddr, uint64_t page_attributes,
                        Function<void()> w);
 
@@ -159,10 +158,10 @@ struct SwapLocation {
 };
 
 struct FileLocation {
-    struct file* file;
+    KFile* file;
     uint64_t offset;
 
-    FileLocation(struct file* f, uint64_t off) {
+    FileLocation(KFile* f, uint64_t off) {
         file = f;
         offset = off;
     }
@@ -180,7 +179,8 @@ struct FileLocation {
  * (3) Page Cache Lock - Protects all location information except on first
  *                       initialization which is done in mmap_page for a PageLocation and
  *                       all the prev/next refs of LocalPageLocations. This location information
- *                       should never be changed.
+ *                       should never be changed. Must hold both PageLocation and
+ *                       PageCacheLocks to change prev/next and refs
  *
  * Never change the PageLocation* of a LocalPageLocation unless you have its
  *  parent Supplemental Page Table Lock
@@ -193,9 +193,20 @@ struct PCB;
  * qualities of that page for a given process, as well as the PageLocation.
  */
 struct LocalPageLocation {
+    LocalPageLocation(PCB* pcb, int perm, PageSharingMode sharing_mode, uint64_t uvaddr) {
+        this->pcb = pcb;
+        this->perm = perm;
+        this->sharing_mode = sharing_mode;
+        this->uvaddr = uvaddr;
+        location = nullptr;
+        next = nullptr;
+        prev = nullptr;
+    }
+
     // Lock location_lock; not needed?
     int perm;
     PageSharingMode sharing_mode;
+    uint64_t uvaddr;
     PCB* pcb;
     PageLocation* location;
     LocalPageLocation* next;
@@ -240,14 +251,15 @@ class SupplementalPageTable {
 
     LocalPageLocation* vaddr_mapping(uint64_t vaddr);
     void map_vaddr(uint64_t vaddr, LocalPageLocation* local);
+    void copy_mappings(SupplementalPageTable* other, PCB* pcb, Function<void(void)> w);
 };
 
 struct PCKey {
-    struct file* file;
+    KFile* file;
     uint64_t offset;  // 0 is swap, 1 is unbacked
     uint64_t id;      // swap or unbacked id
 
-    PCKey(struct file* f, uint64_t off, uint64_t _id) {
+    PCKey(KFile* f, uint64_t off, uint64_t _id) {
         file = f;
         offset = off;
         id = _id;
@@ -260,7 +272,7 @@ static inline uint64_t pc_key_hash(PCKey key) {
     }
 
     return hash_combine(
-        hash_combine(uint64_t_hash(key.file->inode->inode_number), uint64_t_hash(key.offset)),
+        hash_combine(uint64_t_hash(key.file->get_inode_number()), uint64_t_hash(key.offset)),
         uint64_t_hash(key.id));
 }
 
@@ -275,7 +287,7 @@ static inline bool pc_key_equals(PCKey keya, PCKey keyb) {
         return uint64_t_equals(keya.offset, keyb.offset) && uint64_t_equals(keya.id, keyb.id);
     }
 
-    return uint64_t_equals(keya.file->inode->inode_number, keyb.file->inode->inode_number) &&
+    return uint64_t_equals(keya.file->get_inode_number(), keyb.file->get_inode_number()) &&
            uint64_t_equals(keya.offset, keyb.offset);
 }
 
@@ -290,10 +302,10 @@ class PageCache {
     ~PageCache() {
     }
 
-    void get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+    void get_or_add(KFile* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
                     Function<void(PageLocation*)> w);
 
-    void remove(LocalPageLocation* local);
+    void remove(LocalPageLocation* local, Function<void(void)>);
 };
 
 void init_page_cache();
@@ -313,6 +325,8 @@ uint64_t paddr_to_vaddr(uint64_t paddr);
 uint64_t vaddr_to_paddr(uint64_t vaddr);
 
 uint64_t build_page_attributes(LocalPageLocation* local);
+
+void init_swap();
 
 #endif /*__ASSEMBLER__*/
 

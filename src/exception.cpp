@@ -102,8 +102,9 @@ extern "C" void exc_handler(unsigned long type, unsigned long esr, unsigned long
         }
     }
     // dump registers
-    printf(":\n Core %d: ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n",
+    printf("Core %d:\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n",
            getCoreID(), esr >> 32, esr, elr >> 32, elr, spsr >> 32, spsr, far >> 32, far);
+    lockErr.unlock();
 
     // no return from exception for now
     while (1);

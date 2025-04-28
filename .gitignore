@@ -10,8 +10,14 @@ gdb_start.sh
 *.dts
 *.qcow2
 *.dd
-!sdcard.dd
 qemu/*
 *.log
 *.txt
 *.svg
+!sdcard_*.dd
+
+*/.DS_Store
+
+# clangd ignores
+.cache/
+compile_commands.json
