@@ -84,12 +84,19 @@ void kopen(string file_name, Function<void(KFile*)> w) {
     file_list_lock->lockAndRelease([=]() {
         KFile* file = nullptr;
         open_files.remove_if_and_free_node([&](FileListNode* n) {
-            // Don't remove the inode if we are about to use it.
-            if (n->name_hash == name_hash) {
-                file = n->file;
-                return false;
+            // KFile has been deleted, remove it / no refs.
+            if (!n->file || n->file->get_ref_count() == 0) {
+                return true;
             }
-            return n->file->get_ref_count() == 0;
+
+            // Hash mismatch, remove it.
+            if (n->name_hash != name_hash) {
+                return true;
+            }
+
+            // If open and has refs, save the reference.
+            file = n->file;
+            return false;
         });
 
         // We found the inode in the list.
@@ -200,7 +207,6 @@ void kread(KFile* file, uint64_t offset, char* buf, uint64_t n, Function<void(in
 
 void write_fs(FSFile* file, uint64_t offset, const char* buf, uint64_t n, Function<void(int)> w) {
     K::assert(file->file_type == FileType::FILESYSTEM, "write_fs(): KFile type is incorrect");
-
     if (file->get_inode_number() == -1) {
         create_event<int>(w, INVALID_FILE);
         return;

@@ -5,7 +5,7 @@
 #include "fs.h"
 #include "function.h"
 
-constexpr int MAX_OPEN_FILES = 1024;
+constexpr int MAX_OPEN_FILES = 64;
 constexpr int FD_START = 3;
 
 #define TOO_MANY_OPEN_FILES -1
@@ -30,11 +30,11 @@ class UFile {
     UFile(KFile* file, int offset, int mode_flags)
         : backing_file_(file), offset_(offset), mode_flags_(mode_flags) {
     }
-    void construct(KFile* file, int offset, int mode_flags) {
-        // ??? 
+    void construct_in_place(KFile* file, int offset, int mode_flags) {
         backing_file_ = file;
         offset_ = offset;
         mode_flags_ = mode_flags;
+        permissions_ = 0;
     }
     void reset() {
         backing_file_ = nullptr;
@@ -47,10 +47,10 @@ class UFile {
             kclose(backing_file_);
         }
     }
-    void set_offset(int offset) {
+    void set_offset(off_t offset) {
         offset_ = offset;
     }
-    int offset() {
+    off_t offset() {
         return offset_;
     }
     int mode_flags() {
@@ -59,13 +59,13 @@ class UFile {
     KFile* backing_file() {
         return backing_file_;
     }
-    void increment_offset(int bytes) {
+    void increment_offset(off_t bytes) {
         offset_ += bytes;
     }
 
    private:
     KFile* backing_file_;
-    int offset_;
+    off_t offset_;
     int mode_flags_;
     int permissions_;
 };
@@ -73,9 +73,12 @@ class UFile {
 class FileTable {
    public:
     FileTable() : fd_counter_(FD_START), open_files_(0) {
+        for (int i = 0; i < MAX_OPEN_FILES; i++) {
+            file_table_[i].reset();
+        }
     }
     ~FileTable() = default;
-    void add_file(KFile* file, int offset, int flags, Function<void(int)> w);
+    void add_file(KFile* file, off_t offset, int flags, Function<void(int)> w);
     UFile& get_file(int fd);
     void remove_file(int fd, Function<void(int)> w);
 

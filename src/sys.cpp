@@ -39,7 +39,6 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 void set_return_value_and_state(UserTCB* tcb, int value, int state) {
     set_return_value(tcb, value);
     tcb->state = state;
-    printf("queuing %d pid\n", tcb->pcb->pid);
     queue_user_tcb(tcb);
 }
 
@@ -70,6 +69,7 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             newlib_handle_exit(frame);
             break;
         case NEWLIB_CLOSE:
+            printf("SYS_CLOSE\n");
             newlib_handle_close(frame);
             K::assert(false, "RACE DETECTED IN CLOSE");
             break;
@@ -100,10 +100,12 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             newlib_handle_lseek(frame);
             break;
         case NEWLIB_OPEN:
+            printf("SYS_OPEN\n");
             newlib_handle_open(frame);
             K::assert(false, "RACE DETECTED IN OPEN");
             break;
         case NEWLIB_READ:
+            printf("SYS_READ\n");
             newlib_handle_read(frame);
             K::assert(false, "RACE DETECTED IN READ");
             break;
@@ -117,6 +119,7 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             frame->X[0] = newlib_handle_wait(frame);
             break;
         case NEWLIB_WRITE:
+            printf("SYS_WRITE\n");
             newlib_handle_write(frame);
             K::assert(false, "RACE DETECTED IN WRITE");
             break;
@@ -318,9 +321,8 @@ void newlib_handle_open(KernelEntryFrame* frame) {
                         handle_error(tcb, sema);
                         return;
                     }
-                    event_loop();
+                    sema->up();
                 });
-            sema->up();
         });
     }
 
@@ -336,7 +338,6 @@ void newlib_handle_open(KernelEntryFrame* frame) {
                 return fd <= 0 ? handle_error(tcb, sema) : handle_success(tcb, fd);
             });
             sema->up();
-            event_loop();
         });
     });
     event_loop();
@@ -361,7 +362,6 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
 
     if (file == nullptr) {
         handle_error(tcb, nullptr);
-        event_loop();
         return;
     }
     printf("newlib_handle_read_or_write: file = %x\n", file);
@@ -372,7 +372,6 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
     if (!is_read && ufile.mode_flags() & OpenFlags::O_RDONLY) {
         printf("newlib_handle_read_or_write: file is read-only\n");
         handle_error(tcb, nullptr);
-        event_loop();
         return;
     }
 
@@ -380,17 +379,20 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
     if (is_read && ufile.mode_flags() & OpenFlags::O_WRONLY) {
         printf("newlib_handle_read_or_write: file is write-only\n");
         handle_error(tcb, nullptr);  // calls event_loop()
-        event_loop();
         return;
     }
 
     // Capture the current offset to avoid race conditions
     uint64_t current_offset = ufile.offset();
+    printf("newlib_handle_read_or_write: current_offset = %d\n", current_offset);
 
     // Perform the read or write.
-    auto handle_return = [tcb, fd, file_table, current_offset](int bytes_read_or_write) mutable {
+    auto handle_return = [tcb, fd, file_table,
+                          current_offset](uint64_t bytes_read_or_write) mutable {
         UFile& ufile = file_table->get_file(fd);
         // Set the new offset based on the original offset plus bytes processed
+        printf("handle_return: bytes_read_or_write = %d, new_offset = %d, old_offset = %d\n",
+               bytes_read_or_write, current_offset + bytes_read_or_write, ufile.offset());
         ufile.set_offset(current_offset + bytes_read_or_write);
         return bytes_read_or_write < 0 ? handle_error(tcb, nullptr)
                                        : handle_success(tcb, bytes_read_or_write);
@@ -406,11 +408,12 @@ void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
 
 void newlib_handle_read(KernelEntryFrame* frame) {
     newlib_handle_read_or_write(frame, true);
+    event_loop();  // safety
 }
 
 void newlib_handle_write(KernelEntryFrame* frame) {
     newlib_handle_read_or_write(frame, false);
-    event_loop();
+    event_loop();  // safety
 }
 
 int newlib_handle_stat(KernelEntryFrame* frame) {
