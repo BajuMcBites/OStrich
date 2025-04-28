@@ -2,6 +2,7 @@
 
 #include "dwc.h"
 #include "framebuffer.h"
+#include "ksocket.h"
 #include "libk.h"
 #include "listener.h"
 #include "peripherals/timer.h"
@@ -22,6 +23,7 @@ uint16_t dequeue_ptr = 0;
 undo undo_queue[QUEUE_SIZE];
 
 game_state state;
+uint8_t uuid[16] = {0};
 
 int get_queue_size() {
     int adj = 0;
@@ -125,9 +127,8 @@ void init() {
                    .prior_direction = 0};
     state.food = {.x = 75, .y = 15, .flags = {.draw = false, .generate = true}};
 
-    // state.key_listener = {.handler = (void (*)(key_event *))&snake_on_key_press, .next = nullptr};
-
-    // get_event_handler().register_listener(KEYBOARD_EVENT, &state.key_listener);
+    state.key_listener = {.handler = (void (*)(key_event *))&snake_on_key_press, .next = nullptr};
+    get_event_handler().register_listener(KEYBOARD_EVENT, &state.key_listener);
     fb_clear(0xFFFFFFFF);
 }
 
@@ -137,16 +138,111 @@ void reset() {
     init_snake();
 }
 
+void request_join(UDPSocket *socket) {
+    constexpr char join_msg[17] = {0};
+    join_msg[0] = MSG_JOIN;
+    join_msg[1] = 0x00;
+    join_msg[2] = 0x00;
+    join_msg[3] = 0x00;
+    join_msg[4] = 0x00;
+    join_msg[5] = 0x00;
+    join_msg[6] = 0x00;
+    socket->send_udp((const uint8_t *)join_msg, 17);
+    handle_join_ack(socket);
+}
+
+void handle_join_ack(UDPSocket *socket) {
+    uint8_t buffer[17];
+    volatile int i = 1000000;
+    int nbytes = socket->recv(buffer);
+    if (nbytes == 17 && buffer[0] == MSG_JOIN_ACK) {
+        K::memcpy(uuid, buffer[1], 16);
+        break;
+    }
+}
+
+void update_game_state(UDPSocket *socket) {
+    // Ask for game state.
+    char game_state_msg[17] = {0};
+    game_state_msg[0] = MSG_HEARTBEAT;
+    K::memcpy(game_state_msg[1], uuid, 16);
+    socket->send_udp((const uint8_t *)game_state_msg, 17);
+
+    // Wait for game state.
+    uint8_t timestamp;
+    uint8_t food_count;
+    uint8_t players_count;
+
+    char buffer[1024];
+    int nbytes = socket->recv(buffer);
+    if (buffer[0] == MSG_STATE_UPDATE) {  // Only type of message we can receive.
+        timestamp = buffer[1];
+        food_count = buffer[2];
+        players_count = buffer[3];
+    }
+
+    // State update:
+    // [1 byte: message type] [4 bytes: timestamp] [1 byte: players count] [1 byte: food count]
+    // [food_count * 2 shorts: food coordinates]
+    // [For each player: [16 bytes: player UUID] [1 byte: direction] [1 byte: snake length]
+    // [snake_length * 2 shorts: snake body]]
+
+    game_state::snake_t *snake = &state.snake;
+    game_state::food_t *food = &state.food;
+
+    char *food_buffer = buffer + 7;
+    char *snake_buffer = food_buffer + (food_count * 2);
+
+    for (size_t i = 0; i < MAX_FOOD; i++) {
+        if (i < food_count) {
+            food[i].x = food_buffer[i * 2];
+            food[i].y = food_buffer[i * 2 + 1];
+        } else {
+            food[i].x = 0;
+            food[i].y = 0;
+        }
+    }
+
+    // possible bug if someone disconnects but whatever.
+    for (size_t i = 0; i < MAX_PLAYERS; i++) {
+        if (i < players_count) {
+            snake[i].x = snake_buffer[i * 2];
+            snake[i].y = snake_buffer[i * 2 + 1];
+        } else {
+            snake[i].x = 0;
+            snake[i].y = 0;
+        }
+    }
+}
+
+// Whatever the latest input is, send it to the server.
+// Seems buggy but hopefully things run fast enough to not notice lag.
+void send_input(UDPSocket *socket) {
+    constexpr char input_msg[17] = {0};
+    input_msg[0] = MSG_INPUT;
+    K::memcpy(input_msg[1], uuid, 16);
+    input_msg[17] = state.snake.direction;
+    socket->send_udp((const uint8_t *)input_msg, 17);
+}
+
 void init_snake() {
+    UDPSocket socket(/* localhost but its unused internally */ 0x7F000001,
+                     /* port (also unused?)*/ 25565);
+
+    request_join(&socket);
+
     init();
     fb_pitch = fb_get()->pitch >> 2;
     fb_size = fb_get()->size;
     fb_buffer = (uint32_t *)fb_get()->buffer;
 
     while (1) {
-        if (tick(&state) || render(&state)) {
+        update_game_state(&socket);  // updates global game state
+        // we don't need to tick because the server will do that.
+        if (render(&state)) {
             break;
         }
+        handle_input(&socket);
         wait_msec(1000000 / FPS);
     }
     reset();

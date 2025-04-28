@@ -16,6 +16,27 @@
 #define QUEUE_SIZE 680
 #define FPS 10
 
+#define MAX_PLAYERS 4
+
+/*
+
+Client -> Server Message Datagram Format:
+
+[1 byte: message type]
+[16 bytes: player UUID]
+[1 byte: direction]
+
+Server -> Client Message Datagram Format:
+
+Game State
+
+*/
+#define MSG_JOIN 1
+#define MSG_JOIN_ACK 2
+#define MSG_INPUT 3
+#define MSG_STATE_UPDATE 4
+#define MSG_HEARTBEAT 5
+
 struct undo {
     union undo_u {
         uint64_t raw;
@@ -30,7 +51,7 @@ struct undo {
 } __attribute__((packed));
 
 typedef struct {
-    // Listener<struct key_event *> key_listener;
+    Listener<struct key_event *> key_listener;
 
     // snake info
     struct snake_t {
@@ -40,7 +61,7 @@ typedef struct {
         uint8_t y;
         uint8_t direction;
         uint8_t prior_direction;
-    } __attribute__((packed)) snake;
+    } __attribute__((packed)) snake[MAX_PLAYERS];
 
     // food info
     struct food_t {
@@ -50,7 +71,7 @@ typedef struct {
             bool draw : 1;
             bool generate : 1;
         } __attribute__((packed)) flags;
-    } __attribute__((packed)) food;
+    } __attribute__((packed)) food[MAX_FOOD];
 
 } __attribute__((packed)) game_state;
 
