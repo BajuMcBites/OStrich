@@ -13,7 +13,8 @@ void handle_ipv4_packet(usb_session *session, PacketBufferParser *buffer_parser)
     // if ((checked = calc_checksum(nullptr, ipv4_packet, 0, 5 * 4)) != 0x00) {
     //     return;
     // }
-    
+
+    printf("Handling IPV4 Packet\n");
     switch (ipv4_packet->protocol) {
         case IP_ICMP:
             handle_icmp(session, buffer_parser);
@@ -30,5 +31,4 @@ void handle_ipv4_packet(usb_session *session, PacketBufferParser *buffer_parser)
     }
 
     return;
-
 }

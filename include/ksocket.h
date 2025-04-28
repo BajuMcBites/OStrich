@@ -62,6 +62,7 @@ class ISocket {
 
     size_t lock_if_present(uint8_t* buffer);
     size_t handle_tcp(uint8_t* slot, uint8_t* buffer);
+    size_t handle_udp(uint8_t* slot, uint8_t* buffer);
 
     void configure(PacketParser<EthernetFrame, IPv4Packet, TCPPacket, Payload>* other);
     bool is_configured() {
@@ -69,6 +70,7 @@ class ISocket {
     }
 
    public:
+    uint8_t protocol;
     port_status status;
 
     ISocket() {
@@ -101,16 +103,33 @@ class ClientSocket {
     }
 };
 
-class UDPClientSocket : public ClientSocket {
+class UDPSocket : public ISocket {
+   private:
+    uint32_t dst_ip;
+    uint16_t dst_port;
+    uint16_t src_port;
+
+    void _initialize();
+
    public:
-    UDPClientSocket(uint32_t dst_ip, uint16_t dst_port) : ClientSocket(dst_ip, dst_port) {
+    UDPSocket(uint32_t dst_ip, uint16_t dst_port) : dst_ip(dst_ip), dst_port(dst_port) {
+        protocol = IP_UDP;
+        K::assert(obtain_port(100), "port already in use");
+        src_port = 100;
+        get_open_sockets()->put(src_port, this);
+        _initialize();
+        printf("UDPSocket created on port %d\n", src_port);
     }
 
-    void send(uint8_t* buffer, size_t length, uint16_t response_flags = TCP_FLAG_ACK) {
+    // ISocket recv works, but wanted to do a simple one for udp.
+    void send_udp(const uint8_t* buffer, size_t length);
+
+    void close() {
+        printf("Closing UDP socket\n");
     }
 };
 
-class UDPServerSocket : public ISocket {
+class ServerSocket : public ISocket {
    private:
     uint16_t port;
 
@@ -123,6 +142,7 @@ class UDPServerSocket : public ISocket {
         K::assert(obtain_port(port), "port already in use");
         get_open_sockets()->put(port, this);
         _initialize();
+        protocol = IP_TCP;
     }
 
     ~ServerSocket() {

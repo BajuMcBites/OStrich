@@ -38,10 +38,13 @@ int _light_parse(PacketParser<EthernetFrame, IPv4Packet, TCPPacket>&& parser, ui
 }
 
 void ISocket::enqueue(uint8_t* buffer, size_t length) {
-    if (auto err = _light_parse(PacketParser<EthernetFrame, IPv4Packet, TCPPacket>(buffer, length),
-                                status.tcp.rcv_nxt, status.tcp.snd_una, status.tcp.flags.stage)) {
-        if (err == 0x1) this->handle_tcp(buffer, nullptr);
-        return;
+    if (protocol == IP_TCP) {
+        if (auto err =
+                _light_parse(PacketParser<EthernetFrame, IPv4Packet, TCPPacket>(buffer, length),
+                             status.tcp.rcv_nxt, status.tcp.snd_una, status.tcp.flags.stage)) {
+            if (err == 0x1) this->handle_tcp(buffer, nullptr);
+            return;
+        }
     }
 
     num_empty.down();
@@ -60,17 +63,16 @@ void ISocket::enqueue(uint8_t* buffer, size_t length) {
 size_t ISocket::dequeue(uint8_t* buffer) {
     num_queue.down();
 
-    // printf("[num_queue::down] GOT PACKET!\n");
-
     uint8_t* slot = recv_buffer + (dequeue_idx * 1520);
     dequeue_idx = (dequeue_idx + 1) % QUEUE_MAX_SIZE;
 
-    switch (pseudo.protocol) {
+    size_t payload_length = 0;
+    switch (protocol) {
         case IP_TCP:
-            size_t payload_length = handle_tcp(slot, buffer);
+            payload_length = handle_tcp(slot, buffer);
             break;
         case IP_UDP:
-            size_t payload_length = handle_udp(slot, buffer);
+            payload_length = handle_udp(slot, buffer);
             break;
         default:
             printf("unknown protocol\n");
@@ -80,15 +82,18 @@ size_t ISocket::dequeue(uint8_t* buffer) {
 
     // printf("num_empty::");
 
+    printf("Payload length: %d\n", payload_length);
+
     return payload_length;
 }
 
 size_t ISocket::recv(uint8_t* buffer) {
     size_t length;
-    while (status.tcp.flags.alive && (length = dequeue(buffer)) == 0) {
+    while ((status.tcp.flags.alive || protocol == IP_UDP) && (length = dequeue(buffer)) == 0) {
         printf("recv: waiting for packet\n");
         // wait_msec(1);
     }
+    printf("recv: got packet\n");
     return length;
 }
 
@@ -159,6 +164,18 @@ size_t ISocket::handle_tcp(uint8_t* slot, uint8_t* buffer) {
     return 0;
 }
 
+size_t ISocket::handle_udp(uint8_t* slot, uint8_t* buffer) {
+    PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, Payload> other(slot, 1514);
+
+    auto ip_packet = other.get<IPv4Packet>();
+    auto udp_packet = other.get<UDPDatagram>();
+    auto payload = other.get<Payload>();
+
+    int payload_length = 512;  // hard coding rn bc im a chad.
+    memcpy(buffer, payload, payload_length);
+    return payload_length;
+}
+
 void ISocket::send(uint8_t* buffer, size_t length, uint16_t response_flags) {
     K::assert(length < 1515, "buffer too long");
 
@@ -195,7 +212,21 @@ void ISocket::send(uint8_t* buffer, size_t length, uint16_t response_flags) {
     if (response_flags & TCP_FLAG_FIN) status.tcp.snd_nxt += 1;
 }
 
-void ServerSocket::_initialize() {
+void UDPSocket::send_udp(const uint8_t* buffer, size_t length) {
+    PacketParser<EthernetFrame, IPv4Packet, UDPDatagram, Payload> parser(send_buffer, 1514);
+    auto ipv4 = parser.get<IPv4Packet>();
+    auto udp = parser.get<UDPDatagram>();
+    auto payload = parser.get<Payload>();
+
+    udp->total_length = length;
+    udp->src_port = src_port;
+    udp->dst_port = dst_port;
+    memcpy(payload, buffer, length);
+
+    send_packet(send_buffer, ipv4->total_length.get() + sizeof(ethernet_header));
+}
+
+void UDPSocket::_initialize() {
     K::memset(send_buffer, 0, sizeof(send_buffer));
     size_t len;
     ETHFrameBuilder{get_mac_address(), get_mac_address(), 0x0800}
@@ -203,6 +234,19 @@ void ServerSocket::_initialize() {
                          .with_src_address(dhcp_state.my_ip)
                          .with_dst_address(dhcp_state.my_ip)
                          .with_protocol(IP_UDP)
+                         .encapsulate(UDPBuilder{dst_port, dst_port}.with_pseduo_header(
+                             dhcp_state.my_ip, dhcp_state.my_ip)))
+        .build(send_buffer, &len);
+}
+
+void ServerSocket::_initialize() {
+    K::memset(send_buffer, 0, sizeof(send_buffer));
+    size_t len;
+    ETHFrameBuilder{get_mac_address(), get_mac_address(), 0x0800}
+        .encapsulate(IPv4Builder{}
+                         .with_src_address(dhcp_state.my_ip)
+                         .with_dst_address(dhcp_state.my_ip)
+                         .with_protocol(IP_TCP)
                          .encapsulate(TCPBuilder{port, port}
                                           .with_pseduo_header(dhcp_state.my_ip, dhcp_state.my_ip)
                                           .with_data_offset(5)

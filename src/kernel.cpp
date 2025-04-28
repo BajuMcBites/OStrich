@@ -204,35 +204,31 @@ void mergeCores() {
     }
 
     if (getCoreID() == 0) {
-        // wait_msec(1000000);
-        // printf("initializing network loop!\n");
+        wait_msec(1000000);
+        printf("initializing network loop!\n");
         create_event([=]() { network_loop(); });
-        create_event([=]() { keyboard_loop(); });
+        // create_event([=]() { keyboard_loop(); });
 
     } else if (getCoreID() == 1) {
-        // create_event([=]() {
-        //     ServerSocket socket(100);
-        //     uint8_t __attribute__((aligned(8))) buffer[1516];
+        create_event([=]() {
+            // ServerSocket server(100);
+            UDPSocket socket(/*localhost uint32_t not even used tho lmao */ 0x7F000001, 25565);
+            uint8_t __attribute__((aligned(8))) buffer[1516];
 
-        //     size_t received = 0;
-        //     uint32_t pckt_cnt = 0;
+            size_t received = 0;
+            uint32_t pckt_cnt = 0;
 
-        //     // while (socket.is_alive()) {
-        //     //     size_t length = socket.recv(buffer);
-        //     //     pckt_cnt++;
-        //     //     received += length;
+            while (1) {
+                size_t length = socket.recv(buffer);
+                printf("received %d bytes\n", length);
+                received += length;
+                socket.send_udp((const uint8_t *)"Hello from core 1!",
+                                K::strlen("Hello from core 1!"));
+            }
 
-        //     //     socket.send(nullptr, 0, TCP_FLAG_ACK);
-        //     // }
-        //     while (socket.is_alive()) {
-        //         size_t length = socket.recv(buffer);
-        //         received += length;
-        //         socket.send(nullptr, 0, TCP_FLAG_ACK);
-        //     }
-
-        //     printf("socket no longer active, received %d bytes total!\n", received);
-        // });
-        create_event([=]() { snake_generic_main(); });
+            printf("socket no longer active, received %d bytes total!\n", received);
+        });
+        // create_event([=]() { snake_generic_main(); });
     }
     event_loop();
     printf("PANIC I should not go here\n");

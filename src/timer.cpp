@@ -14,6 +14,16 @@ void timer_init(void) {
     put32(TIMER_C1, curVal);
 }
 
+/**
+ * gets time since system start up in microseconds
+ */
+uint64_t get_systime() {
+    register unsigned long f, t, r;
+    asm volatile("mrs %0, cntfrq_el0" : "=r"(f));
+    asm volatile("mrs %0, cntpct_el0" : "=r"(t));
+    return (t * 1000000) / f;
+}
+
 void local_timer_init() {
     QA7->TimerRouting.Routing = LOCALTIMER_TO_CORE0_IRQ;  // Route local timer IRQ to Core0
     QA7->TimerControlStatus.ReloadValue = 10000000;       // Timer period set

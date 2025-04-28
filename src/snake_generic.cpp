@@ -1,12 +1,14 @@
 #include "snake_generic.h"
 
 #include "../peripherals/usb_hid_keys.h"
-#include "libk.h"
 
+#ifdef __cplusplus
+#include "libk.h"
 using namespace K;
+#endif
 
 // Game state
-SnakeGameState sg_game_state;
+SnakeGameStateData sg_game_state;
 bool sg_is_running = false;
 bool sg_is_connected = false;
 
@@ -15,6 +17,8 @@ static uint32_t last_heartbeat_time = 0;
 static uint32_t last_frame_time = 0;
 static const uint32_t HEARTBEAT_INTERVAL_MS = 2000;
 static const uint32_t FRAME_INTERVAL_MS = 100;
+
+static int LAST_KEY_PRESSED = -1;
 
 // Core game functions
 void SG_Init(void) {
@@ -31,7 +35,8 @@ void SG_Init(void) {
     }
 
     // Initialize network
-    if (!SG_PlatformNetInit("127.0.0.1", 25566)) {
+    uint32_t localhost = 0x7F000001;
+    if (!SG_PlatformNetInit(localhost, 25565)) {
         SG_PlatformPrintMessage("Network initialization failed");
         sg_is_running = false;
         return;
@@ -65,7 +70,7 @@ void SG_ProcessFrame(void) {
 
     // Check for incoming network data
     static uint8_t net_buffer[4096];
-    int received = SG_PlatformNetReceive(net_buffer, sizeof(net_buffer));
+    int received = SG_PlatformNetReceive(net_buffer);
     if (received > 0) {
         // Parse game state update
         SG_PlatformNetParseGameState(net_buffer, received, &sg_game_state);
@@ -98,8 +103,7 @@ void SG_HandleInput(int key_code) {
     uint8_t direction = SNAKE_DIR_UP;
     bool handled = true;
 
-    // These values should be defined by the platform
-    // Using generic values for demonstration
+    // platform specific actually lmao.
     switch (key_code) {
         case KEY_W:
             direction = SNAKE_DIR_UP;

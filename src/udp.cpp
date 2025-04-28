@@ -5,10 +5,10 @@
 #include "arp.h"
 #include "dhcp.h"
 #include "dns.h"
+#include "ksocket.h"
 #include "net_stack.h"
 #include "network_card.h"
 #include "printf.h"
-
 void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
     PacketParser<EthernetFrame, IPv4Packet, TCPPacket> parser(buffer_parser->get_packet_base(),
                                                               buffer_parser->get_length());
@@ -52,16 +52,13 @@ void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
             //        ptr->rdlength.get(), ptr->rdata);
             break;
         }
-        default:
-            printf("Unable to handle UDP Datagram sent to port: %d\n", port);
+        // Probably UDP.
+        default: {
+            if (auto socket = get_open_sockets()->get(port)) {
+                socket->enqueue(buffer_parser->get_packet_base(),
+                                ip_packet->total_length.get() + sizeof(ethernet_header));
+            }
             break;
+        }
     }
-}
-
-void udp_send(uint8_t* buffer, size_t length) {
-    PacketParser<EthernetFrame, IPv4Packet, UDPDatagram> parser(buffer, length);
-    auto udp_datagram = parser.get<UDPDatagram>();
-    udp_datagram->src_port.set(100);
-    udp_datagram->dst_port.set(100);
-    udp_datagram->total_length.set(length);
 }

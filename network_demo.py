@@ -58,10 +58,15 @@ def connect_to_localhost_tcp(port):
 def connect_to_localhost_udp(port):
     host = '127.0.0.1'  # localhost
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.sendto(b'0' * 500, (host, port))
-        print(f'sent')
-        response, _ = s.recvfrom(1024)
-        print(f'response = {response}')
+        # disable checksum on receiving
+        s.setsockopt(socket.IPPROTO_IP, socket.IP_RECVOPTS, 1)
+
+        for i in range(1000):
+            s.sendto(bytearray(512), (host, port))
+            print(f'sent {i}')
+            time.sleep(0.0000001)
+            response, _ = s.recvfrom(5)
+            # print(f'response = {response}')
 
 if __name__ == '__main__':
     port = 25566

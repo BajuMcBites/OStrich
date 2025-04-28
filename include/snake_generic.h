@@ -39,19 +39,17 @@ typedef struct {
     char player_id[37];  // UUID string
 } SnakePlayer;
 
-typedef struct {
+struct SnakeGameStateData {
+    uint8_t msg_type;
     uint32_t timestamp;
     uint8_t player_count;
     uint8_t food_count;
-    SnakePlayer players[SNAKE_MAX_PLAYERS];
-    SnakePosition food[SNAKE_MAX_FOOD];
-    uint16_t grid_width;
-    uint16_t grid_height;
-    char my_player_id[37];  // UUID of local player
-} SnakeGameState;
+    SnakePosition food[5];   // MAX_FOOD
+    SnakePlayer players[4];  // MAX_PLAYERS. I am always player 0.
+};
 
 // Game state (global)
-extern SnakeGameState sg_game_state;
+extern SnakeGameStateData sg_game_state;
 extern bool sg_is_running;
 extern bool sg_is_connected;
 
@@ -66,7 +64,7 @@ bool SG_IsRunning(void);
 // Graphics
 bool SG_PlatformInit(void);
 void SG_PlatformShutdown(void);
-void SG_PlatformDrawFrame(SnakeGameState* state);
+void SG_PlatformDrawFrame(SnakeGameStateData* state);
 void SG_PlatformPrintMessage(const char* message);
 
 // Input
@@ -77,15 +75,15 @@ uint32_t SG_PlatformGetTicksMs(void);
 void SG_PlatformSleepMs(uint32_t ms);
 
 // Networking
-bool SG_PlatformNetInit(const char* server_host, int server_port);
+bool SG_PlatformNetInit(uint32_t server_host, int server_port);
 void SG_PlatformNetShutdown(void);
 int SG_PlatformNetSend(const void* data, int length);
-int SG_PlatformNetReceive(void* buffer, int buffer_size);
+int SG_PlatformNetReceive(void* buffer);
 bool SG_PlatformNetConnect(void);
 bool SG_PlatformNetSendJoin(void);
 bool SG_PlatformNetSendInput(uint8_t direction);
 bool SG_PlatformNetSendHeartbeat(void);
-bool SG_PlatformNetParseGameState(const uint8_t* data, int length, SnakeGameState* state);
+bool SG_PlatformNetParseGameState(const uint8_t* data, int length, SnakeGameStateData* state);
 
 int snake_generic_main();
 
