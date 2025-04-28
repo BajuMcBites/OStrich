@@ -22,6 +22,10 @@
 #define NEWLIB_TIME 17
 #define NEWLIB_SBRK 999
 
+// custom sys calls
+
+#define DRAW_FRAME 64
+
 // TODO: Later, add Linux system call #'s here.
 
 #endif

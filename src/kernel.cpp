@@ -195,6 +195,7 @@ extern "C" void primary_kernel_init() {
     // local_timer_init();
     init_swap();
     init_tty();
+
     wake_up_cores();
     enable_irq();
     mergeCores();
@@ -206,10 +207,12 @@ void mergeCores() {
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
 
-    // if (number_awake == CORE_COUNT) {
-    //     printf("creating kernel_main\n");
-    //     create_event([] { kernel_main(); });
-    // }
+    if (number_awake == CORE_COUNT) {
+        printf("creating kernel_main\n");
+        create_event(keyboard_loop);
+        // create_event([] { kernel_main(); });
+        elf_load_test();
+    }
     // Uncomment to run snake
     if (getCoreID() == 0) {
         printf("init_snake() + keyboard_loop();\n");
@@ -220,6 +223,7 @@ void mergeCores() {
             tcb->frameBuffer = request_tty();
             printf("request made\n");
             init_snake();
+            create_event([] { elf_load_test(); });
         });
 
         create_event([] {
@@ -230,7 +234,7 @@ void mergeCores() {
         create_event(update_animation);
         create_event(update_animation);
         create_event(update_animation);
-        create_event(keyboard_loop);
+
         // create_event(run_tty);
     }
     event_loop();

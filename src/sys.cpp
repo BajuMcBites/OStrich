@@ -4,11 +4,13 @@
 #include "atomic.h"
 #include "elf_loader.h"
 #include "event.h"
+#include "framebuffer.h"
 #include "mmap.h"
 #include "printf.h"
 #include "process.h"
 #include "ramfs.h"
 #include "stdint.h"
+#include "tty.h"
 #include "utils.h"
 #include "vm.h"
 // #include "trap_frame.h"
@@ -33,9 +35,15 @@ int newlib_handle_write(KernelEntryFrame* frame);
 int newlib_handle_time(KernelEntryFrame* frame);
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 
-void syscall_handler(KernelEntryFrame* frame) {
-    int opcode = frame->X[8];
+int sys_draw_frame(KernelEntryFrame* frame);
 
+void syscall_handler(KernelEntryFrame* frame) {
+    // printf("hello\n");
+    int opcode = frame->X[8];
+    if (opcode == DRAW_FRAME) {
+        frame->X[0] = sys_draw_frame(frame);
+        return;
+    }
     // Right now, calling any variant of "printf" breaks the kernel causing an infinite exception
     // loop.
     handle_newlib_syscall(opcode, frame);
@@ -144,6 +152,7 @@ int newlib_handle_exec(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     tcb->state = TASK_STOPPED;
     PCB* pcb = tcb->pcb;
+
     pcb->supp_page_table = new SupplementalPageTable();
     pcb->page_table = new PageTable();
     int pid = pcb->pid;
@@ -355,4 +364,29 @@ int newlib_handle_write(KernelEntryFrame* frame) {
 int newlib_handle_time(KernelEntryFrame* frame) {
     // TODO: Implement time.
     return 0;
+}
+
+int sys_draw_frame(KernelEntryFrame* frame) {
+    printf("draw!\n");
+    // Retrieve the pointer to the frame buffer data from the first argument
+    void* frame_data = (void*)frame->X[0];
+
+    // Access the current task's PCB to get the framebuffer buffer
+    Framebuffer* fb = fb_get();
+
+    if (fb == nullptr) {
+        UserTCB* tcb = get_running_user_tcb(getCoreID());
+        PCB* pcb = tcb->pcb;
+        if (pcb->frameBuffer == nullptr) {
+            pcb->frameBuffer = request_tty();
+        }
+        tcb->frameBuffer = pcb->frameBuffer;
+    }
+
+    fb = fb_get();
+
+    // Perform the memory copy operation
+    K::memcpy(fb->buffer, frame_data, 4096);  // Frame buffer size
+
+    return 0;  // Return success
 }

@@ -4,6 +4,7 @@
 #include "atomic.h"
 #include "event.h"
 #include "printf.h"
+#include "shared.h"
 #include "vm.h"
 
 #define NR_TASKS (1 << 8)
