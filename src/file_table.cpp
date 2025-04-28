@@ -2,7 +2,7 @@
 
 #include "event.h"
 
-void FileTable::add_file(UFile& file, Function<void(int)> w) {
+void FileTable::add_file(KFile* file, int offset, int flags, Function<void(int)> w) {
     if (open_files_ >= MAX_OPEN_FILES) {
         create_event<int>(w, TOO_MANY_OPEN_FILES);
         return;
@@ -15,7 +15,7 @@ void FileTable::add_file(UFile& file, Function<void(int)> w) {
         for (int i = 0; i < MAX_OPEN_FILES; i++) {
             if (!file_table_[fd_counter_].backing_file()) {
                 printf("FileTable::add_file: Adding file to fd %d\n", fd_counter_);
-                file_table_[fd_counter_] = file;
+                file_table_[fd_counter_].construct(file, offset, flags);
                 open_files_++;
                 create_event<int>(w, fd_counter_);
                 return;

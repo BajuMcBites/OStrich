@@ -30,6 +30,12 @@ class UFile {
     UFile(KFile* file, int offset, int mode_flags)
         : backing_file_(file), offset_(offset), mode_flags_(mode_flags) {
     }
+    void construct(KFile* file, int offset, int mode_flags) {
+        // ??? 
+        backing_file_ = file;
+        offset_ = offset;
+        mode_flags_ = mode_flags;
+    }
     void reset() {
         backing_file_ = nullptr;
         offset_ = 0;
@@ -69,7 +75,7 @@ class FileTable {
     FileTable() : fd_counter_(FD_START), open_files_(0) {
     }
     ~FileTable() = default;
-    void add_file(UFile& file, Function<void(int)> w);
+    void add_file(KFile* file, int offset, int flags, Function<void(int)> w);
     UFile& get_file(int fd);
     void remove_file(int fd, Function<void(int)> w);
 

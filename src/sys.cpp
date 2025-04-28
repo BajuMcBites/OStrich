@@ -332,8 +332,7 @@ void newlib_handle_open(KernelEntryFrame* frame) {
                 return;
             }
 
-            UFile ufile(file, 0, flags);
-            file_table->add_file(ufile, [=](int fd) {
+            file_table->add_file(file, 0, flags, [=](int fd) {
                 return fd <= 0 ? handle_error(tcb, sema) : handle_success(tcb, fd);
             });
             sema->up();
