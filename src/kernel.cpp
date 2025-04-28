@@ -42,28 +42,6 @@ struct __attribute__((__packed__, aligned(4))) SystemTimerRegisters {
     uint32_t Compare3;       // 0x18
 };
 
-#define SYSTEMTIMER \
-    ((volatile      \
-      __attribute__((aligned(4))) struct SystemTimerRegisters *)(uintptr_t)(PBASE + 0x3000))
-
-uint64_t timer_getTickCount64(void) {
-    uint64_t resVal;
-    uint32_t lowCount;
-    do {
-        resVal = SYSTEMTIMER->TimerHi;    // Read Arm system timer high count
-        lowCount = SYSTEMTIMER->TimerLo;  // Read Arm system timer low count
-    } while (resVal !=
-             (uint64_t)SYSTEMTIMER->TimerHi);  // Check hi counter hasn't rolled in that time
-    resVal = (uint64_t)resVal << 32 | lowCount;  // Join the 32 bit values to a full 64 bit
-    return (resVal);                             // Return the uint64_t timer tick count
-}
-
-void timer_wait(uint64_t us) {
-    us += timer_getTickCount64();  // Add current tickcount onto delay
-    while (timer_getTickCount64() < us) {
-    };  // Loop on timeout function until timeout
-}
-
 struct Stack {
     static constexpr int BYTES = 16384;
     uint64_t bytes[BYTES] __attribute__((aligned(16)));
@@ -112,7 +90,6 @@ extern char _frame_table_start[];
 #define frame_table_start ((uintptr_t)_frame_table_start)
 
 extern "C" void kernel_main() {
-    // test_fs_requests();
     // stringTest();
 
     printf("All tests passed\n");
@@ -125,14 +102,20 @@ extern "C" void kernel_main() {
     // ramfs_tests();
     // sdioTests();
     // ring_buffer_tests();
-    // bitmap_tests();
-    // swap_tests();
     elf_load_test();
     // partitionTests();
     // stringTest();
-    // test_fs();
-    // testSnapshot();
-    // test_fs_requests();
+
+    // // filesystem
+    // // test_fs();
+    // // testSnapshot();
+    // // test_fs_requests();
+
+    // kernel file interface
+    // kfs_simple_test();
+    // kfs_kopen_uses_cache_test();
+    // kfs_stress_test(10);
+    // sd_stress_test();
 }
 
 extern char __heap_start[];
@@ -185,14 +168,22 @@ extern "C" void primary_kernel_init() {
 
     usb_initialize();
 
-    set_partition_table(512 * 1024 /* Filesystem (Bytes) */, 512 * 1024 /* Swap (Bytes) */);
+    constexpr int FILESYSTEM_SIZE_MB = 4;
+    constexpr int SWAP_SIZE_MB = 4;
+
+    // Sector 0 is the partition table, so we really have SD_SIZE - 1 * SD_BLK_SIZE bytes available.
+    // But also, swap and filesystem operate at a page granularity, so we need to subtract a
+    // multiple of 4096 from one of them. I chose to subtract 256KB from the swap partition (also
+    // need extra space for partition tests).
+    set_partition_table(FILESYSTEM_SIZE_MB * 1024 * 1024, SWAP_SIZE_MB * 1024 * 1024 - 256 * 1024);
     fs_init();
 
     smpInitDone = true;
     // with data cache on, we must write the boolean back to memory to allow other cores to see it.
     clean_dcache_line(&smpInitDone);
     init_page_cache();
-    // local_timer_init();
+    init_dummy_tcb();  // MUST COME BEFORE LOCAL TIMER INIT
+    local_timer_init();
     init_swap();
     init_tty();
 

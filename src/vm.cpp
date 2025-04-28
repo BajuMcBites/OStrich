@@ -403,7 +403,7 @@ void unmap_refs(PageLocation* location) {
  * takes in file name offset and id and finds the matching page in the page or
  * creates a new one and inserts it into the page cache.
  */
-void PageCache::get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+void PageCache::get_or_add(KFile* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
                            Function<void(PageLocation*)> w) {
     bool file_backed = file != nullptr;
     bool unbacked = offset == 1;

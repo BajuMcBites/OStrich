@@ -69,9 +69,14 @@ master:
 
 el1_entry:
     // Clear BSS section
-    adr    x0, __bss_start
-    adr    x1, __bss_end
-    sub    x1, x1, x0
+    // Changed from adr to adrp since adr only works with a bss_size of at most 1MB
+    adrp   x0, __bss_start     // Load page address of __bss_start
+    add    x0, x0, :lo12:__bss_start  // Add low 12 bits offset
+    
+    adrp   x1, __bss_end       // Load page address of __bss_end
+    add    x1, x1, :lo12:__bss_end    // Add low 12 bits offset
+    
+    sub    x1, x1, x0          // Calculate size
     bl     memzero
 
     bl    primary_kernel_init

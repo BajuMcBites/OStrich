@@ -1,10 +1,13 @@
 #include "sys.h"
 
+#include "../filesystem/filesys/fs_requests.h"
 #include "../user_programs/system_calls.h"
 #include "atomic.h"
 #include "elf_loader.h"
 #include "event.h"
+#include "file_table.h"
 #include "framebuffer.h"
+#include "fs.h"
 #include "mmap.h"
 #include "printf.h"
 #include "process.h"
@@ -17,7 +20,7 @@
 
 // Function prototypes
 void newlib_handle_exit(KernelEntryFrame* frame);
-int newlib_handle_close(KernelEntryFrame* frame);
+void newlib_handle_close(KernelEntryFrame* frame);
 int newlib_handle_exec(KernelEntryFrame* frame);
 int newlib_handle_fork(KernelEntryFrame* frame);
 int newlib_handle_fstat(KernelEntryFrame* frame);
@@ -26,14 +29,35 @@ int newlib_handle_isatty(KernelEntryFrame* frame);
 int newlib_handle_kill(KernelEntryFrame* frame);
 int newlib_handle_link(KernelEntryFrame* frame);
 int newlib_handle_lseek(KernelEntryFrame* frame);
-int newlib_handle_open(KernelEntryFrame* frame);
-int newlib_handle_read(KernelEntryFrame* frame);
+void newlib_handle_open(KernelEntryFrame* frame);
+void newlib_handle_read(KernelEntryFrame* frame);
 int newlib_handle_stat(KernelEntryFrame* frame);
 int newlib_handle_unlink(KernelEntryFrame* frame);
 int newlib_handle_wait(KernelEntryFrame* frame);
-int newlib_handle_write(KernelEntryFrame* frame);
+void newlib_handle_write(KernelEntryFrame* frame);
 int newlib_handle_time(KernelEntryFrame* frame);
+int newlib_handle_sbrk(KernelEntryFrame* frame);
+int newlib_handle_mmap(KernelEntryFrame* frame);
+
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
+
+void set_return_value_and_state(UserTCB* tcb, int value, int state) {
+    set_return_value(tcb, value);
+    tcb->state = state;
+    queue_user_tcb(tcb);
+}
+
+void handle_success(UserTCB* tcb, int value) {
+    set_return_value_and_state(tcb, value, TASK_RUNNING);
+}
+
+void handle_error(UserTCB* tcb, Semaphore* sema) {
+    set_return_value_and_state(tcb, -1, TASK_RUNNING);
+    if (sema != nullptr) {
+        sema->kill();
+        delete sema;
+    }
+}
 
 int sys_draw_frame(KernelEntryFrame* frame);
 
@@ -56,13 +80,17 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             newlib_handle_exit(frame);
             break;
         case NEWLIB_CLOSE:
-            frame->X[0] = newlib_handle_close(frame);
+            printf("SYS_CLOSE\n");
+            newlib_handle_close(frame);
+            K::assert(false, "RACE DETECTED IN CLOSE");
             break;
         case NEWLIB_EXEC:
             frame->X[0] = newlib_handle_exec(frame);
+            K::assert(false, "RACE DETECTED IN EXEC");
             break;
         case NEWLIB_FORK:
             frame->X[0] = newlib_handle_fork(frame);
+            K::assert(false, "RACE DETECTED IN FORK");
             break;
         case NEWLIB_FSTAT:
             frame->X[0] = newlib_handle_fstat(frame);
@@ -80,13 +108,17 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             frame->X[0] = newlib_handle_link(frame);
             break;
         case NEWLIB_LSEEK:
-            frame->X[0] = newlib_handle_lseek(frame);
+            newlib_handle_lseek(frame);
             break;
         case NEWLIB_OPEN:
-            frame->X[0] = newlib_handle_open(frame);
+            printf("SYS_OPEN\n");
+            newlib_handle_open(frame);
+            K::assert(false, "RACE DETECTED IN OPEN");
             break;
         case NEWLIB_READ:
-            frame->X[0] = newlib_handle_read(frame);
+            printf("SYS_READ\n");
+            newlib_handle_read(frame);
+            K::assert(false, "RACE DETECTED IN READ");
             break;
         case NEWLIB_STAT:
             frame->X[0] = newlib_handle_stat(frame);
@@ -98,10 +130,18 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             frame->X[0] = newlib_handle_wait(frame);
             break;
         case NEWLIB_WRITE:
-            frame->X[0] = newlib_handle_write(frame);
+            printf("SYS_WRITE\n");
+            newlib_handle_write(frame);
+            K::assert(false, "RACE DETECTED IN WRITE");
             break;
         case NEWLIB_TIME:
             frame->X[0] = newlib_handle_time(frame);
+            break;
+        case NEWLIB_SBRK:
+            newlib_handle_sbrk(frame);
+            break;
+        case NEWLIB_MMAP:
+            newlib_handle_mmap(frame);
             break;
         default:
             break;
@@ -143,9 +183,17 @@ void newlib_handle_exit(KernelEntryFrame* frame) {
     event_loop();
 }
 
-int newlib_handle_close(KernelEntryFrame* frame) {
-    // TODO: Implement close.
-    return 0;
+void newlib_handle_close(KernelEntryFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    PCB* pcb = tcb->pcb;
+    FileTable* file_table = pcb->file_table;
+    save_user_context(tcb, frame);
+
+    int fd = frame->X[0];
+    file_table->remove_file(fd, [tcb](int fd) {
+        return fd < 0 ? handle_error(tcb, nullptr) : handle_success(tcb, 0 /* success */);
+    });
+    event_loop();
 }
 
 int newlib_handle_exec(KernelEntryFrame* frame) {
@@ -191,6 +239,7 @@ int newlib_handle_exec(KernelEntryFrame* frame) {
         sp -= 8;
         *(uint64_t*)sp = addrs[i];
     }
+    sp -= sp % 16;
     // save &argv
     tcb->context.x1 = sp;
     // save argc
@@ -263,14 +312,127 @@ int newlib_handle_lseek(KernelEntryFrame* frame) {
     return 0;
 }
 
-int newlib_handle_open(KernelEntryFrame* frame) {
-    // TODO: Implement open.
-    return 0;
+void newlib_handle_open(KernelEntryFrame* frame) {
+    char* path_name = (char*)frame->X[0];
+    int flags = frame->X[1];
+    int mode = frame->X[2];
+
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    PCB* pcb = tcb->pcb;
+    FileTable* file_table = pcb->file_table;
+    save_user_context(tcb, frame);
+
+    int cwd = pcb->cwd;
+    bool is_dir = flags & OpenFlags::O_DIRECTORY;
+    bool is_append = flags & OpenFlags::O_APPEND;
+    bool is_create = flags & OpenFlags::O_CREAT;
+    bool is_trunc = flags & OpenFlags::O_TRUNC;
+    uint16_t permissions = mode;
+
+    // Handle the create case first.
+    Semaphore* sema = new Semaphore(1);
+    if (is_create) {
+        sema->down([=]() {
+            fs::issue_fs_create_file(
+                cwd, is_dir, path_name, permissions, [tcb, sema](fs::fs_response_t resp) {
+                    if (resp.data.create_file.status != fs::fs_resp_status_t::FS_RESP_SUCCESS) {
+                        printf("Failed to create file\n");
+                        handle_error(tcb, sema);
+                        return;
+                    }
+                    sema->up();
+                });
+        });
+    }
+
+    // Once it's created, open it in the kernel and return an fd.
+    sema->down([=]() {
+        kopen(path_name, [=](KFile* file) {
+            if (file == nullptr) {
+                handle_error(tcb, sema);
+                return;
+            }
+
+            file_table->add_file(file, 0, flags, [=](int fd) {
+                return fd <= 0 ? handle_error(tcb, sema) : handle_success(tcb, fd);
+            });
+            sema->up();
+        });
+    });
+    event_loop();
 }
 
-int newlib_handle_read(KernelEntryFrame* frame) {
-    // TODO: Implement read.
-    return 0;
+void newlib_handle_read_or_write(KernelEntryFrame* frame, bool is_read) {
+    printf("newlib_handle_read_or_write: starting\n");
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    PCB* pcb = tcb->pcb;
+    FileTable* file_table = pcb->file_table;
+    save_user_context(tcb, frame);
+
+    int fd = frame->X[0];
+    char* buf = (char*)frame->X[1];
+    int count = frame->X[2];
+
+    // Per-process file pointer (1:1 with file descriptors).
+    printf("newlib_handle_read_or_write: fd = %d, core = %d, is_read = %d\n", fd, getCoreID(),
+           is_read);
+    UFile& ufile = file_table->get_file(fd);
+    KFile* file = ufile.backing_file();
+
+    if (file == nullptr) {
+        handle_error(tcb, nullptr);
+        return;
+    }
+    printf("newlib_handle_read_or_write: file = %x\n", file);
+    printf("newlib_handle_read_or_write: file->get_inode_number() = %d\n",
+           file->get_inode_number());
+
+    // Don't write to read-only file..
+    if (!is_read && ufile.mode_flags() & OpenFlags::O_RDONLY) {
+        printf("newlib_handle_read_or_write: file is read-only\n");
+        handle_error(tcb, nullptr);
+        return;
+    }
+
+    // Don't read from write-only file.
+    if (is_read && ufile.mode_flags() & OpenFlags::O_WRONLY) {
+        printf("newlib_handle_read_or_write: file is write-only\n");
+        handle_error(tcb, nullptr);  // calls event_loop()
+        return;
+    }
+
+    // Capture the current offset to avoid race conditions
+    uint64_t current_offset = ufile.offset();
+    printf("newlib_handle_read_or_write: current_offset = %d\n", current_offset);
+
+    // Perform the read or write.
+    auto handle_return = [tcb, fd, file_table,
+                          current_offset](uint64_t bytes_read_or_write) mutable {
+        UFile& ufile = file_table->get_file(fd);
+        // Set the new offset based on the original offset plus bytes processed
+        printf("handle_return: bytes_read_or_write = %d, new_offset = %d, old_offset = %d\n",
+               bytes_read_or_write, current_offset + bytes_read_or_write, ufile.offset());
+        ufile.set_offset(current_offset + bytes_read_or_write);
+        return bytes_read_or_write < 0 ? handle_error(tcb, nullptr)
+                                       : handle_success(tcb, bytes_read_or_write);
+    };
+
+    if (is_read) {
+        kread(file, current_offset, buf, count, handle_return);
+    } else {
+        kwrite(file, current_offset, buf, count, handle_return);
+    }
+    event_loop();
+}
+
+void newlib_handle_read(KernelEntryFrame* frame) {
+    newlib_handle_read_or_write(frame, true);
+    event_loop();  // safety
+}
+
+void newlib_handle_write(KernelEntryFrame* frame) {
+    newlib_handle_read_or_write(frame, false);
+    event_loop();  // safety
 }
 
 int newlib_handle_stat(KernelEntryFrame* frame) {
@@ -356,14 +518,52 @@ int newlib_handle_wait(KernelEntryFrame* frame) {
     return 0;
 }
 
-int newlib_handle_write(KernelEntryFrame* frame) {
-    // TODO: Implement write.
-    return 0;
-}
-
 int newlib_handle_time(KernelEntryFrame* frame) {
     // TODO: Implement time.
     return 0;
+}
+
+int newlib_handle_sbrk(KernelEntryFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    printf("called sbrk with %d\n", frame->X[0]);
+    uint64_t ret_address = tcb->pcb->data_end;
+    tcb->pcb->data_end += frame->X[0];
+    frame->X[0] = ret_address;
+    printf("ret address is 0x%X%X\n", frame->X[0] >> 32, frame->X[0]);
+    return 0;
+}
+
+int newlib_handle_mmap(KernelEntryFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    PCB* pcb = tcb->pcb;
+    save_user_context(tcb, frame);
+
+    uint64_t length = frame->X[1];
+    uint64_t prot = frame->X[2];
+    uint64_t flags = frame->X[3];
+    int fd = frame->X[4];
+    uint64_t offset = frame->X[5];
+
+    uint64_t data_end = pcb->data_end;
+
+    uint64_t first_user_addr = data_end + (PAGE_SIZE - (data_end % PAGE_SIZE));
+
+    data_end = first_user_addr + ((length / PAGE_SIZE) * PAGE_SIZE);
+    if (length % PAGE_SIZE != 0) {
+        data_end += PAGE_SIZE;
+    }
+
+    uint64_t ret_address = first_user_addr;
+
+    KFile* file = nullptr;
+    if (fd != 0) {
+        file = pcb->file_table->get_file(fd).backing_file();
+    }
+    mmap(pcb, first_user_addr, prot, flags, file, offset, length, [=]() {
+        tcb->context.x0 = first_user_addr;
+        queue_user_tcb(tcb);
+    });
+    event_loop();
 }
 
 int sys_draw_frame(KernelEntryFrame* frame) {

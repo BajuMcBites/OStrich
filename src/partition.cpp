@@ -84,7 +84,8 @@ int create_partition(uint32_t num_sectors, uint8_t system_id) {
         return SD_ERROR;
     }
 
-    if (start_sector + num_sectors > 1024 * 1024) {
+    // Hardcoded to 8MB SD card.
+    if ((start_sector + num_sectors) * SD_BLK_SIZE > 8 * 1024 * 1024) {
         printf("create_partition(): Not enough space on SD card\n");
         return SD_ERROR;
     }
@@ -162,6 +163,10 @@ int set_partition_table(uint64_t fs_bytes, uint64_t swap_bytes) {
     if (!mbr) {
         return SD_ERROR;
     }
+
+    // Set MBR signature.
+    mbr->signature[0] = MBR_SIGNATURE & 0xFF;
+    mbr->signature[1] = (MBR_SIGNATURE >> 8) & 0xFF;
 
     // Clear the partition table.
     K::memset(mbr->partitions, 0, sizeof(PartitionEntry) * NUM_PARTITIONS);

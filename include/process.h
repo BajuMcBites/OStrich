@@ -3,6 +3,7 @@
 
 #include "atomic.h"
 #include "event.h"
+#include "file_table.h"
 #include "printf.h"
 #include "shared.h"
 #include "vm.h"
@@ -73,7 +74,13 @@ struct PCB {
     PCB* before;
     Shared<Framebuffer> frameBuffer;
 
-    PCB() {
+    uint64_t data_end;
+
+    // Files and stuff.
+    FileTable* file_table;
+    int cwd;  // 0 is root.
+
+    PCB() : cwd(0 /* root */) {
         K::assert(task_cnt < NR_TASKS, "we are out of task space!\n");
         while (task[curr_task] != nullptr) {
             curr_task = (curr_task + 1) % NR_TASKS;
@@ -83,11 +90,13 @@ struct PCB {
         pid = curr_task;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
+        file_table = new FileTable;
         waiting_parent = nullptr;
         parent = nullptr;
         child_start = child_end = next = before = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
         frameBuffer = nullptr;
+        data_end = ~VA_START - (8192 * PAGE_SIZE); /* preferrable set this after bss segment */
     }
     PCB(int id) {
         if (task[pid]) delete task[pid];
@@ -96,11 +105,13 @@ struct PCB {
         task[pid] = this;
         page_table = new PageTable;
         supp_page_table = new SupplementalPageTable;
+        file_table = new FileTable;
         waiting_parent = nullptr;
         child_start = child_end = next = nullptr;
         parent = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
         before = nullptr;
+        data_end = ~VA_START - (8192 * PAGE_SIZE);
     }
 
     void raise_signal(Signal* s) {
@@ -146,6 +157,7 @@ struct PCB {
         delete page_table;
         delete supp_page_table;
         delete sigs;
+        delete file_table;
         if (waiting_parent) delete waiting_parent;
     }
 };

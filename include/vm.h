@@ -158,10 +158,10 @@ struct SwapLocation {
 };
 
 struct FileLocation {
-    struct file* file;
+    KFile* file;
     uint64_t offset;
 
-    FileLocation(struct file* f, uint64_t off) {
+    FileLocation(KFile* f, uint64_t off) {
         file = f;
         offset = off;
     }
@@ -255,11 +255,11 @@ class SupplementalPageTable {
 };
 
 struct PCKey {
-    struct file* file;
+    KFile* file;
     uint64_t offset;  // 0 is swap, 1 is unbacked
     uint64_t id;      // swap or unbacked id
 
-    PCKey(struct file* f, uint64_t off, uint64_t _id) {
+    PCKey(KFile* f, uint64_t off, uint64_t _id) {
         file = f;
         offset = off;
         id = _id;
@@ -272,7 +272,7 @@ static inline uint64_t pc_key_hash(PCKey key) {
     }
 
     return hash_combine(
-        hash_combine(uint64_t_hash(key.file->inode->inode_number), uint64_t_hash(key.offset)),
+        hash_combine(uint64_t_hash(key.file->get_inode_number()), uint64_t_hash(key.offset)),
         uint64_t_hash(key.id));
 }
 
@@ -287,7 +287,7 @@ static inline bool pc_key_equals(PCKey keya, PCKey keyb) {
         return uint64_t_equals(keya.offset, keyb.offset) && uint64_t_equals(keya.id, keyb.id);
     }
 
-    return uint64_t_equals(keya.file->inode->inode_number, keyb.file->inode->inode_number) &&
+    return uint64_t_equals(keya.file->get_inode_number(), keyb.file->get_inode_number()) &&
            uint64_t_equals(keya.offset, keyb.offset);
 }
 
@@ -302,7 +302,7 @@ class PageCache {
     ~PageCache() {
     }
 
-    void get_or_add(file* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
+    void get_or_add(KFile* file, uint64_t offset, uint64_t id, LocalPageLocation* local,
                     Function<void(PageLocation*)> w);
 
     void remove(LocalPageLocation* local, Function<void(void)>);

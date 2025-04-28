@@ -114,6 +114,12 @@ void displayTree(const Directory* dir, const char* curPath) {
     }
 }
 
+void displayFileTree() {
+    auto* fileSystem = FileSystem::getInstance();
+    auto* rootDir = fileSystem->getRootDirectory();
+    displayTree(rootDir, "/");
+}
+
 void test_fs() {
     printf("FS TEST\n");
     auto* fileSystem = FileSystem::getInstance();
@@ -129,7 +135,7 @@ void test_fs() {
 
     printf("Writing data to file1\n");
     const char* testData = "testing!";
-    file1->write_at(0, (uint8_t*)testData, strlen(testData) + 1);
+    file1->write_at(0, (uint8_t*)testData, K::strlen(testData) + 1);
 
     printf("\n");
 
@@ -170,7 +176,7 @@ void test_fs() {
     printf("Changing data in largefile\n");
     auto newTestData = " - new data! - ";
     largeFile->write_at(10, (uint8_t*)newTestData,
-                        strlen(newTestData));  // don't copy null terminator
+                        K::strlen(newTestData));  // don't copy null terminator
 
     printf("Deleting /dir2/tmpfile\n");
     dir2->removeDirectoryEntry("tmpfile");
