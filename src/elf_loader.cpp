@@ -433,11 +433,12 @@ void *load_segment_mem(void *mem, Elf64_Phdr *phdr, PCB *pcb, Semaphore *sema) {
                              int pg_offset = to - (uint64_t)next_vaddr;
                              if (pg_offset < 0) pg_offset = 0;
                              void *k_page_to = (void *)(kvaddr + pg_offset);
-                             void *page_from = (void *)(from + next_vaddr - to + page_offset);
+                             void *page_from = (void *)(from + next_vaddr - to);
                              size_t cpy_size = (size_t)(PAGE_SIZE - pg_offset);
                              if (file_end - (uint64_t)page_from < cpy_size) {
                                  cpy_size = (size_t)(file_end - (uint64_t)page_from);
                              }
+                             printf("this is next vaddr %x%x and size %d\n", next_vaddr >> 32, next_vaddr, cpy_size);
                              K::memcpy(k_page_to, page_from, cpy_size);
                              if (mem_size > file_size &&
                                  next_vaddr + PAGE_SIZE > (uint64_t)vaddr + file_size) {

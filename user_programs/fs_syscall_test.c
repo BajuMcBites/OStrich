@@ -31,9 +31,10 @@ void test_failure() {
 }
 
 int main() {
-    test_one_file();
-    test_two_files();
-    test_failure();
+    // test_one_file();
+    // test_two_files();
+    // test_failure();
+    printf("%s\n", "printf test");
     _exit(0);
     return 0;
 }

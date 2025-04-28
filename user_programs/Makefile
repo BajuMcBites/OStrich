@@ -45,6 +45,7 @@ newlib_stubs.o: newlib_stubs.S
 
 user_prog: $(LIB_DIR)/crt0.o user_prog.o newlib_stubs.o
 	$(LD) $(LDFLAGS) -o user_prog $(LIB_DIR)/crt0.o user_prog.o newlib_stubs.o -lc -entry=main
+	cp user_prog ../ramfs/files/
 
 exit: $(LIB_DIR)/crt0.o exit.o newlib_stubs.o
 	$(LD) $(LDFLAGS) -o exit $(LIB_DIR)/crt0.o exit.o newlib_stubs.o -lc -entry=main
