@@ -90,14 +90,18 @@ void change_tty(struct key_event *event) {
         return;
     }
 
-    if (event->keycode == KEY_F1) {
+    if (event->keycode == KEY_F2) {
         // move forward
         tty.getHead()->buffer = dummy_buffer;
-        tty.moveHead();
+        tty.moveHeadForward();
         tty.getHead()->buffer = get_real_fb()->buffer;
         fb_blank(WHITE);
-    } else if (false) {
+    } else if (KEY_F1) {
         // move back
+        tty.getHead()->buffer = dummy_buffer;
+        tty.moveHeadBack();
+        tty.getHead()->buffer = get_real_fb()->buffer;
+        fb_blank(WHITE);
     }
     lock.unlock();
 }
