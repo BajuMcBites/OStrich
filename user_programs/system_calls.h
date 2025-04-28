@@ -26,6 +26,8 @@
 // custom sys calls
 
 #define DRAW_FRAME 64
+#define NEWLIB_TIME_ELAPSED 21 
+
 
 // TODO: Later, add Linux system call #'s here.
 

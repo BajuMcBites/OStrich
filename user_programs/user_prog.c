@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "custom_syscalls.h"
 
 #define FRAME_WIDTH 800
 #define FRAME_HEIGHT 600
