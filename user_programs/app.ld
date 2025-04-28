@@ -3,8 +3,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 10M
-    stack (rwx) : ORIGIN = 0x0000FFFFFFFF0000, LENGTH = 64K  /* Define the stack region */
+    RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 50K
 }
 
 SECTIONS
@@ -29,11 +28,4 @@ SECTIONS
     /* Uninitialized data (zero-initialized) */
     .bss : { *(.bss*) } > RAM
     __bss_end__ = .;
-
-	.heap (NOLOAD) :
-	{
-		__heap_base = .;
-		. = . + 0x50000;
-		__heap_limit = .;
-	} > RAM
 }
