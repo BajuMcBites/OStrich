@@ -3,7 +3,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 512K
+    RAM (rwx) : ORIGIN = 0x80000000, LENGTH = 10M
     stack (rwx) : ORIGIN = 0x0000FFFFFFFF0000, LENGTH = 64K  /* Define the stack region */
 }
 
