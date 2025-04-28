@@ -69,3 +69,13 @@ void wait_msec(unsigned int n) {
         asm volatile("mrs %0, cntpct_el0" : "=r"(r));
     } while (r - t < i);
 }
+
+/**
+ * gets time since system start up in microseconds
+ */
+uint64_t get_systime() {
+    register unsigned long f, t, r;
+    asm volatile("mrs %0, cntfrq_el0" : "=r"(f));
+    asm volatile("mrs %0, cntpct_el0" : "=r"(t));
+    return (t * 1000000) / f;
+}

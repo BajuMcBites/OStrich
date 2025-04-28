@@ -36,6 +36,8 @@ void newlib_handle_write(KernelEntryFrame* frame);
 int newlib_handle_time(KernelEntryFrame* frame);
 int newlib_handle_sbrk(KernelEntryFrame* frame);
 int newlib_handle_mmap(KernelEntryFrame* frame);
+int newlib_handle_time_elapsed(KernelEntryFrame* frame);
+
 
 void handle_newlib_syscall(int opcode, KernelEntryFrame* frame);
 
@@ -134,6 +136,9 @@ void handle_newlib_syscall(int opcode, KernelEntryFrame* frame) {
             break;
         case NEWLIB_MMAP:
             newlib_handle_mmap(frame);
+            break;
+        case NEWLIB_TIME_ELAPSED:
+            frame->X[0] = newlib_handle_time_elapsed(frame);
             break;
         default:
             break;
@@ -557,3 +562,7 @@ int newlib_handle_mmap(KernelEntryFrame* frame) {
     event_loop();
 }
 
+int newlib_handle_time_elapsed(KernelEntryFrame* frame) {
+    UserTCB* tcb = get_running_user_tcb(getCoreID());
+    return get_systime() - tcb->pcb->start_time;
+}
