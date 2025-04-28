@@ -236,9 +236,7 @@ void UDPSocket::send_udp(const uint8_t* buffer, size_t length) {
     ipv4->header_check_sum = 0;
     ipv4->header_check_sum = calc_checksum(nullptr, ipv4, 0, ipv4->ihl * 4);
 
-    // uint8_t my_mac[6] = {0xb6, 0x98, 0x92, 0x6f, 0xe9, 0x66};
     memcpy(eth->dst_mac, get_arp_cache().get(dhcp_state.dhcp_server_ip), 6);
-    // memcpy(eth->dst_mac, my_mac, 6);
 
     // printf("send_buffer = \n");
     // for (int i = 0; i < sizeof(ethernet_header) + sizeof(ipv4_header) + udp->total_length.get();

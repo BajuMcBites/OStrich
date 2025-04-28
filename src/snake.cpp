@@ -65,11 +65,6 @@ int render(game_state *state) {
                        colors[i]);
     }
 
-    // for (size_t i = 0; i < state->num_food; i++) {
-    //     game_state::food_t *food = &state->food[i];
-    //     draw_rectangle(food->x * SCALE, food->y * SCALE, SCALE, SCALE, 0xFFF0000);
-    // }
-
     return 0;
 }
 
@@ -87,6 +82,8 @@ void snake_on_key_press(struct key_event *event) {
 }
 
 void init() {
+    K::memset(&state, 0, sizeof(state));
+
     state.snakes[0] = {.x = (WIDTH / (2 * SCALE)),
                        .y = (HEIGHT / (2 * SCALE)),
                        .cur_length = 1,
@@ -138,6 +135,10 @@ void update_game_state(UDPSocket *socket) {
 
     state.snakes[0].x += (state.snakes[0].direction >> 4) - 1;
     state.snakes[0].y += (state.snakes[0].direction & 0x0F) - 1;
+    
+    state.snakes[0].x %= WIDTH / SCALE;
+    state.snakes[0].y %= WIDTH / SCALE;
+    
 
     send_update(socket);
 
@@ -161,15 +162,31 @@ void update_game_state(UDPSocket *socket) {
             memcpy(&y, buffer + offset, 2);
             offset += 2;
             printf("player_uuid = %x, x = %d, y = %d\n", player_uuid, x, y);
-            if (player_uuid == state.snakes[0].uuid) continue;
+            if(state.snakes[0].uuid == player_uuid) continue;
+
+            bool matched = false;
+            for(size_t i = 0; i < MAX_PLAYERS; i++){
+                if(state.snakes[i].uuid == player_uuid){
+                    state.snakes[i].x = x;
+                    state.snakes[i].y = y;
+                }
+            }
+            if(matched) continue;
+            for(size_t i = 0; i < MAX_PLAYERS; i++){
+                if(state.snakes[i].uuid == 0x00){
+                    state.snakes[i].x = x;
+                    state.snakes[i].y = y;
+                    state.snakes[i].uuid = player_uuid;
+                }
+            }
         }
         // printf("state.num_players = %d\n", state.num_players);
     }
 
     game_state::snake_t *snake = &state.snakes[0];
 
-    char *food_buffer = buffer + 7;
-    char *snake_buffer = food_buffer + (state.num_food * 2);
+    // char *food_buffer = buffer + 7;
+    // char *snake_buffer = food_buffer + (state.num_food * 2);
 
     // for (size_t i = 0; i < MAX_FOOD; i++) {
     //     if (i < state.num_food) {
@@ -209,7 +226,6 @@ void init_snake() {
         if (render(&state)) {
             break;
         }
-        // send_input(&socket);
         wait_msec(1000000 / FPS);
     }
     socket.close();
