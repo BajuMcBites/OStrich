@@ -197,15 +197,11 @@ void mergeCores() {
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
-
     if (number_awake == CORE_COUNT) {
         printf("creating kernel_main\n");
         create_event(keyboard_loop);
-        create_event([] { kernel_main(); });
+        create_event([] { elf_load_test(); });
         // elf_load_test();
-    }
-    // Uncomment to run snake
-    if (getCoreID() == 0) {
         printf("init_snake() + keyboard_loop();\n");
         create_event(run_tty);
         create_event([] {
@@ -214,17 +210,30 @@ void mergeCores() {
             init_snake();
         });
 
-        create_event([] {
-            init_animation();
-            update_animation();
-            create_event(update_animation);
-            create_event(update_animation);
-            create_event(update_animation);
-            create_event(update_animation);
-        });
-
-        create_event(run_tty);
+        create_event([] { update_animation(); });
     }
+    // Uncomment to run snake
+    // if (number_awake == CORE_COUNT) {
+    //     printf("init_snake() + keyboard_loop();\n");
+    //     create_event(run_tty);
+    //     create_event([] {
+    //         auto tcb = get_running_task(getCoreID());
+    //         tcb->frameBuffer = request_tty();  // give the snake tcb its own frame buffer
+    //         init_snake();
+    //     });
+
+    //     create_event([] {
+    //         init_animation();
+    //         update_animation();
+    //         // create_event_core(update_animation, 0);
+    //         // create_event_core(update_animation, 1);
+    //         // create_event_core(update_animation, 2);
+    //         // create_event_core(update_animation, 3);
+    //     });
+
+    //     create_event(run_tty);
+    // }
+    init_animation();
     event_loop();
     printf("PANIC I should not go here\n");
 }
