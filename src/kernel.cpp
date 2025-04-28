@@ -201,30 +201,30 @@ void mergeCores() {
 
     if (number_awake == CORE_COUNT) {
         printf("creating kernel_main\n");
-        create_event(keyboard_loop);
+        // create_event(keyboard_loop);
         create_event([] { kernel_main(); });
         // elf_load_test();
     }
     // Uncomment to run snake
     if (getCoreID() == 0) {
-        printf("init_snake() + keyboard_loop();\n");
-        create_event(run_tty);
-        create_event([] {
-            auto tcb = get_running_task(getCoreID());
-            tcb->frameBuffer = request_tty();  // give the snake tcb its own frame buffer
-            init_snake();
-        });
+        // printf("init_snake() + keyboard_loop();\n");
+        // create_event(run_tty);
+        // create_event([] {
+        //     auto tcb = get_running_task(getCoreID());
+        //     tcb->frameBuffer = request_tty();  // give the snake tcb its own frame buffer
+        //     init_snake();
+        // });
 
-        create_event([] {
-            init_animation();
-            update_animation();
-            create_event(update_animation);
-            create_event(update_animation);
-            create_event(update_animation);
-            create_event(update_animation);
-        });
+        // create_event([] {
+        //     init_animation();
+        //     update_animation();
+        //     create_event(update_animation);
+        //     create_event(update_animation);
+        //     create_event(update_animation);
+        //     create_event(update_animation);
+        // });
 
-        create_event(run_tty);
+        // create_event(run_tty);
     }
     event_loop();
     printf("PANIC I should not go here\n");
