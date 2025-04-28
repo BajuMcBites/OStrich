@@ -219,9 +219,7 @@ void mergeCores() {
         create_event(run_tty);
         create_event([] {
             auto tcb = get_running_task(getCoreID());
-            printf("request beofre\n");
-            tcb->frameBuffer = request_tty();
-            printf("request made\n");
+            tcb->frameBuffer = request_tty();  // give the snake tcb its own frame buffer
             init_snake();
         });
 
