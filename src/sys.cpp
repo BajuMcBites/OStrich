@@ -364,8 +364,7 @@ int newlib_handle_time(KernelEntryFrame* frame) {
 int newlib_handle_sbrk(KernelEntryFrame* frame) {
     UserTCB* tcb = get_running_user_tcb(getCoreID());
     uint64_t ret_address = tcb->pcb->data_end;
-    uint64_t page_alligned_size = frame->X[0] + (PAGE_SIZE - (frame->X[0] % PAGE_SIZE));
-    tcb->pcb->data_end += page_alligned_size;
+    tcb->pcb->data_end += frame->X[1];
     frame->X[0] = ret_address;
     return 0;
 }

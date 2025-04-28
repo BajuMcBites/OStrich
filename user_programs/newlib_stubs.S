@@ -120,8 +120,8 @@ _init:
 _fini:
     ret
 
-.global _sbrk
-_sbrk:
+.global _sbrk_r
+_sbrk_r:
     mov x8, #NEWLIB_SBRK
     svc #0
     ret

@@ -27,8 +27,8 @@ extern "C" void page_fault_handler(KernelEntryFrame* trap_frame, uint64_t esr, u
 
     switch ((esr >> 2) & 0x3) {
         case 0:
-            printf_err("Address size fault\n");
-            printf(":\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n",
+            printf_err("Address size fault %X\n", far);
+            printf_err(":\n  ESR_EL1 0x%X%X ELR_EL1 0x%X%X\n SPSR_EL1 0%X%X FAR_EL1 0x%X%X\n",
                    esr >> 32, esr, elr >> 32, elr, spsr >> 32, spsr, far >> 32, far);
             K::assert(false, "Not handled yet\n");
             break;

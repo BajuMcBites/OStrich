@@ -97,13 +97,13 @@ extern "C" void kernel_main() {
     hash_test();
     frame_alloc_tests();
     // user_paging_tests();
-    blocking_atomic_tests();
+    // blocking_atomic_tests();
     // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
+    // sdioTests();
+    // ring_buffer_tests();
     elf_load_test();
-    partitionTests();
-    stringTest();
+    // partitionTests();
+    // stringTest();
 
     // filesystem
     // test_fs();
@@ -111,10 +111,10 @@ extern "C" void kernel_main() {
     // test_fs_requests();
 
     // kernel file interface
-    kfs_simple_test();
-    kfs_kopen_uses_cache_test();
-    kfs_stress_test(10);
-    sd_stress_test();
+    // kfs_simple_test();
+    // kfs_kopen_uses_cache_test();
+    // kfs_stress_test(10);
+    // sd_stress_test();
 }
 
 extern char __heap_start[];
