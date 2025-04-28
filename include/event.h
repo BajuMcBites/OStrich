@@ -94,6 +94,16 @@ struct UserTCB : public TCB {
         state = TASK_STOPPED;
     }
 
+    // New constructor accepting a Framebuffer pointer
+    UserTCB(Shared<Framebuffer> fb) : w(enter_user_space) {
+        context.spsr = 0;
+        context.sp = 0;
+        context.pc = 0;
+        kernel_event = false;
+        state = TASK_STOPPED;
+        frameBuffer = fb;
+    }
+
     void run() override {
         w(this);
     }

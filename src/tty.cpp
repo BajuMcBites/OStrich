@@ -2,6 +2,7 @@
 
 #include "dwc.h"
 #include "event.h"
+#include "frame_buff_list.h"
 #include "framebuffer.h"
 #include "libk.h"
 #include "listener.h"
@@ -10,31 +11,35 @@
 #include "printf.h"
 #include "timer.h"
 
+static FrameBufferLinkedList tty;
 static Listener<struct key_event *> tty_key_listener;
 
 static unsigned int *dummy_buffers[6] = {nullptr};
+static unsigned int *dummy_buffer = nullptr;
 
 int active = -1;  // index of window in foreground
-Framebuffer *tty[MAX_TTY] = {nullptr};
+// Framebuffer *tty[MAX_TTY] = {nullptr};
 bool taken[MAX_TTY] = {false};
 /**
  * @brief Initialize tty. Limited to six slots
  * @param none
  */
 void init_tty() {
-    tty[0] = get_kernel_fb();  // kernel gets position 0 to print should be the shell later?
+    tty.insert(get_kernel_fb());
+
     taken[0] = true;
-    dummy_buffers[0] = new unsigned int[tty[0]->size / sizeof(unsigned int)];
+    dummy_buffers[0] = new unsigned int[tty.getHead()->size / sizeof(unsigned int)];
+    dummy_buffer = new unsigned int[tty.getHead()->size / sizeof(unsigned int)];
     auto temp = get_real_fb();
-    for (int i = 1; i < MAX_TTY; i++) {
-        tty[i] = new Framebuffer;
-        tty[i]->height = temp->height;
-        tty[i]->isrgb = temp->isrgb;
-        tty[i]->pitch = temp->pitch;
-        tty[i]->size = temp->size;
-        tty[i]->width = temp->width;
-        dummy_buffers[i] = dummy_buffers[0];
-    }
+    // for (int i = 1; i < MAX_TTY; i++) {
+    //     tty[i] = new Framebuffer;
+    //     tty[i]->height = temp->height;
+    //     tty[i]->isrgb = temp->isrgb;
+    //     tty[i]->pitch = temp->pitch;
+    //     tty[i]->size = temp->size;
+    //     tty[i]->width = temp->width;
+    //     dummy_buffers[i] = dummy_buffers[0];
+    // }
     active = 0;
 }
 
@@ -43,15 +48,24 @@ void init_tty() {
  * @param none
  */
 Framebuffer *request_tty() {
-    // ew linear search
-    for (int i = 0; i < MAX_TTY; i++) {
-        if (!taken[i]) return tty[i];
-    }
-    return nullptr;
+    Framebuffer *buff = new Framebuffer;
+    auto real_fb = get_real_fb();
+    buff->height = real_fb->height;
+    buff->isrgb = real_fb->isrgb;
+    buff->pitch = real_fb->pitch;
+    buff->size = real_fb->size;
+    buff->width = real_fb->width;
+
+    tty.getHead()->buffer = dummy_buffer;
+    buff->buffer = real_fb->buffer;
+    fb_blank(BLUE);
+    tty.insert(buff);
+    // fb_blank(BLUE);
+    return buff;
 }
 
 /**
- * @brief make the tty in use available
+ * @brief get this threads's FB and remove from list
  * @param none
  */
 void close_tty() {
@@ -68,62 +82,14 @@ void change_tty(struct key_event *event) {
     if (event->flags.released) return;
 
     if (event->keycode == KEY_F1) {
-        printf("TERM 0\n");
-        tty[0]->buffer = get_real_fb()->buffer;
-        active = 0;
-
-        for (int i = 0; i < MAX_TTY; i++) {
-            if (i == active) continue;
-            tty[i]->buffer = dummy_buffers[i];
-        }
-        fb_blank(WHITE);
-    } else if (event->keycode == KEY_F2) {
-        printf("TERM 1\n");
-        tty[1]->buffer = get_real_fb()->buffer;
-        active = 1;
-        for (int i = 0; i < MAX_TTY; i++) {
-            if (i == active) continue;
-            tty[i]->buffer = dummy_buffers[i];
-        }
+        // move forward
+        tty.getHead()->buffer = dummy_buffer;
+        tty.moveHead();
+        tty.getHead()->buffer = get_real_fb()->buffer;
         fb_blank(BLUE);
-    } else if (event->keycode == KEY_F3) {
-        printf("TERM 2\n");
-        tty[2]->buffer = get_real_fb()->buffer;
-        active = 2;
-        for (int i = 0; i < MAX_TTY; i++) {
-            if (i == active) continue;
-            tty[i]->buffer = dummy_buffers[i];
-        }
-        fb_blank(RED);
-    } else if (event->keycode == KEY_F4) {
-        printf("TERM 3\n");
-        tty[3]->buffer = get_real_fb()->buffer;
-        active = 3;
-        for (int i = 0; i < MAX_TTY; i++) {
-            if (i == active) continue;
-            tty[i]->buffer = dummy_buffers[i];
-        }
-        fb_blank(YELLOW);
-    } else if (event->keycode == KEY_F5) {
-        printf("TERM 4\n");
-        tty[4]->buffer = get_real_fb()->buffer;
-        active = 4;
-        for (int i = 0; i < MAX_TTY; i++) {
-            if (i == active) continue;
-            tty[i]->buffer = dummy_buffers[i];
-        }
-        fb_blank(GREEN);
-    } else if (event->keycode == KEY_F6) {
-        printf("TERM 5\n");
-        tty[5]->buffer = get_real_fb()->buffer;
-        active = 5;
-        for (int i = 0; i < MAX_TTY; i++) {
-            if (i == active) continue;
-            tty[i]->buffer = dummy_buffers[i];
-        }
-        fb_blank(BLACK);
+    } else if (false) {
+        // move back
     }
-    // event_handler->unregister_listener(KEYBOARD_EVENT, tty_key_listener._id);
 }
 
 /**
@@ -135,6 +101,4 @@ void run_tty() {
 
     // Register listener for KEYBOARD_EVENT
     event_handler->register_listener(KEYBOARD_EVENT, &tty_key_listener);
-
-    // event_handler->unregister_listener(KEYBOARD_EVENT, tty_key_listener._id);
 }

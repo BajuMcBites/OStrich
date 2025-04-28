@@ -121,6 +121,8 @@ struct Framebuffer {
     void* buffer;        // pointer to the buffer
     unsigned int size;   // size of buffer in bytes
     Atomic<int> ref_count = 0;
+    Framebuffer* next;
+    Framebuffer* prev;
 };
 
 int fb_init(void);

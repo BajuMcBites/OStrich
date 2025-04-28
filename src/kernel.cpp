@@ -214,8 +214,22 @@ void mergeCores() {
     if (getCoreID() == 0) {
         printf("init_snake() + keyboard_loop();\n");
         create_event(run_tty);
-        create_event(init_snake);
+        create_event([] {
+            auto tcb = get_running_task(getCoreID());
+            printf("request beofre\n");
+            tcb->frameBuffer = request_tty();
+            printf("request made\n");
+            init_snake();
+        });
 
+        create_event([] {
+            init_animation();
+            update_animation();
+            create_event(update_animation);
+        });
+        create_event(update_animation);
+        create_event(update_animation);
+        create_event(update_animation);
         create_event(keyboard_loop);
         // create_event(run_tty);
     }

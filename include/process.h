@@ -70,6 +70,7 @@ struct PCB {
     PCB* child_end;
     PCB* next;
     PCB* before;
+    Shared<Framebuffer> frameBuffer;
 
     PCB() {
         K::assert(task_cnt < NR_TASKS, "we are out of task space!\n");
@@ -87,8 +88,7 @@ struct PCB {
         sigs = new LockedQueue<Signal, SpinLock>;
     }
     PCB(int id) {
-        if (task[pid])
-            delete task[pid];
+        if (task[pid]) delete task[pid];
         task_cnt++;
         pid = id;
         task[pid] = this;

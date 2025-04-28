@@ -395,6 +395,7 @@ void update_animation(void) {
     for (volatile int i = 0; i < 1000000; i++) {
         asm volatile("nop");
     }
+    create_event(update_animation);
 }
 
 void clear_screen(void) {
