@@ -338,7 +338,7 @@ void tfp_error_printf(const char* fmt, ...) {
     va_end(va);
 
     // print the buffer to the framebuffer in red
-    fb_print(buffer, RED);
+    // fb_print(buffer, RED);
     printf_err_lock.unlock();
 }
 

@@ -87,6 +87,7 @@ struct PCB {
         parent = nullptr;
         child_start = child_end = next = before = nullptr;
         sigs = new LockedQueue<Signal, SpinLock>;
+        frameBuffer = nullptr;
     }
     PCB(int id) {
         if (task[pid]) delete task[pid];

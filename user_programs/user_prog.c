@@ -10,9 +10,9 @@ void create_test_frame(int frame_counter) {
     for (int y = 0; y < FRAME_HEIGHT; y++) {
         for (int x = 0; x < FRAME_WIDTH; x++) {
             uint32_t color =
-                ((x ^ y) + frame_counter) * 0x000100;  // Shift color with frame_counter
+                ((x^y) + frame_counter) & 0xff;  // Shift color with frame_counter
             test_frame[y * FRAME_WIDTH + x] =
-                0xFF000000 | (color & 0x00FFFFFF);  // Force alpha to 0xFF
+                0xFF000000 | ((color * 0x10000 + color * 0x100 + color));  // Force alpha to 0xFF
         }
     }
 }

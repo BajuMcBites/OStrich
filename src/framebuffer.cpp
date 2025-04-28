@@ -90,14 +90,14 @@ int fb_init(void) {
             real_fb.height = mbox[11];
             real_fb.pitch = mbox[28];
             real_fb.isrgb = mbox[19];
-            real_fb.buffer = (void*)((unsigned long)mbox[23]);
+            real_fb.buffer = (void*)((unsigned long)mbox[23] | VA_START);
             real_fb.size = mbox[24];
 
             kernel_fb.width = mbox[10];
             kernel_fb.height = mbox[11];
             kernel_fb.pitch = mbox[28];
             kernel_fb.isrgb = mbox[19];
-            kernel_fb.buffer = (void*)((unsigned long)mbox[23]);
+            kernel_fb.buffer = (void*)((unsigned long)mbox[23] | VA_START);
             kernel_fb.size = mbox[24];
 
             fb_init_done = true;

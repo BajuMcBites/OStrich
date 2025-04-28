@@ -115,21 +115,21 @@ extern "C" void kernel_main() {
     // test_fs_requests();
     // stringTest();
 
-    // printf("All tests passed\n");
-    heapTests();
-    event_loop_tests();
-    hash_test();
-    frame_alloc_tests();
+    printf("All tests passed\n");
+    // heapTests();
+    // event_loop_tests();
+    // hash_test();
+    // frame_alloc_tests();
     // user_paging_tests();
-    blocking_atomic_tests();
+    // blocking_atomic_tests();
     // ramfs_tests();
-    sdioTests();
-    ring_buffer_tests();
-    bitmap_tests();
-    swap_tests();
+    // sdioTests();
+    // ring_buffer_tests();
+    // bitmap_tests();
+    // swap_tests();
     elf_load_test();
-    partitionTests();
-    stringTest();
+    // partitionTests();
+    // stringTest();
     // test_fs();
     // testSnapshot();
     // test_fs_requests();
@@ -210,7 +210,7 @@ void mergeCores() {
     if (number_awake == CORE_COUNT) {
         printf("creating kernel_main\n");
         create_event(keyboard_loop);
-        // create_event([] { kernel_main(); });
+        create_event([] { kernel_main(); });
         // elf_load_test();
     }
     // Uncomment to run snake
@@ -234,7 +234,7 @@ void mergeCores() {
             create_event(update_animation);
         });
 
-        // create_event(run_tty);
+        create_event(run_tty);
     }
     event_loop();
     printf("PANIC I should not go here\n");

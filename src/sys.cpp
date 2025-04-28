@@ -394,7 +394,7 @@ int sys_draw_frame(KernelEntryFrame* frame) {
     K::assert(fb != nullptr, "fb null\n");
 
     // Perform the memory copy operation
-    K::memcpy(fb->buffer, frame_data, 400);  // Frame buffer size
+    K::memcpy(fb->buffer, frame_data, 1228800);  // Frame buffer size
 
     return 0;  // Return success
 }
