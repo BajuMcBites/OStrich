@@ -27,6 +27,9 @@ class FrameBufferLinkedList {
             fb->prev = tail;
             fb->next = head;
             head->prev = fb;
+
+            // Make the new framebuffer the new head
+            head = fb;
         }
     }
 
