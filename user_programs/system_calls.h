@@ -20,6 +20,7 @@
 #define NEWLIB_WAIT 15
 #define NEWLIB_WRITE 16
 #define NEWLIB_TIME 17
+#define NEWLIB_MMAP 42
 #define NEWLIB_SBRK 999
 
 // TODO: Later, add Linux system call #'s here.
