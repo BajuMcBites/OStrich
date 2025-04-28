@@ -18,6 +18,21 @@ bool obtain_port(uint16_t port) {
     return true;
 }
 
+int assign_port() {
+    bitmap_lock.lock();
+    for (int shift = 0; shift < 8; shift++) {
+        for (int i = 0; i < (1 << 16) >> 3; i++) {
+            if ((port_bitmap[i] & (1 << shift)) == 0) {
+                port_bitmap[i] |= (1 << shift);
+                bitmap_lock.unlock();
+                return i * 8 + shift;
+            }
+        }
+    }
+    bitmap_lock.unlock();
+    return -1;
+}
+
 // lot of trust in this :)
 void release_port(uint16_t port) {
     bitmap_lock.lock();

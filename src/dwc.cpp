@@ -125,33 +125,59 @@ int usb_send_bulk(usb_session *session, uint8_t *data, size_t length) {
     struct host_channel::transfer_size_u::transfer_size *transfer =
         &session->channel->transfer_size.st;
 
-    session->channel->interrupt.raw = 0x3FF;
+    const uint32_t MASK = (1 << 0) | (1 << 4) | (1 << 3);
+    // uint8_t nack_count = 0;
+    while (1) {
+        session->channel->interrupt.raw = 0x3FF;
 
-    chars->device_address = session->device_address;
-    chars->ep_dir = HostToDevice;
-    chars->ep_num = session->out_ep_num;
-    chars->ep_type = 0x2;
-    chars->low_speed = session->low_speed;
-    chars->mps = session->mps;
+        chars->device_address = session->device_address;
+        chars->ep_dir = HostToDevice;
+        chars->ep_num = session->out_ep_num;
+        chars->ep_type = 0x2;
+        chars->low_speed = session->low_speed;
+        chars->mps = session->mps;
 
-    uint8_t pckt = ((length + (session->mps - 1)) / session->mps);
-    if (length == 0 || pckt == 0) pckt = 1;
+        uint8_t pckt = ((length + (session->mps - 1)) / session->mps);
+        if (length == 0 || pckt == 0) pckt = 1;
 
-    transfer->pck_cnt = pckt;
-    transfer->xfer_size = length;
-    transfer->pid = session->out_toggle;
+        transfer->pck_cnt = pckt;
+        transfer->xfer_size = length;
+        transfer->pid = session->out_toggle;
 
-    uint8_t idx = ((uintptr_t)session->channel - (uintptr_t)USB_CHANNEL(0)) / sizeof(host_channel);
+        uint8_t idx =
+            ((uintptr_t)session->channel - (uintptr_t)USB_CHANNEL(0)) / sizeof(host_channel);
 
-    transfer->do_ping = needs_ping[idx];
-    if (needs_ping[idx]) needs_ping[idx] = false;
+        transfer->do_ping = needs_ping[idx];
+        if (needs_ping[idx]) needs_ping[idx] = false;
 
-    session->channel->dma_address = (uintptr_t)data;
+        session->channel->dma_address = (uintptr_t)data;
 
-    session->channel->interrupt_mask = 0x3ff;
-    chars->enable = true;
+        session->channel->interrupt_mask = 0x3ff;
+        chars->enable = true;
 
-    return handle_transaction(session, USB_BULK_STAGE);
+        uint32_t status;
+        while (!(status = (session->channel->interrupt.raw & MASK))) {
+        }
+
+        session->channel->interrupt.raw = status & MASK;
+        chars->enable = false;
+
+        if ((status & (1 << 4))) {
+            continue;
+        }
+
+        if (status & (1 << 3)) {
+            session->out_toggle = 0x00;
+            continue;
+        }
+
+        if (status & (1 << 0)) {
+            session->out_toggle ^= 0x2;
+            return 0;
+        }
+    }
+
+    return 0;
 }
 
 int usb_receive_bulk(usb_session *session, uint8_t *buffer, size_t length) {
@@ -162,7 +188,7 @@ int usb_receive_bulk(usb_session *session, uint8_t *buffer, size_t length) {
     struct host_channel::interrupts_u::interrupts *interrupts = &session->channel->interrupt.st;
 
     const uint32_t MASK = (1 << 0) | (1 << 4) | (1 << 3);
-    uint8_t nack_count = 0;
+    // uint8_t nack_count = 0;
     while (1) {
         session->channel->interrupt.raw = 0x3FF;
 
@@ -194,14 +220,15 @@ int usb_receive_bulk(usb_session *session, uint8_t *buffer, size_t length) {
         chars->enable = false;
 
         if ((status & (1 << 4))) {
-            nack_count++;
-            if (nack_count < 8) {
-                continue;
-            } else
-                return 0;
+            continue;
+            // nack_count++;
+            // if (nack_count < 8) {
+            //     continue;
+            // } else
+            //     return 0;
         }
 
-        nack_count = 0;
+        // nack_count = 0;
 
         if (status & (1 << 3)) {
             session->in_toggle = 0x00;

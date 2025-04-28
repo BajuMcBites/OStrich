@@ -218,12 +218,17 @@ void mergeCores() {
             size_t received = 0;
             uint32_t pckt_cnt = 0;
 
+            // while (socket.is_alive()) {
+            //     size_t length = socket.recv(buffer);
+            //     pckt_cnt++;
+            //     received += length;
+
+            //     socket.send(nullptr, 0, TCP_FLAG_ACK);
+            // }
             while (socket.is_alive()) {
                 size_t length = socket.recv(buffer);
-                pckt_cnt++;
                 received += length;
-
-                if (pckt_cnt % 8) socket.send(nullptr, 0, TCP_FLAG_ACK);
+                socket.send(nullptr, 0, TCP_FLAG_ACK);
             }
 
             printf("socket no longer active, received %d bytes total!\n", received);

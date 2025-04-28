@@ -120,7 +120,7 @@ void dns_query(usb_session* session, const char* domain, Function<void(server_gr
 
         delete frame;
 
-        get_event_handler().register_listener(
+        get_event_handler()->register_listener(
             DNS_RESOLVED_EVENT | (string_hash(domain) & 0xFFFFFFFF),
             new Listener<server_group*>(std::move(consumer)));
     });
@@ -177,7 +177,7 @@ void handle_dns_response(usb_session* session,
 
         get_dns_cache().put(key, group);
 
-        get_event_handler().handle_event(
+        get_event_handler()->handle_event(
             DNS_RESOLVED_EVENT | (string_hash(domain_name) & 0xFFFFFFFF), group);
     }
 }

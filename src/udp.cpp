@@ -57,3 +57,11 @@ void handle_udp(usb_session* session, PacketBufferParser* buffer_parser) {
             break;
     }
 }
+
+void udp_send(uint8_t* buffer, size_t length) {
+    PacketParser<EthernetFrame, IPv4Packet, UDPDatagram> parser(buffer, length);
+    auto udp_datagram = parser.get<UDPDatagram>();
+    udp_datagram->src_port.set(100);
+    udp_datagram->dst_port.set(100);
+    udp_datagram->total_length.set(length);
+}

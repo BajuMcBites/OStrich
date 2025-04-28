@@ -38,31 +38,47 @@ int _light_parse(PacketParser<EthernetFrame, IPv4Packet, TCPPacket>&& parser, ui
 }
 
 void ISocket::enqueue(uint8_t* buffer, size_t length) {
-    num_empty.acquire();
     if (auto err = _light_parse(PacketParser<EthernetFrame, IPv4Packet, TCPPacket>(buffer, length),
                                 status.tcp.rcv_nxt, status.tcp.snd_una, status.tcp.flags.stage)) {
         if (err == 0x1) this->handle_tcp(buffer, nullptr);
-        num_empty.release();
         return;
     }
-    // manipulation_lock.lock();
-    
+
+    num_empty.down();
+
     uint8_t mine = enqueue_idx;
     enqueue_idx = (enqueue_idx + 1) % QUEUE_MAX_SIZE;
-    memcpy(recv_buffer + (mine * 1516), buffer, length);
+    memcpy(recv_buffer + (mine * 1520), buffer, length);
+    size_t size;
+    // printf("[ISocket::enqueue] queue_size = %d\n", num_queue.value + 1);
+    num_queue.up();
 
-    // manipulation_lock.unlock();
-    num_queue.release();
-}   
+    // printf("QUEUED PACKET!\n");
+    // printf("num_queue::");
+}
 
 size_t ISocket::dequeue(uint8_t* buffer) {
-    num_queue.acquire();
-    // manipulation_lock.lock();
-    uint8_t* slot = recv_buffer + (dequeue_idx * 1516);
+    num_queue.down();
+
+    // printf("[num_queue::down] GOT PACKET!\n");
+
+    uint8_t* slot = recv_buffer + (dequeue_idx * 1520);
     dequeue_idx = (dequeue_idx + 1) % QUEUE_MAX_SIZE;
-    // manipulation_lock.unlock();
-    num_empty.release();
-    size_t payload_length = handle_tcp(slot, buffer);
+
+    switch (pseudo.protocol) {
+        case IP_TCP:
+            size_t payload_length = handle_tcp(slot, buffer);
+            break;
+        case IP_UDP:
+            size_t payload_length = handle_udp(slot, buffer);
+            break;
+        default:
+            printf("unknown protocol\n");
+            break;
+    }
+    num_empty.up();
+
+    // printf("num_empty::");
 
     return payload_length;
 }
@@ -70,6 +86,7 @@ size_t ISocket::dequeue(uint8_t* buffer) {
 size_t ISocket::recv(uint8_t* buffer) {
     size_t length;
     while (status.tcp.flags.alive && (length = dequeue(buffer)) == 0) {
+        printf("recv: waiting for packet\n");
         // wait_msec(1);
     }
     return length;
@@ -176,7 +193,6 @@ void ISocket::send(uint8_t* buffer, size_t length, uint16_t response_flags) {
     status.tcp.snd_nxt += length;
     if (response_flags & TCP_FLAG_SYN) status.tcp.snd_nxt += 1;
     if (response_flags & TCP_FLAG_FIN) status.tcp.snd_nxt += 1;
-
 }
 
 void ServerSocket::_initialize() {
@@ -186,7 +202,7 @@ void ServerSocket::_initialize() {
         .encapsulate(IPv4Builder{}
                          .with_src_address(dhcp_state.my_ip)
                          .with_dst_address(dhcp_state.my_ip)
-                         .with_protocol(IP_TCP)
+                         .with_protocol(IP_UDP)
                          .encapsulate(TCPBuilder{port, port}
                                           .with_pseduo_header(dhcp_state.my_ip, dhcp_state.my_ip)
                                           .with_data_offset(5)
@@ -223,8 +239,9 @@ void ISocket::configure(PacketParser<EthernetFrame, IPv4Packet, TCPPacket, Paylo
     }
 }
 
-HashMap<uint16_t, ISocket*>& get_open_sockets() {
-    static HashMap<uint16_t, ISocket*> sockets =
-        new HashMap<uint16_t, ISocket*>(uint16_t_hash, uint16_t_equals, 20);
+HashMap<uint16_t, ISocket*>* get_open_sockets() {
+    static HashMap<uint16_t, ISocket*>* sockets = nullptr;
+    if (sockets == nullptr)
+        sockets = new HashMap<uint16_t, ISocket*>(uint16_t_hash, uint16_t_equals, 20);
     return sockets;
 }

@@ -480,6 +480,7 @@ extern uint8_t port_bitmap[];
 
 bool obtain_port(uint16_t port);
 void release_port(uint16_t port);
+int assign_port();
 
 uint16_t calc_checksum(void*, void*, size_t, size_t);
 

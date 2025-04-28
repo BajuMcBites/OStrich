@@ -11,16 +11,15 @@
 #define SCTLR_I_CACHE_DISABLED (0 << 12)
 #define SCTLR_D_CACHE_DISABLED (0 << 2)
 #define SCTLR_MMU_DISABLED (0 << 0)
-#define SCTLR_MMU_ENABLED (1 << 0)
-// #define SCTLR_MMU_ENABLED                                         \
-//     ((0xC00800) | /* set mandatory reserved bits */               \
-//      (1 << 12) |  /* I, Instruction cache enable */               \
-//      (1 << 4) |   /* SA0, Stack Alignment Check Enable for EL0 */ \
-//      (1 << 3) |   /* SA, Stack Alignment Check Enable */          \
-//      (1 << 2) |   /* C, Data cache enable */                      \
-//      (1 << 1) |   /* A, Alignment check enable bit */             \
-//      (1 << 11) |  /* Enable program flow prediction */            \
-//      (1 << 0))    /* M, enable MMU */
+// #define SCTLR_MMU_ENABLED (1 << 0)
+#define SCTLR_MMU_ENABLED                                         \
+    ((0xC00800) | /* set mandatory reserved bits */               \
+     (1 << 12) |  /* I, Instruction cache enable */               \
+     (1 << 4) |   /* SA0, Stack Alignment Check Enable for EL0 */ \
+     (1 << 3) |   /* SA, Stack Alignment Check Enable */          \
+     (1 << 2) |   /* C, Data cache enable */                      \
+     (1 << 11) |  /* Enable program flow prediction */            \
+     (1 << 0))    /* M, enable MMU */
 
 #define SCTLR_VALUE_MMU_DISABLED                                                                 \
     (SCTLR_RESERVED | SCTLR_EE_LITTLE_ENDIAN | SCTLR_I_CACHE_DISABLED | SCTLR_D_CACHE_DISABLED | \

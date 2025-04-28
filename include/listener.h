@@ -89,6 +89,6 @@ class EventHandler {
     HashMap<uint64_t, Queue<IListener> *> *map;
 };
 
-EventHandler &get_event_handler();
+EventHandler *get_event_handler();
 
 #endif

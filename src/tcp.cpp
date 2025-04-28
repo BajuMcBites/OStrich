@@ -51,7 +51,7 @@ void handle_tcp(usb_session *session, PacketBufferParser *buffer_parser) {
 
     uint16_t port_id = tcp_packet->dst_port.get();
 
-    if (auto socket = get_open_sockets().get(port_id)) {
+    if (auto socket = get_open_sockets()->get(port_id)) {
         socket->enqueue(buffer_parser->get_packet_base(), ip_packet->total_length.get() + sizeof(ethernet_header));
     }
 }

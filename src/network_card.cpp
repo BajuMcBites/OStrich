@@ -42,13 +42,9 @@ void send_packet(uint8_t *data, size_t length) {
         printf("Error: Packet too large to send.\n");
         return;
     }
-    int status;
-    int retries = 10;
 
     usb_session *session = network_usb_send_session(nullptr);
-    while ((status = usb_send_bulk(session, data, length)) && (retries--)) {
-    }
-    if (status == 0) session->out_toggle ^= 2;
+    usb_send_bulk(session, data, length);
 }
 
 int receive_packet(uint8_t *buffer, size_t buffer_len) {
@@ -188,7 +184,7 @@ void network_loop() {
     while (1) {
         size = receive_packet(ethernet_buffer, sizeof(ethernet_buffer));
         if (size) {
-            process_packet(send_session, ethernet_buffer, sizeof(ethernet_buffer));
+            process_packet(send_session, ethernet_buffer, size);
         }
     }
 }

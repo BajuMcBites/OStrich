@@ -43,7 +43,7 @@ void handle_icmp_echo(usb_session *session,
     PacketParser<ICMPPacket, Payload> event_parser((const uint8_t *)icmp_packet,
                                                    payload_length + sizeof(icmp_header));
 
-        get_event_handler().handle_event(ICMP_PING_EVENT | ipv4_packet->src_address.get(),
+        get_event_handler()->handle_event(ICMP_PING_EVENT | ipv4_packet->src_address.get(),
                                          &event_parser);
 }
 
@@ -66,7 +66,7 @@ void icmp_ping(usb_session *session, uint32_t ip,
 
     delete frame;
 
-    get_event_handler().register_listener(ICMP_PING_EVENT | ip, new Listener(std::move(callback)));
+    get_event_handler()->register_listener(ICMP_PING_EVENT | ip, new Listener(std::move(callback)));
     uint8_t *ptr = get_arp_cache().get(dhcp_state.dhcp_server_ip);
 }
 

@@ -13,7 +13,7 @@
 
 class ISocket;
 
-HashMap<uint16_t, ISocket*>& get_open_sockets();
+HashMap<uint16_t, ISocket*>* get_open_sockets();
 
 struct CountingSemaphore {
     SpinLock lock;
@@ -24,7 +24,7 @@ struct CountingSemaphore {
     CountingSemaphore(uint32_t value) : value(value) {
     }
 
-    void acquire() {
+    void down() {
     loop:
         lock.lock();
         if (value > 0) {
@@ -36,7 +36,7 @@ struct CountingSemaphore {
         }
     }
 
-    void release() {
+    void up() {
         LockGuard<SpinLock> guard(lock);
         value++;
     }
@@ -101,7 +101,16 @@ class ClientSocket {
     }
 };
 
-class ServerSocket : public ISocket {
+class UDPClientSocket : public ClientSocket {
+   public:
+    UDPClientSocket(uint32_t dst_ip, uint16_t dst_port) : ClientSocket(dst_ip, dst_port) {
+    }
+
+    void send(uint8_t* buffer, size_t length, uint16_t response_flags = TCP_FLAG_ACK) {
+    }
+};
+
+class UDPServerSocket : public ISocket {
    private:
     uint16_t port;
 
@@ -112,7 +121,7 @@ class ServerSocket : public ISocket {
    public:
     ServerSocket(uint16_t port) : port(port) {
         K::assert(obtain_port(port), "port already in use");
-        get_open_sockets().put(port, this);
+        get_open_sockets()->put(port, this);
         _initialize();
     }
 
@@ -133,10 +142,29 @@ class ServerSocket : public ISocket {
 
     void close() {
         status.tcp.flags.alive = false;
-        get_open_sockets().remove(port);
+        get_open_sockets()->remove(port);
         release_port(port);
         printf("closed called!\n");
     }
+
+    void bind(uint16_t port) {
+        this->port = port;
+        get_open_sockets()->put(port, this);
+    }
+
+    // Send step 2 of 3.
+    void listen() {
+        // todo.
+    }
+
+    // Receive step 3 of 3.
+    // ISocket* accept() {
+    //     int assigned_port = assign_port();
+    //     if (assigned_port == -1) {
+    //         return nullptr;
+    //     }
+    //     finish later.
+    // }
 };
 
 #endif
