@@ -389,7 +389,7 @@
 /* #undef _WANT_IO_LONG_DOUBLE */
 
 /* Define to enable long long type support in IO functions like printf/scanf.
- */
+   */
 #define _WANT_IO_LONG_LONG 1
 
 /* Positional argument support in printf functions enabled. */

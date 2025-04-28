@@ -5,10 +5,9 @@
 #ifndef _LIBGEN_H_
 #define _LIBGEN_H_
 
+#include "_ansi.h"
 #include <sys/cdefs.h>
 #include <sys/reent.h>
-
-#include "_ansi.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,11 +26,12 @@ extern "C" {
    sure here. */
 #undef basename
 #define basename __xpg_basename
-char *basename(char *) __asm__(__ASMNAME("basename"));
-char *dirname(char *);
+char      *basename (char *) __asm__(__ASMNAME("basename"));
+char      *dirname (char *);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _LIBGEN_H_ */
+

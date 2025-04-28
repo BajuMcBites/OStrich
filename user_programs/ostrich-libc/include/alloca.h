@@ -7,16 +7,15 @@
 #ifndef _NEWLIB_ALLOCA_H
 #define _NEWLIB_ALLOCA_H
 
-#include <sys/reent.h>
-
 #include "_ansi.h"
+#include <sys/reent.h>
 
 #undef alloca
 
 #ifdef __GNUC__
 #define alloca(size) __builtin_alloca(size)
 #else
-void* alloca(size_t);
+void * alloca (size_t);
 #endif
 
 #endif
