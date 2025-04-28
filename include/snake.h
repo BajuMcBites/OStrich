@@ -17,6 +17,9 @@
 #define FPS 10
 
 #define MAX_PLAYERS 4
+#define MAX_FOOD 5
+
+#define MAX_BODY_LENGTH 100
 
 /*
 
@@ -37,6 +40,13 @@ Game State
 #define MSG_STATE_UPDATE 4
 #define MSG_HEARTBEAT 5
 
+static const uint32_t colors[] = {
+    0xFF0000FF,  // Red
+    0x00FF00FF,  // Green
+    0x0000FFFF,  // Blue
+    0xFFFF00FF   // Yellow
+};
+
 struct undo {
     union undo_u {
         uint64_t raw;
@@ -50,18 +60,28 @@ struct undo {
     uint32_t color;
 } __attribute__((packed));
 
+struct full_snake_t {
+    uint16_t x[MAX_BODY_LENGTH];
+    uint16_t y[MAX_BODY_LENGTH];
+    uint8_t cur_length;
+    uint8_t direction;
+};
+
 typedef struct {
     Listener<struct key_event *> key_listener;
+    int num_players;
+    int num_food;
 
     // snake info
-    struct snake_t {
-        uint8_t cur_length;
-        uint8_t max_length;
-        uint8_t x;
-        uint8_t y;
-        uint8_t direction;
-        uint8_t prior_direction;
-    } __attribute__((packed)) snake[MAX_PLAYERS];
+    // struct snake_t {
+    //     uint8_t cur_length;
+    //     uint8_t max_length;
+    //     uint8_t x;
+    //     uint8_t y;
+    //     uint8_t direction;
+    //     uint8_t prior_direction;
+    // } __attribute__((packed)) snake[MAX_PLAYERS];
+    struct full_snake_t full_snake[MAX_PLAYERS];
 
     // food info
     struct food_t {
