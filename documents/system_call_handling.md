@@ -297,7 +297,7 @@ void syscall_handler(KernelEntryFrame* frame) {
 ```
 
 # Conclusion
-When creating an OS, you have lots of freedom to design your own system calls. What you decide should be based on your goals and what you want to learn/achieve. You could write completely custom system calls, but many programs will expect Linux behaving system calls. If your goal is to run existing programs, emulating the behavior of Linux will be your best route. We chose to follow Linux as closely as we could, and picked a subset of system calls needed for NewLib and running Doom.
+When creating an OS, you have lots of freedom to design your own system calls. What you decide should be based on your goals and what you want to learn/achieve. You could write completely custom system calls, but many programs will expect Linux behaving system calls. If your goal is to run existing programs, emulating the behavior of Linux will be your best route. We chose to follow Linux as closely as we could, and picked a subset of system calls needed for NewLib and running Doom. My motivation behind creating this tutorial and documentation was because when doing this myself, I found that OSdev only had one page for ARM system calls, but it happened to be for [AArch32](https://wiki.osdev.org/ARM_System_Calls). This was not helpful for our kernel development, so I wanted to make a guide based on the decisions we made.
 
 ### Resources
 
@@ -305,3 +305,4 @@ When creating an OS, you have lots of freedom to design your own system calls. W
 - [Porting New Lib](https://wiki.osdev.org/Porting_Newlib)
 - [New Lib System Calls](https://sourceware.org/newlib/libc.html#Syscalls)
 - [Exception Syndrome Register](https://developer.arm.com/documentation/ddi0601/2025-03/AArch64-Registers/ESR-EL1--Exception-Syndrome-Register--EL1-)
+- [System Call Table](https://arm64.syscall.sh/)
