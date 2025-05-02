@@ -314,7 +314,8 @@ void tfp_printf(const char* fmt, ...) {
     va_end(va_copy_list);
     va_end(va);
 
-    // fb_print(buffer, WHITE);
+    fb_print(buffer, WHITE);
+
     printf_lock.unlock();
 }
 
@@ -337,8 +338,8 @@ void tfp_error_printf(const char* fmt, ...) {
     va_end(va_copy);
     va_end(va);
 
-    // print the buffer to the framebuffer in red
-    // fb_print(buffer, RED);
+    fb_print(buffer, RED);
+
     printf_err_lock.unlock();
 }
 

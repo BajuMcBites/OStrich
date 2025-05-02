@@ -151,7 +151,9 @@ This way, the Makefile will use the default system compilers (`gcc`, `g++`) inst
 
 ## Hardware Deployment Guide
 
-Follow these steps to deploy and run OStrich on actual Raspberry Pi hardware:
+Quick note: Not everything that works in QEMU will work on real hardware. Still, you should be able to see at least minimal HDMI output (text from the framebuffer) if the kernel boots correctly.
+
+Follow these steps to run OStrich on actual Raspberry Pi hardware:
 
 1. **Prepare Your SD Card with Raspberry Pi OS:**  
    - **Download and Flash:**  

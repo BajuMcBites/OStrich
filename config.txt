@@ -81,8 +81,4 @@ otg_mode=1
 arm_boost=1
 
 [all]
-dtoverlay=disable-bt
-# uart_2ndstage=1
-uart_enable=0
-# kernel_old=1
 disable_commandline_tags=1
