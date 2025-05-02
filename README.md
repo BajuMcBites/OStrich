@@ -153,7 +153,7 @@ This way, the Makefile will use the default system compilers (`gcc`, `g++`) inst
 
 Quick note: Not everything that works in QEMU will work on real hardware. Still, you should be able to see at least minimal HDMI output (text from the framebuffer) if the kernel boots correctly.
 
-Follow these steps to run OStrich on actual Raspberry Pi hardware:
+Follow these steps to run OStrich on actual Raspberry Pi 3B hardware:
 
 1. **Prepare Your SD Card with Raspberry Pi OS:**  
    - **Download and Flash:**  
@@ -177,9 +177,9 @@ Follow these steps to run OStrich on actual Raspberry Pi hardware:
 
 4. **Final Hardware Setup:**  
    - Reinsert the SD card into your Raspberry Pi.
-   - Attach an HDMI cable to connect the Raspberry Pi to a display.
+   - Attach an HDMI cable to connect the Raspberry Pi to a display (important to do this first before connecting the power).
    - Connect the micro USB power cord to power up the Raspberry Pi.
-   - Your Raspberry Pi should now boot using the newly compiled OStrich kernel.
+   - Your Raspberry Pi should now boot using the compiled OStrich kernel.
 
 5. **Optional: Enable UART Output for Debugging:**  
    If you would like to view the UART (serial) output for debugging or monitoring, please follow the instructions in [Adafruit's guide for using a console cable with the Raspberry Pi](https://cdn-learn.adafruit.com/downloads/pdf/adafruits-raspberry-pi-lesson-5-using-a-console-cable.pdf).  

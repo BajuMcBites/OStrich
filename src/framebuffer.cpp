@@ -183,16 +183,17 @@ void fb_scroll(int scroll_pixels) {
     }
 }
 
-static void clear_cell(int x_pixel, int y_pixel, unsigned int bg) {
+// helper to clear one text‐row (8×10 px per char) across the full width
+static void clear_cell(int cx, int cy) {
     Framebuffer* fb = get_real_fb();
-    unsigned int* buf = (unsigned int*)fb->buffer;
-    int pitch_px = fb->pitch / 4;
+    unsigned int* buf   = (unsigned int*)fb->buffer;
+    int          pitch  = fb->pitch / 4;
     for (int row = 0; row < 10; row++) {
-        for (int col = 0; col < 8; col++) {
-            int px = x_pixel + col;
-            int py = y_pixel + row;
-            if (px >= 0 && px < (int)fb->width && py >= 0 && py < (int)fb->height) {
-                buf[py * pitch_px + px] = bg;
+        for (int col = 0; col < 8;  col++) {
+            int px = cx + col, py = cy + row;
+            if (px >= 0 && px < (int)fb->width &&
+                py >= 0 && py < (int)fb->height) {
+                buf[py * pitch + px] = BLACK;
             }
         }
     }
@@ -209,13 +210,11 @@ void fb_print(const char* str, unsigned int color) {
     while (*str) {
         char c = *str++;
         if (c == '\r') {
-            // 1) reset to margin  
+            // carriage‑return → back to margin
             x = x_start;
-            // 2) clear old char cell  
-            clear_cell(x, y, BLACK);
         }
         else if (c == '\n') {
-            // newline: scroll or move down, then margin
+            // newline → scroll or move down, then margin
             if (y + 10 >= (int)fb->height) {
                 fb_scroll(10);
                 y = fb->height - 10;
@@ -225,10 +224,11 @@ void fb_print(const char* str, unsigned int color) {
             x = x_start;
         }
         else {
-            // draw the glyph
+            // clear the target cell, then draw the glyph
+            clear_cell(x, y);
             draw_char(x, y, c, color);
             x += 8;
-            // wrap
+            // wrap if past right edge
             if (x + 8 > (int)fb->width) {
                 if (y + 10 >= (int)fb->height) {
                     fb_scroll(10);
@@ -243,6 +243,7 @@ void fb_print(const char* str, unsigned int color) {
 
     fb_lock.unlock();
 }
+
 
 
 

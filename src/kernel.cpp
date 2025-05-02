@@ -127,6 +127,9 @@ extern char __heap_end[];
 
 static Atomic<int> coresAwake(0);
 
+static Barrier* starting = nullptr;
+static Barrier* stopping = nullptr;
+
 void mergeCores();
 
 extern "C" void secondary_kernel_init() {
@@ -187,6 +190,10 @@ extern "C" void primary_kernel_init() {
     init_swap();
     init_tty();
 
+    starting = new Barrier(4);
+    stopping = new Barrier(4);
+
+
     wake_up_cores();
     enable_irq();
     mergeCores();
@@ -197,7 +204,7 @@ void mergeCores() {
     auto number_awake = coresAwake.add_fetch(1);
     printf("There are %d cores awake\n", number_awake);
     K::check_stack();
-
+    starting->sync();
     if (number_awake == CORE_COUNT) {
         printf("creating kernel_main\n");
         create_event(keyboard_loop);
@@ -226,5 +233,6 @@ void mergeCores() {
         create_event(run_tty);
     }
     event_loop();
+    stopping->sync();
     printf("PANIC I should not go here\n");
 }
