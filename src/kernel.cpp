@@ -190,8 +190,8 @@ extern "C" void primary_kernel_init() {
     init_swap();
     init_tty();
 
-    starting = new Barrier(4);
-    stopping = new Barrier(4);
+    starting = new Barrier(CORE_COUNT);
+    stopping = new Barrier(CORE_COUNT);
 
 
     wake_up_cores();
