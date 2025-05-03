@@ -109,6 +109,20 @@ class Atomic {
     }
 };
 
+class Barrier {
+    Atomic<uint32_t> counter;
+public:
+    Barrier(uint32_t counter): counter(counter) {}
+    Barrier(const Barrier&) = delete;
+
+    void sync() {
+        counter.add_fetch(-1);
+	while (counter.get() != 0) {
+        asm volatile("wfe");
+        }
+    }
+};
+
 template <>
 class Atomic<uint64_t> {
    public:
