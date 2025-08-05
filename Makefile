@@ -1,8 +1,8 @@
 # Cross compiler and tools
 # aarch64-linux-gnu- for windows, aarch64-elf- for mac
-CURRENT_OS = $(strip $(shell uname -s)	) # semi portable ig.
+CURRENT_OS = $(strip $(shell uname -s)) # semi portable ig.
 ifeq ($(findstring Darwin,$(CURRENT_OS)),Darwin) # MACOS
-    CROSS_COMPILE = aarch64-elf-
+    CROSS_COMPILE = aarch64-none-elf-
 else
     CROSS_COMPILE = aarch64-linux-gnu-
 endif
