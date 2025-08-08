@@ -96,7 +96,7 @@ void change_tty(struct key_event *event) {
         tty.moveHeadForward();
         tty.getHead()->buffer = get_real_fb()->buffer;
         fb_blank(WHITE);
-    } else if (KEY_F1) {
+    } else if (event->keycode == KEY_F1) {
         // move back
         tty.getHead()->buffer = dummy_buffer;
         tty.moveHeadBack();
